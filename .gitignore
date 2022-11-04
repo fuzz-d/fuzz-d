@@ -1,0 +1,16 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+.idea
+**/.DS_STORE
+
+# Ignore Gradle build output directory
+build
+
+# compile outputs
+*.dll
+*.js
+*.runtimeconfig.json
+*.cs
+*.go
+
+node_modules
