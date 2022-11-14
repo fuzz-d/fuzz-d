@@ -11,11 +11,12 @@ class Main {
     private val generator = Generator()
     private val validator = OutputValidator()
 
-    fun fuzz() = runBlocking {
-        validator.validateFile("../output", "hello")
+    fun fuzz() {
+        val validationResult = validator.validateFile("../output", "hello")
+        println(validationResult.erroneousResult)
     }
 }
 
 fun main() {
-    println(Main().fuzz())
+    Main().fuzz()
 }

@@ -1,50 +1,26 @@
 package fuzzd.validator
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import runCommand
-import java.io.BufferedReader
-import java.io.File
-import java.io.InputStreamReader
-
-fun Process.readOutput(): String {
-    val stdIn = BufferedReader(InputStreamReader(inputStream))
-    return stdIn.readLines().joinToString("\n")
-}
+import fuzzd.validator.executor.CsExecutionHandler
+import fuzzd.validator.executor.ExecutionHandler
 
 class OutputValidator {
-    suspend fun validateFile(fileDir: String, fileName: String): String {
-        val csOutput = withContext(Dispatchers.IO) {
-            val process = "dafny /spillTargetCode:1 $fileDir/$fileName.dfy".runDiscardingOutput()
+    /**
+     * Runs the given file using supported target languages, and evaluates the outputs against each other
+     * @param fileDir - the directory in which the file is located
+     * @param fileName - the filename of the file excluding any file extensions
+     */
+    fun validateFile(fileDir: String, fileName: String): ValidationResult {
+        val handlers = listOf<ExecutionHandler>(CsExecutionHandler(fileDir, fileName))
 
-            if (process.exitValue() == 0) {
-                "dotnet $fileDir/$fileName.dll".runCommand().readOutput()
-            } else {
-                process.readOutput()
-            }
-        }
+        handlers.map { Thread(it) }
+            .map{ t -> t.start(); t }
+            .map{ t -> t.join() }
 
-        val jsOutput = withContext(Dispatchers.IO) {
-            val process = "dafny /spillTargetCode:1 /compileTarget:js $fileDir/$fileName.dfy".runDiscardingOutput()
+        val (succeededCompile, failedCompile) = handlers.partition { h -> val c = h.compileResult(); c.terminated && c.exitCode == 0 }
+        val (succeededExecute, failedExecute) = succeededCompile.partition { h -> val e = h.executeResult(); e.terminated && e.exitCode == 0 }
 
-            if (process.exitValue() == 0) {
-                "node $fileDir/$fileName.js".runCommand().readOutput()
-            } else {
-                process.readOutput()
-            }
-        }
+        val erroneousResult = failedCompile.isNotEmpty() || failedExecute.isNotEmpty() || !succeededExecute.all { h -> h.executeResult().stdOut == succeededExecute[0].executeResult().stdOut }
 
-        println(csOutput)
-        println(jsOutput)
-
-        return csOutput
-    }
-
-    companion object{
-        val PROCESS_CONFIG: ProcessBuilder.() -> Unit = {
-            redirectOutput(ProcessBuilder.Redirect.DISCARD)
-        }
-
-        fun String.runDiscardingOutput(): Process = this.runCommand(processConfig = PROCESS_CONFIG)
+        return ValidationResult(erroneousResult, succeededExecute, failedExecute, failedCompile)
     }
 }
