@@ -1,7 +1,8 @@
 package fuzzd.validator
 
-import fuzzd.validator.executor.CsExecutionHandler
-import fuzzd.validator.executor.ExecutionHandler
+import fuzzd.validator.executor.execution_handler.CsExecutionHandler
+import fuzzd.validator.executor.execution_handler.JsExecutionHandler
+import fuzzd.validator.executor.execution_handler.PyExecutionHandler
 
 class OutputValidator {
     /**
@@ -10,7 +11,7 @@ class OutputValidator {
      * @param fileName - the filename of the file excluding any file extensions
      */
     fun validateFile(fileDir: String, fileName: String): ValidationResult {
-        val handlers = listOf<ExecutionHandler>(CsExecutionHandler(fileDir, fileName))
+        val handlers = listOf(CsExecutionHandler(fileDir, fileName), JsExecutionHandler(fileDir, fileName), PyExecutionHandler(fileDir, fileName))
 
         handlers.map { Thread(it) }
             .map{ t -> t.start(); t }

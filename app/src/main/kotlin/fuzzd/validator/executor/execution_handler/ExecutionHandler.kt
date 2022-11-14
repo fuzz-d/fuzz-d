@@ -1,4 +1,6 @@
-package fuzzd.validator.executor
+package fuzzd.validator.executor.execution_handler
+
+import fuzzd.validator.executor.ExecutionResult
 
 interface ExecutionHandler: Runnable {
     fun compile(): ExecutionResult

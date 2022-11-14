@@ -1,5 +1,6 @@
-package fuzzd.validator.executor
+package fuzzd.validator.executor.execution_handler
 
+import fuzzd.validator.executor.*
 import java.util.concurrent.TimeUnit
 
 abstract class AbstractExecutionHandler(val fileDir: String, val fileName: String): ExecutionHandler {
