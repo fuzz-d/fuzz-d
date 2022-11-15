@@ -6,6 +6,7 @@ package fuzzd
 import fuzzd.generator.Generator
 import fuzzd.generator.ast.ASTElement
 import fuzzd.validator.OutputValidator
+import kotlinx.coroutines.runBlocking
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
@@ -37,8 +38,8 @@ class Main(private val path: String) {
         return dir.absolutePath
     }
 
-    fun fuzz() {
-        val ast = generator.generateAST()
+    suspend fun fuzz() {
+        val ast = generator.generate()
         val dirPath = writeFile(ast)
 
         val validationResult = validator.validateFile(dirPath, DAFNY_MAIN)
@@ -51,6 +52,6 @@ class Main(private val path: String) {
     }
 }
 
-fun main() {
+fun main() = runBlocking {
     Main("../output").fuzz()
 }
