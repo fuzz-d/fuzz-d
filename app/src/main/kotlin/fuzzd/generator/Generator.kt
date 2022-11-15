@@ -1,7 +1,8 @@
 package fuzzd.generator
 
+import fuzzd.generator.ast.ASTElement
+import fuzzd.generator.ast.MainFunctionAST
+
 class Generator {
-    fun generateFile(): String {
-        return ""
-    }
+    fun generateAST(): ASTElement = MainFunctionAST()
 }
