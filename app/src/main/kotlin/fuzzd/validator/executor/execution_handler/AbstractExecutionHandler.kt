@@ -1,9 +1,13 @@
 package fuzzd.validator.executor.execution_handler
 
-import fuzzd.validator.executor.*
+import fuzzd.validator.executor.ExecutionResult
+import fuzzd.validator.executor.compileDafny
+import fuzzd.validator.executor.readErrorStream
+import fuzzd.validator.executor.readInputStream
+import fuzzd.validator.executor.runCommand
 import java.util.concurrent.TimeUnit
 
-abstract class AbstractExecutionHandler(val fileDir: String, val fileName: String): ExecutionHandler {
+abstract class AbstractExecutionHandler(val fileDir: String, val fileName: String) : ExecutionHandler {
     private var compileResult: ExecutionResult = ExecutionResult()
     private var executionResult: ExecutionResult = ExecutionResult()
 

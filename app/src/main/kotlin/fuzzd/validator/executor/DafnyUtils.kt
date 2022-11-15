@@ -5,7 +5,8 @@ fun runCommand(command: String): Process {
 }
 
 fun compileDafny(targetLanguage: String, fileDir: String, fileName: String): Process {
-    val command = "dafny /compileVerbose:0 /noVerify /compile:2 /spillTargetCode:1 /compileTarget:$targetLanguage $fileDir/$fileName.dfy"
+    val command =
+        "dafny /compileVerbose:0 /noVerify /compile:2 /spillTargetCode:1 /compileTarget:$targetLanguage $fileDir/$fileName.dfy"
     return runCommand(command)
 }
 

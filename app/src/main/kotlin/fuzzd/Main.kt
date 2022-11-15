@@ -5,7 +5,6 @@ package fuzzd
 
 import fuzzd.generator.Generator
 import fuzzd.validator.OutputValidator
-import kotlinx.coroutines.runBlocking
 
 class Main {
     private val generator = Generator()
