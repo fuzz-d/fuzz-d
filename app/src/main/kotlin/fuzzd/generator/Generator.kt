@@ -2,6 +2,7 @@ package fuzzd.generator
 
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ExpressionAST
+import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
@@ -9,7 +10,7 @@ import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
-import kotlinx.coroutines.Dispatchers
+import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
@@ -37,12 +38,23 @@ class Generator : ASTGenerator {
 
     override suspend fun generateExpression(): ExpressionAST =
         if (random.nextBoolean()) {
+            generateBinaryExpression()
+        } else if (random.nextBoolean()) {
             generateBooleanLiteral()
         } else if (random.nextBoolean()) {
             generateIntegerLiteral()
         } else {
             generateRealLiteral()
         }
+
+    // TODO: complex generation logic
+    override suspend fun generateBinaryExpression(): ExpressionAST {
+        val expr1 = BinaryExpressionAST(generateBooleanLiteral(), ConjunctionOperator, generateBooleanLiteral())
+        val operator = ConjunctionOperator
+        val expr2 = generateBooleanLiteral()
+
+        return BinaryExpressionAST(expr1, operator, expr2)
+    }
 
     override suspend fun generateIntegerLiteral(): ExpressionAST {
         val value = if (random.nextBoolean()) {
@@ -78,7 +90,7 @@ class Generator : ASTGenerator {
         return sb.toString()
     }
 
-    fun generateHexLiteralValue(negative: Boolean = true): String {
+    private fun generateHexLiteralValue(negative: Boolean = true): String {
         val hexString = Integer.toHexString(random.nextInt())
 
         val sb = StringBuilder()

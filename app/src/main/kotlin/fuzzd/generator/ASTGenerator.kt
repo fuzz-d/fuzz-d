@@ -14,6 +14,8 @@ interface ASTGenerator {
 
     suspend fun generateExpression(): ExpressionAST
 
+    suspend fun generateBinaryExpression(): ExpressionAST
+
     suspend fun generateIntegerLiteral(): ExpressionAST
 
     suspend fun generateBooleanLiteral(): ExpressionAST
