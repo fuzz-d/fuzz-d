@@ -10,7 +10,13 @@ interface ASTGenerator {
 
     suspend fun generateSequence(): SequenceAST
 
-    fun generateStatement(): StatementAST
+    suspend fun generateStatement(): StatementAST
 
-    fun generateExpression(): ExpressionAST
+    suspend fun generateExpression(): ExpressionAST
+
+    suspend fun generateIntegerLiteral(): ExpressionAST
+
+    suspend fun generateBooleanLiteral(): ExpressionAST
+
+    suspend fun generateRealLiteral(): ExpressionAST
 }
