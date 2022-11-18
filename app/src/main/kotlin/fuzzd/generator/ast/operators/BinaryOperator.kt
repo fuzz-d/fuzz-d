@@ -35,7 +35,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     object ImplicationOperator : BooleanBinaryOperator(2, "==>")
     object ReverseImplicationOperator : BooleanBinaryOperator(2, "<==")
     object ConjunctionOperator : BooleanBinaryOperator(3, "&&")
-    object DisjunctionOperation : BooleanBinaryOperator(3, "||")
+    object DisjunctionOperator : BooleanBinaryOperator(3, "||")
 
     abstract class ComparisonBinaryOperator(symbol: String) : BinaryOperator(4, symbol) {
         private val supportedInputTypes = listOf(IntType, CharType, RealType)

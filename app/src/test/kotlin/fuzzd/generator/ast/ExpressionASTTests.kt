@@ -1,15 +1,104 @@
 package fuzzd.generator.ast
 
+import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.error.InvalidFormatException
+import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.ImplicationOperator
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
 
 class ExpressionASTTests {
     @Nested
-    inner class IntegerLiteralAST {
+    inner class BinaryExpressionASTTests {
+        @Test
+        fun givenDifferentPrecedenceExpr1_whenToString_expectNoWrapExpr1() {
+            // given
+            val expr1 = BinaryExpressionAST(BooleanLiteralAST(false), ImplicationOperator, BooleanLiteralAST(true))
+            val operator = ConjunctionOperator
+            val expr2 = BooleanLiteralAST(false)
+
+            val expr = BinaryExpressionAST(expr1, operator, expr2)
+
+            // when
+            val str = expr.toString()
+
+            // expect
+            assertEquals(str, "$expr1$operator$expr2")
+        }
+
+        @Test
+        fun givenDifferentPrecedenceExpr2_whenToString_expectNoWrapExpr2() {
+            // given
+            val expr1 = BooleanLiteralAST(false)
+            val operator = ConjunctionOperator
+            val expr2 = BinaryExpressionAST(BooleanLiteralAST(false), ImplicationOperator, BooleanLiteralAST(true))
+
+            val expr = BinaryExpressionAST(expr1, operator, expr2)
+
+            // when
+            val str = expr.toString()
+
+            // expect
+            assertEquals(str, "$expr1$operator$expr2")
+        }
+
+        @Test
+        fun givenSamePrecedenceExpr1_whenToString_expectWrapExpr1() {
+            // given
+            val expr1 = BinaryExpressionAST(BooleanLiteralAST(false), DisjunctionOperator, BooleanLiteralAST(true))
+            val operator = ConjunctionOperator
+            val expr2 = BooleanLiteralAST(false)
+
+            val expr = BinaryExpressionAST(expr1, operator, expr2)
+
+            // when
+            val str = expr.toString()
+
+            // expect
+            assertEquals(str, "($expr1)$operator$expr2")
+        }
+
+        @Test
+        fun givenSamePrecedenceExpr2_whenToString_expectWrapExpr2() {
+            // given
+            val expr1 = BooleanLiteralAST(false)
+            val operator = ConjunctionOperator
+            val expr2 = BinaryExpressionAST(BooleanLiteralAST(false), DisjunctionOperator, BooleanLiteralAST(true))
+
+            val expr = BinaryExpressionAST(expr1, operator, expr2)
+
+            // when
+            val str = expr.toString()
+
+            // expect
+            assertEquals(str, "$expr1$operator($expr2)")
+        }
+
+        @Test
+        fun givenSamePrecedenceExpr1AndExpr2_whenToString_expectWrapExpr1AndExpr2() {
+            // given
+            val expr1 = BinaryExpressionAST(BooleanLiteralAST(false), DisjunctionOperator, BooleanLiteralAST(true))
+            val operator = ConjunctionOperator
+            val expr2 = BinaryExpressionAST(BooleanLiteralAST(false), DisjunctionOperator, BooleanLiteralAST(true))
+
+            val expr = BinaryExpressionAST(expr1, operator, expr2)
+
+            // when
+            val str = expr.toString()
+
+            // expect
+            assertEquals(str, "($expr1)$operator($expr2)")
+        }
+    }
+
+    @Nested
+    inner class IntegerLiteralASTTests {
         @Test
         fun givenValidIntegerValue_whenCreateIntegerLiteralAST_expectSuccessfulInit() {
             // given
@@ -166,7 +255,7 @@ class ExpressionASTTests {
     }
 
     @Nested
-    inner class RealLiteralAST {
+    inner class RealLiteralASTTests {
         @Test
         fun givenValidRealValue_whenCreateRealLiteralAST_expectSuccessfulInit() {
             // given

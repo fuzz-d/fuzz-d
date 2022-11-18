@@ -33,12 +33,12 @@ sealed class ExpressionAST : ASTElement {
             val wrapExpr1 = (
                 expr1 is BinaryExpressionAST && type() == BoolType && type1 == BoolType &&
                     operator != expr1.operator && operator.precedence == expr1.operator.precedence
-                ) || Random.Default.nextBoolean()
+                ) /*|| Random.Default.nextBoolean()*/
 
             val wrapExpr2 = (
-                expr2 is BinaryExpressionAST && type() == BoolType && type1 == BoolType &&
+                expr2 is BinaryExpressionAST && type() == BoolType && type2 == BoolType &&
                     operator != expr2.operator && operator.precedence == expr2.operator.precedence
-                ) || Random.Default.nextBoolean()
+                ) /*|| Random.Default.nextBoolean()*/
 
 //            val wrapThis = Random.Default.nextBoolean()
 
@@ -46,7 +46,7 @@ sealed class ExpressionAST : ASTElement {
 //            if (wrapThis) sb.append("(")
             sb.append(if (wrapExpr1) "($expr1)" else "$expr1")
             sb.append(operator)
-            sb.append(if (wrapExpr2) "($expr2)" else "$expr1")
+            sb.append(if (wrapExpr2) "($expr2)" else "$expr2")
 //            if (wrapThis) sb.append(")")
 
             return sb.toString()
