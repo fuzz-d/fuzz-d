@@ -49,7 +49,7 @@ class ExpressionASTTests {
             val str = expr.toString()
 
             // expect
-            assertEquals(str, "$expr1$operator$expr2")
+            assertEquals("$expr1$operator$expr2", str)
         }
 
         @Test
@@ -65,7 +65,7 @@ class ExpressionASTTests {
             val str = expr.toString()
 
             // expect
-            assertEquals(str, "$expr1$operator$expr2")
+            assertEquals("$expr1$operator$expr2", str)
         }
 
         @Test
@@ -81,7 +81,7 @@ class ExpressionASTTests {
             val str = expr.toString()
 
             // expect
-            assertEquals(str, "($expr1)$operator$expr2")
+            assertEquals("($expr1)$operator$expr2", str)
         }
 
         @Test
@@ -97,7 +97,7 @@ class ExpressionASTTests {
             val str = expr.toString()
 
             // expect
-            assertEquals(str, "$expr1$operator($expr2)")
+            assertEquals("$expr1$operator($expr2)", str)
         }
 
         @Test
@@ -113,7 +113,7 @@ class ExpressionASTTests {
             val str = expr.toString()
 
             // expect
-            assertEquals(str, "($expr1)$operator($expr2)")
+            assertEquals("($expr1)$operator($expr2)", str)
         }
     }
 
