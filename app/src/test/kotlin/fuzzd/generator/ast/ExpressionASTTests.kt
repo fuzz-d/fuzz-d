@@ -4,16 +4,36 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
+import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.error.InvalidFormatException
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ImplicationOperator
+import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
 
 class ExpressionASTTests {
+
+    @Nested
+    inner class UnaryExpressionASTTests {
+        @Test
+        fun givenBinaryExpression_whenToString_expectWrapExpr() {
+            // given
+            val bexp = BinaryExpressionAST(BooleanLiteralAST(false), ConjunctionOperator, BooleanLiteralAST(true))
+            val operator = NotOperator
+            val expr = UnaryExpressionAST(bexp, operator)
+
+            // when
+            val str = expr.toString()
+
+            // expect
+            assertEquals("$operator($bexp)", str)
+        }
+    }
+
     @Nested
     inner class BinaryExpressionASTTests {
         @Test
