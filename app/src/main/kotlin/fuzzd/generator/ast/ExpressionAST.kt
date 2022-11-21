@@ -3,15 +3,14 @@ package fuzzd.generator.ast
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.error.InvalidFormatException
 import fuzzd.generator.ast.error.InvalidInputException
-import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator
-import kotlin.random.Random
+import fuzzd.generator.ast.operators.UnaryOperator
 
 sealed class ExpressionAST : ASTElement {
 
     abstract fun type(): Type
 
-    class UnaryExpressionAST(private val expr: ExpressionAST, private val operator: UnaryOperator): ExpressionAST() {
+    class UnaryExpressionAST(private val expr: ExpressionAST, private val operator: UnaryOperator) : ExpressionAST() {
         override fun type(): Type = expr.type()
 
         override fun toString(): String {
@@ -64,6 +63,13 @@ sealed class ExpressionAST : ASTElement {
 
             return sb.toString()
         }
+    }
+
+    class IdentifierAST(private val name: String, private val type: Type) : ExpressionAST() {
+
+        override fun type(): Type = type
+
+        override fun toString(): String = name
     }
 
     class BooleanLiteralAST(private val value: Boolean) : ExpressionAST() {
