@@ -23,9 +23,9 @@ dependencies {
     // Align versions of all Kotlin components
     implementation platform('org.jetbrains.kotlin:kotlin-bom')
 
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
     implementation 'com.google.guava:guava:31.0.1-jre'
-    implementation 'com.sealwu:kscript-tools:1.0.2'
+    implementation "org.jetbrains.kotlin:kotlin-reflect:1.6.21"
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
 
     testImplementation 'org.jetbrains.kotlin:kotlin-test'

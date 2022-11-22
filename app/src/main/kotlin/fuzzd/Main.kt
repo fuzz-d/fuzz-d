@@ -1,7 +1,10 @@
 package fuzzd
 
 import fuzzd.generator.Generator
+import fuzzd.generator.IdentifierNameGenerator
 import fuzzd.generator.ast.ASTElement
+import fuzzd.generator.ast.Type
+import fuzzd.generator.selection.SelectionManager
 import fuzzd.validator.OutputValidator
 import kotlinx.coroutines.runBlocking
 import java.io.BufferedWriter
@@ -9,10 +12,10 @@ import java.io.File
 import java.io.FileWriter
 import java.io.IOException
 import java.util.UUID
+import kotlin.random.Random
 import kotlin.system.exitProcess
 
 class Main(private val path: String) {
-    private val generator = Generator()
     private val validator = OutputValidator()
 
     private fun writeFile(ast: ASTElement): String {
@@ -35,12 +38,13 @@ class Main(private val path: String) {
         return dir.absolutePath
     }
 
-    suspend fun fuzz() {
+    suspend fun fuzz(seed: Long = Random.Default.nextLong()) {
+        val generator = Generator(IdentifierNameGenerator(), SelectionManager(Random(seed)))
         val ast = generator.generate()
         val dirPath = writeFile(ast)
 
         val validationResult = validator.validateFile(dirPath, DAFNY_MAIN)
-        println("bug found: ${validationResult.erroneousResult}")
+        println("bug found: ${validationResult.erroneousResult}. Seed: $seed")
     }
 
     companion object {

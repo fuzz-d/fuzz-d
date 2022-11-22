@@ -1,17 +1,19 @@
 package fuzzd.generator.ast
 
 import fuzzd.generator.ast.Type.BoolType
+import fuzzd.generator.ast.Type.CharType
+import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.error.InvalidFormatException
 import fuzzd.generator.ast.error.InvalidInputException
-import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator
-import kotlin.random.Random
+import fuzzd.generator.ast.operators.UnaryOperator
 
 sealed class ExpressionAST : ASTElement {
 
     abstract fun type(): Type
 
-    class UnaryExpressionAST(private val expr: ExpressionAST, private val operator: UnaryOperator): ExpressionAST() {
+    class UnaryExpressionAST(private val expr: ExpressionAST, private val operator: UnaryOperator) : ExpressionAST() {
         override fun type(): Type = expr.type()
 
         override fun toString(): String {
@@ -66,42 +68,45 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
-    class BooleanLiteralAST(private val value: Boolean) : ExpressionAST() {
-        override fun type(): Type = BoolType
+    class IdentifierAST(private val name: String, private val type: Type) : ExpressionAST() {
 
-        override fun toString(): String = value.toString()
+        override fun type(): Type = type
+
+        override fun toString(): String = name
     }
+
+    abstract class LiteralAST(private val value: String, private val type: Type) : ExpressionAST() {
+        override fun toString(): String = value
+
+        override fun type(): Type = type
+    }
+
+    class BooleanLiteralAST(value: Boolean) : LiteralAST(value.toString(), BoolType)
 
     /**
      * grammar from documentation:
      * digits = digit {['_'] digit}
      * hexdigits = "0x" hexdigit {['_'] hexdigit}
      */
-    class IntegerLiteralAST(private val value: String) : ExpressionAST() {
+    class IntegerLiteralAST(value: String) : LiteralAST(value, IntType) {
         init {
             if (!value.matches(Regex("(-)?(0x[0-9A-Fa-f]+(_[0-9A-Fa-f]+)*|[0-9]+(_[0-9]+)*)"))) {
                 throw InvalidFormatException("Value passed (= $value) did not match supported integer format")
             }
         }
-
-        override fun type(): Type = Type.IntType
-
-        override fun toString(): String = value
     }
 
     /**
      * grammar from documentation:
      * decimaldigits = digit {['_'] digit} '.' digit {['_'] digit}
      */
-    class RealLiteralAST(private val value: String) : ExpressionAST() {
+    class RealLiteralAST(value: String) : LiteralAST(value, RealType) {
         init {
             if (!value.matches(Regex("(-)?[0-9]+(_[0-9]+)*.[0-9]+(_[0-9]+)*"))) {
                 throw InvalidFormatException("Value passed (= $value) did not match supported float format")
             }
         }
-
-        override fun type(): Type = Type.RealType
-
-        override fun toString() = value
     }
+
+    class CharacterLiteralAST(value: String) : LiteralAST(value, CharType)
 }

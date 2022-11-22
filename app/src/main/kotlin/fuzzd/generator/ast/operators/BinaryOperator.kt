@@ -23,13 +23,17 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
 
     abstract fun supportsInput(t1: Type, t2: Type): Boolean
 
+    abstract fun supportedInputTypes(): List<Type>
+
+    override fun toString(): String = symbol
+
     /* -------------------------------------- Logical Binary Operators -------------------------------------- */
-    abstract class BooleanBinaryOperator(precedence: Int, symbol: String) : BinaryOperator(precedence, symbol) {
+    sealed class BooleanBinaryOperator(precedence: Int, symbol: String) : BinaryOperator(precedence, symbol) {
+        override fun supportedInputTypes(): List<Type> = listOf(BoolType)
+
         override fun supportsInput(t1: Type, t2: Type): Boolean =
             t1 == BoolType && t2 == BoolType
     }
-
-    override fun toString(): String = symbol
 
     object IffOperator : BooleanBinaryOperator(1, "<==>")
     object ImplicationOperator : BooleanBinaryOperator(2, "==>")
@@ -37,8 +41,11 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     object ConjunctionOperator : BooleanBinaryOperator(3, "&&")
     object DisjunctionOperator : BooleanBinaryOperator(3, "||")
 
-    abstract class ComparisonBinaryOperator(symbol: String) : BinaryOperator(4, symbol) {
+    sealed class ComparisonBinaryOperator(symbol: String) : BinaryOperator(4, symbol) {
         private val supportedInputTypes = listOf(IntType, CharType, RealType)
+
+        override fun supportedInputTypes(): List<Type> = supportedInputTypes
+
         override fun supportsInput(t1: Type, t2: Type): Boolean =
             t1 == t2 && t1 in supportedInputTypes
 
@@ -54,18 +61,21 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
 
     /* -------------------------------- NUMERICAL (& LIST) OPERATORS --------------------------------- */
 
-    abstract class MathematicalBinaryOperator(
+    sealed class MathematicalBinaryOperator(
         precedence: Int,
         symbol: String,
         private val supportedInputTypes: List<Type> = listOf(IntType, RealType)
     ) : BinaryOperator(precedence, symbol) {
+        override fun supportedInputTypes(): List<Type> = supportedInputTypes
+
         override fun supportsInput(t1: Type, t2: Type): Boolean =
             t1 == t2 && t1 in supportedInputTypes
     }
+    // investigate if class hierarchy is better :)
 
     object AdditionOperator : MathematicalBinaryOperator(1, "+", listOf(CharType, IntType, RealType))
     object SubtractionOperator : MathematicalBinaryOperator(1, "-", listOf(CharType, IntType, RealType))
     object MultiplicationOperator : MathematicalBinaryOperator(2, "*")
     object DivisionOperator : MathematicalBinaryOperator(2, "/")
-    object ModuloOperator : MathematicalBinaryOperator(2, "%")
+    object ModuloOperator : MathematicalBinaryOperator(2, "%", listOf(IntType))
 }

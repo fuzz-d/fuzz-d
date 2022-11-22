@@ -1,6 +1,7 @@
 package fuzzd.generator.ast
 
 sealed class Type {
+
     object BoolType : Type() {
         override fun toString(): String = "bool"
     }
