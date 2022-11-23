@@ -40,16 +40,12 @@ class SelectionManager(
                     Pair(subclass, inputType)
                 }
 
-            IntType, RealType -> {
-                val subclasses = BinaryOperator.MathematicalBinaryOperator::class.sealedSubclasses
-                val selectedIndex = random.nextInt(subclasses.size)
-                Pair(subclasses[selectedIndex].objectInstance!!, targetType)
-            }
-
-            CharType -> {
-                val selection =
-                    listOf(BinaryOperator.AdditionOperator to 0.5, BinaryOperator.SubtractionOperator to 0.5)
-                Pair(randomWeightedSelection(selection), targetType)
+            IntType, RealType, CharType -> {
+                val subclassInstances = BinaryOperator.MathematicalBinaryOperator::class.sealedSubclasses
+                    .mapNotNull { it.objectInstance }
+                    .filter { targetType in it.supportedInputTypes() }
+                val selectedIndex = random.nextInt(subclassInstances.size)
+                Pair(subclassInstances[selectedIndex], targetType)
             }
         }
 
