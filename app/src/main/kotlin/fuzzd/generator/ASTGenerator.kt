@@ -29,7 +29,7 @@ interface ASTGenerator {
 
     suspend fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST
 
-    suspend fun generateIdentifier(context: GenerationContext): IdentifierAST
+    suspend fun generateIdentifier(context: GenerationContext, targetType: Type): IdentifierAST
 
     suspend fun generateUnaryExpression(context: GenerationContext, targetType: Type): UnaryExpressionAST
 

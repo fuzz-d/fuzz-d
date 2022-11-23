@@ -20,7 +20,7 @@ class SymbolTable(private val parent: SymbolTable? = null) {
         typeTable[type]!!.add(identifier)
     }
 
-    fun withType(type: KClass<Type>): List<IdentifierAST> {
+    fun withType(type: KClass<out Type>): List<IdentifierAST> {
         val results = mutableListOf<IdentifierAST>()
 
         results.addAll(parent?.withType(type) ?: listOf())

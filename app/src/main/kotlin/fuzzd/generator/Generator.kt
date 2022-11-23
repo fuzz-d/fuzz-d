@@ -67,8 +67,8 @@ class Generator(
             generateLiteralForType(context, targetType)
         }
 
-    override suspend fun generateIdentifier(context: GenerationContext): IdentifierAST {
-        TODO()
+    override suspend fun generateIdentifier(context: GenerationContext, targetType: Type): IdentifierAST {
+        return context.symbolTable.withType(targetType::class)[0]
     }
 
     override suspend fun generateUnaryExpression(context: GenerationContext, targetType: Type): UnaryExpressionAST {
