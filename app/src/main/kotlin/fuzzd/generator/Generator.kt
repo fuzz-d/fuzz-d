@@ -15,10 +15,9 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.Type
+import fuzzd.generator.selection.ExpressionType
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.StatementType
-import kotlinx.coroutines.Dispatchers.Default
-import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.random.Random
 
@@ -27,30 +26,33 @@ class Generator(
     private val selectionManager: SelectionManager
 ) : ASTGenerator {
     private val random = Random.Default
-    override suspend fun generate(): ASTElement = MainFunctionAST(generateSequence(GenerationContext()))
+    override fun generate(): ASTElement = MainFunctionAST(generateSequence(GenerationContext()))
 
-    override suspend fun generateSequence(context: GenerationContext): SequenceAST {
+    override fun generateSequence(context: GenerationContext): SequenceAST {
         val n = random.nextInt(1, 30)
 
-        val statements = (1..n).map {
-            withContext(Default) {
-                generateStatement(context)
-            }
-        }.toList()
+        val statements = (1..n).map { generateStatement(context) }.toList()
 
-        return SequenceAST(statements)
+        println(statements.size)
+        println(context.getDependentStatements().size)
+        val allStatements = context.getDependentStatements() + statements
+        context.clearDependentStatements()
+
+        println(allStatements.size)
+
+        return SequenceAST(allStatements)
     }
 
-    override suspend fun generateStatement(context: GenerationContext): StatementAST =
+    override fun generateStatement(context: GenerationContext): StatementAST =
         when (selectionManager.selectStatementType(context)) {
             StatementType.PRINT -> generatePrintStatement(context)
             StatementType.DECLARATION -> generateDeclarationStatement(context)
         }
 
-    override suspend fun generatePrintStatement(context: GenerationContext): PrintAST =
+    override fun generatePrintStatement(context: GenerationContext): PrintAST =
         PrintAST(generateExpression(context, selectionManager.selectType()))
 
-    override suspend fun generateDeclarationStatement(context: GenerationContext): DeclarationAST {
+    override fun generateDeclarationStatement(context: GenerationContext): DeclarationAST {
         val targetType = selectionManager.selectType()
         val identifier = IdentifierAST(identifierNameGenerator.newIdentifierName(), targetType)
         val expr = generateExpression(context, targetType)
@@ -60,34 +62,42 @@ class Generator(
         return DeclarationAST(identifier, expr)
     }
 
-    override suspend fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST =
-        if (random.nextFloat() < 1 / context.expressionDepth.toDouble()) {
-            generateBinaryExpression(context, targetType)
-        } else {
-            generateLiteralForType(context, targetType)
+    override fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST =
+        when (selectionManager.selectExpressionType(targetType, context)) {
+            ExpressionType.BINARY -> generateBinaryExpression(context, targetType)
+            ExpressionType.LITERAL -> generateLiteralForType(context, targetType)
+            ExpressionType.IDENTIFIER -> generateIdentifier(context, targetType)
+            ExpressionType.UNARY -> generateUnaryExpression(context, targetType)
         }
 
-    override suspend fun generateIdentifier(context: GenerationContext, targetType: Type): IdentifierAST {
-        return context.symbolTable.withType(targetType::class)[0]
+    override fun generateIdentifier(context: GenerationContext, targetType: Type): IdentifierAST {
+        if (!context.symbolTable.hasType(targetType::class)) {
+            val ident = IdentifierAST(identifierNameGenerator.newIdentifierName(), targetType)
+            val expr = generateLiteralForType(context, targetType)
+            context.addDependentStatement(DeclarationAST(ident, expr))
+            context.symbolTable.add(ident)
+        }
+
+        return selectionManager.randomSelection(context.symbolTable.withType(targetType::class))
     }
 
-    override suspend fun generateUnaryExpression(context: GenerationContext, targetType: Type): UnaryExpressionAST {
+    override fun generateUnaryExpression(context: GenerationContext, targetType: Type): UnaryExpressionAST {
         val expr = generateExpression(context, targetType)
         val operator = selectionManager.selectUnaryOperator(targetType)
 
         return UnaryExpressionAST(expr, operator)
     }
 
-    override suspend fun generateBinaryExpression(context: GenerationContext, targetType: Type): BinaryExpressionAST {
+    override fun generateBinaryExpression(context: GenerationContext, targetType: Type): BinaryExpressionAST {
         val nextDepthContext = context.increaseExpressionDepth()
         val (operator, inputType) = selectionManager.selectBinaryOperator(targetType)
-        val expr1 = withContext(Default) { generateExpression(nextDepthContext, inputType) }
-        val expr2 = withContext(Default) { generateExpression(nextDepthContext, inputType) }
+        val expr1 = generateExpression(nextDepthContext, inputType)
+        val expr2 = generateExpression(nextDepthContext, inputType)
 
         return BinaryExpressionAST(expr1, operator, expr2)
     }
 
-    override suspend fun generateLiteralForType(context: GenerationContext, targetType: Type): LiteralAST =
+    override fun generateLiteralForType(context: GenerationContext, targetType: Type): LiteralAST =
         when (targetType) {
             Type.BoolType -> generateBooleanLiteral(context)
             Type.CharType -> generateCharLiteral(context)
@@ -95,8 +105,8 @@ class Generator(
             Type.RealType -> generateRealLiteral(context)
         }
 
-    override suspend fun generateIntegerLiteral(context: GenerationContext): IntegerLiteralAST {
-        val value = if (random.nextBoolean()) {
+    override fun generateIntegerLiteral(context: GenerationContext): IntegerLiteralAST {
+        val value = if (selectionManager.randomWeightedSelection(listOf(true to 0.7, false to 0.3))) {
             generateDecimalLiteralValue(negative = true)
         } else {
             generateHexLiteralValue(negative = true)
@@ -104,17 +114,17 @@ class Generator(
         return IntegerLiteralAST(value)
     }
 
-    override suspend fun generateBooleanLiteral(context: GenerationContext): BooleanLiteralAST =
+    override fun generateBooleanLiteral(context: GenerationContext): BooleanLiteralAST =
         BooleanLiteralAST(random.nextBoolean())
 
-    override suspend fun generateRealLiteral(context: GenerationContext): RealLiteralAST {
-        val beforePoint = withContext(Default) { generateDecimalLiteralValue(negative = true) }
-        val afterPoint = withContext(Default) { generateDecimalLiteralValue(negative = false) }
+    override fun generateRealLiteral(context: GenerationContext): RealLiteralAST {
+        val beforePoint = generateDecimalLiteralValue(negative = true)
+        val afterPoint = generateDecimalLiteralValue(negative = false)
 
         return RealLiteralAST("$beforePoint.$afterPoint")
     }
 
-    override suspend fun generateCharLiteral(context: GenerationContext): ExpressionAST.CharacterLiteralAST {
+    override fun generateCharLiteral(context: GenerationContext): ExpressionAST.CharacterLiteralAST {
         return ExpressionAST.CharacterLiteralAST("'c'")
     }
 

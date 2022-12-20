@@ -11,6 +11,10 @@ import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
+import fuzzd.generator.selection.ExpressionType.BINARY
+import fuzzd.generator.selection.ExpressionType.IDENTIFIER
+import fuzzd.generator.selection.ExpressionType.LITERAL
+import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.StatementType.DECLARATION
 import fuzzd.generator.selection.StatementType.PRINT
 import kotlin.random.Random
@@ -19,7 +23,7 @@ class SelectionManager(
     private val random: Random
 ) {
     fun selectType(): Type {
-        val selection = listOf(RealType to 0.33, IntType to 0.33, BoolType to 0.33, CharType to 0.01)
+        val selection = listOf(RealType to 0.0, IntType to 0.54, BoolType to 0.44, CharType to 0.02)
         return randomWeightedSelection(selection)
     }
 
@@ -61,7 +65,27 @@ class SelectionManager(
         return randomWeightedSelection(selection)
     }
 
-    private fun <T> randomWeightedSelection(items: List<Pair<T, Double>>): T {
+    fun selectExpressionType(targetType: Type, context: GenerationContext): ExpressionType {
+        val binaryProbability = if (targetType != CharType) 0.4 / context.expressionDepth else 0.0
+        val unaryProbability = if (targetType != CharType) 0.3 / context.expressionDepth else 0.0
+        val remainingProbability = (1 - binaryProbability - unaryProbability) / 2
+
+        val selection = listOf(
+            LITERAL to remainingProbability,
+            IDENTIFIER to remainingProbability,
+            UNARY to unaryProbability,
+            BINARY to binaryProbability
+        )
+
+        return randomWeightedSelection(selection)
+    }
+
+    fun <T> randomSelection(items: List<T>): T {
+        val randomIndex = random.nextInt(items.size)
+        return items[randomIndex]
+    }
+
+    fun <T> randomWeightedSelection(items: List<Pair<T, Double>>): T {
         val probability = random.nextFloat()
         var wsum = 0.0
 

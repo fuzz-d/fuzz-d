@@ -29,6 +29,9 @@ class SymbolTable(private val parent: SymbolTable? = null) {
         return results
     }
 
+    fun hasType(type: KClass<out Type>): Boolean =
+        typeTable[type]?.isNotEmpty() == true || parent?.hasType(type) == true
+
     fun typeOf(identifier: IdentifierAST): KClass<out Type> = symbolTable[identifier] ?: parent?.typeOf(identifier)
         ?: throw InvalidInputException("Identifier not found in symbol table")
 }

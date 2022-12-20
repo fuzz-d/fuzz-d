@@ -3,10 +3,8 @@ package fuzzd
 import fuzzd.generator.Generator
 import fuzzd.generator.IdentifierNameGenerator
 import fuzzd.generator.ast.ASTElement
-import fuzzd.generator.ast.Type
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.validator.OutputValidator
-import kotlinx.coroutines.runBlocking
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
@@ -38,7 +36,7 @@ class Main(private val path: String) {
         return dir.absolutePath
     }
 
-    suspend fun fuzz(seed: Long = Random.Default.nextLong()) {
+    fun fuzz(seed: Long = Random.Default.nextLong()) {
         val generator = Generator(IdentifierNameGenerator(), SelectionManager(Random(seed)))
         val ast = generator.generate()
         val dirPath = writeFile(ast)
@@ -53,6 +51,4 @@ class Main(private val path: String) {
     }
 }
 
-fun main() = runBlocking {
-    Main("../output").fuzz()
-}
+fun main() = Main("../output").fuzz()
