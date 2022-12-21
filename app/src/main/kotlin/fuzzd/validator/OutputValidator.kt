@@ -1,6 +1,8 @@
 package fuzzd.validator
 
 import fuzzd.validator.executor.execution_handler.CsExecutionHandler
+import fuzzd.validator.executor.execution_handler.GoExecutionHandler
+import fuzzd.validator.executor.execution_handler.JavaExecutionHandler
 import fuzzd.validator.executor.execution_handler.JsExecutionHandler
 import fuzzd.validator.executor.execution_handler.PyExecutionHandler
 
@@ -14,7 +16,9 @@ class OutputValidator {
         val handlers = listOf(
             CsExecutionHandler(fileDir, fileName),
             JsExecutionHandler(fileDir, fileName),
-            PyExecutionHandler(fileDir, fileName)
+            PyExecutionHandler(fileDir, fileName),
+            JavaExecutionHandler(fileDir, fileName),
+            GoExecutionHandler(fileDir, fileName)
         )
 
         handlers.map { Thread(it) }

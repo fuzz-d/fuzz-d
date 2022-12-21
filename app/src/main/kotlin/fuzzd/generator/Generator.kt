@@ -33,12 +33,8 @@ class Generator(
 
         val statements = (1..n).map { generateStatement(context) }.toList()
 
-        println(statements.size)
-        println(context.getDependentStatements().size)
         val allStatements = context.getDependentStatements() + statements
         context.clearDependentStatements()
-
-        println(allStatements.size)
 
         return SequenceAST(allStatements)
     }

@@ -8,10 +8,8 @@ data class GenerationContext(
     val symbolTable: SymbolTable = SymbolTable(),
     private val dependentStatements: MutableList<StatementAST.DeclarationAST> = mutableListOf()
 ) {
-    @Synchronized
     fun addDependentStatement(statement: StatementAST.DeclarationAST) {
         dependentStatements.add(statement)
-        println(dependentStatements.map { d -> d.identifier })
     }
 
     fun getDependentStatements(): List<StatementAST> {
