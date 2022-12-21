@@ -13,6 +13,7 @@ import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
+import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.Type
 
@@ -22,6 +23,8 @@ interface ASTGenerator {
     fun generateSequence(context: GenerationContext): SequenceAST
 
     fun generateStatement(context: GenerationContext): StatementAST
+
+    fun generateIfStatement(context: GenerationContext): IfStatementAST
 
     fun generatePrintStatement(context: GenerationContext): PrintAST
 

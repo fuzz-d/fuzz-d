@@ -1,4 +1,4 @@
-package fuzzd.validator.executor
+package fuzzd.utils
 
 fun runCommand(command: String): Process {
     return Runtime.getRuntime().exec(command)

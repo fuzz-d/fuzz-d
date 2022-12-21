@@ -13,6 +13,7 @@ import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
+import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.selection.ExpressionType
@@ -41,9 +42,18 @@ class Generator(
 
     override fun generateStatement(context: GenerationContext): StatementAST =
         when (selectionManager.selectStatementType(context)) {
-            StatementType.PRINT -> generatePrintStatement(context)
             StatementType.DECLARATION -> generateDeclarationStatement(context)
+            StatementType.IF -> generateIfStatement(context)
+            StatementType.PRINT -> generatePrintStatement(context)
         }
+
+    override fun generateIfStatement(context: GenerationContext): IfStatementAST {
+        val condition = generateExpression(context, Type.BoolType)
+        val ifBranch = generateSequence(context.increaseStatementDepth())
+        val elseBranch = generateSequence(context.increaseStatementDepth())
+
+        return IfStatementAST(condition, ifBranch, elseBranch)
+    }
 
     override fun generatePrintStatement(context: GenerationContext): PrintAST =
         PrintAST(generateExpression(context, selectionManager.selectType()))

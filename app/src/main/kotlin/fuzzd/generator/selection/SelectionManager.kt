@@ -16,6 +16,7 @@ import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.StatementType.DECLARATION
+import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.PRINT
 import kotlin.random.Random
 
@@ -61,13 +62,20 @@ class SelectionManager(
         }
 
     fun selectStatementType(context: GenerationContext): StatementType {
-        val selection = listOf(PRINT to 0.5, DECLARATION to 0.5)
+        val ifStatementProbability =
+            if (context.statementDepth < MAX_STATEMENT_DEPTH) 0.1 / context.statementDepth else 0.0
+        val remainingProbability = 1 - ifStatementProbability
+        val selection = listOf(
+            IF to ifStatementProbability,
+            PRINT to remainingProbability / 2,
+            DECLARATION to remainingProbability / 2
+        )
         return randomWeightedSelection(selection)
     }
 
     fun selectExpressionType(targetType: Type, context: GenerationContext): ExpressionType {
         val binaryProbability = if (targetType != CharType) 0.4 / context.expressionDepth else 0.0
-        val unaryProbability = if (targetType != CharType) 0.3 / context.expressionDepth else 0.0
+        val unaryProbability = if (targetType != CharType) 0.2 / context.expressionDepth else 0.0
         val remainingProbability = (1 - binaryProbability - unaryProbability) / 2
 
         val selection = listOf(
@@ -96,5 +104,9 @@ class SelectionManager(
         }
 
         return items[0].first // default
+    }
+
+    companion object {
+        private const val MAX_STATEMENT_DEPTH = 5
     }
 }

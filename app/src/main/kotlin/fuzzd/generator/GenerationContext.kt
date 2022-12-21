@@ -24,5 +24,5 @@ data class GenerationContext(
         GenerationContext(statementDepth, expressionDepth + 1, symbolTable, dependentStatements)
 
     fun increaseStatementDepth(): GenerationContext =
-        GenerationContext(statementDepth + 1, expressionDepth, symbolTable)
+        GenerationContext(statementDepth + 1, expressionDepth, SymbolTable(symbolTable))
 }
