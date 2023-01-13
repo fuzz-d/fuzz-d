@@ -14,4 +14,13 @@ sealed class UnaryOperator(val precedence: Int, private val symbol: String) {
     object NegationOperator : UnaryOperator(5, "-") {
         override fun supportsInput(t1: Type): Boolean = t1 in listOf(Type.RealType, Type.IntType)
     }
+
+    companion object {
+        fun isUnaryType(type: Type): Boolean {
+            return UnaryOperator::class.sealedSubclasses
+                .any { op ->
+                    op.objectInstance?.supportsInput(type) ?: false
+                }
+        }
+    }
 }

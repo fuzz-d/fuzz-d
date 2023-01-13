@@ -1,7 +1,8 @@
 package fuzzd.generator.selection
 
 enum class StatementType {
-    IF,
+    ASSIGN,
     DECLARATION,
+    IF,
     PRINT
 }

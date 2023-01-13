@@ -71,11 +71,21 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
         override fun supportsInput(t1: Type, t2: Type): Boolean =
             t1 == t2 && t1 in supportedInputTypes
     }
-    // investigate if class hierarchy is better :)
 
     object AdditionOperator : MathematicalBinaryOperator(1, "+", listOf(CharType, IntType, RealType))
     object SubtractionOperator : MathematicalBinaryOperator(1, "-", listOf(CharType, IntType, RealType))
     object MultiplicationOperator : MathematicalBinaryOperator(2, "*")
     object DivisionOperator : MathematicalBinaryOperator(2, "/")
     object ModuloOperator : MathematicalBinaryOperator(2, "%", listOf(IntType))
+
+    companion object {
+        fun isBinaryType(type: Type): Boolean {
+            return BinaryOperator::class.sealedSubclasses
+                .any { opType ->
+                    opType.sealedSubclasses.any { op ->
+                        type in (op.objectInstance?.supportedInputTypes() ?: emptyList())
+                    }
+                }
+        }
+    }
 }

@@ -2,24 +2,38 @@ package fuzzd.generator
 
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ArrayIdentifierAST
+import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
+import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
+import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
+import fuzzd.generator.ast.FunctionMethodAST.Companion.ABSOLUTE
+import fuzzd.generator.ast.FunctionMethodAST.Companion.MAKE_NOT_ZERO_INT
+import fuzzd.generator.ast.FunctionMethodAST.Companion.MAKE_NOT_ZERO_REAL
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.Type
+import fuzzd.generator.ast.Type.ArrayType
+import fuzzd.generator.ast.Type.BoolType
+import fuzzd.generator.ast.Type.CharType
+import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.LiteralType
+import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.selection.ExpressionType
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.StatementType
-import kotlin.math.abs
 import kotlin.random.Random
 
 class Generator(
@@ -27,10 +41,26 @@ class Generator(
     private val selectionManager: SelectionManager
 ) : ASTGenerator {
     private val random = Random.Default
-    override fun generate(): ASTElement = MainFunctionAST(generateSequence(GenerationContext()))
+    override fun generate(): TopLevelAST {
+        val ast = mutableListOf<ASTElement>()
+        val context = GenerationContext()
+
+        // safety function methods
+        ast.add(MAKE_NOT_ZERO_INT)
+        ast.add(MAKE_NOT_ZERO_REAL)
+        ast.add(ABSOLUTE)
+
+        val mainFunction = generateMainFunction(context)
+        ast.add(mainFunction)
+
+        return TopLevelAST(ast)
+    }
+
+    override fun generateMainFunction(context: GenerationContext): MainFunctionAST =
+        MainFunctionAST(generateSequence(context))
 
     override fun generateSequence(context: GenerationContext): SequenceAST {
-        val n = random.nextInt(1, 30)
+        val n = random.nextInt(1, 20)
 
         val statements = (1..n).map { generateStatement(context) }.toList()
 
@@ -42,49 +72,95 @@ class Generator(
 
     override fun generateStatement(context: GenerationContext): StatementAST =
         when (selectionManager.selectStatementType(context)) {
+            StatementType.ASSIGN -> generateAssignmentStatement(context)
             StatementType.DECLARATION -> generateDeclarationStatement(context)
             StatementType.IF -> generateIfStatement(context)
             StatementType.PRINT -> generatePrintStatement(context)
         }
 
     override fun generateIfStatement(context: GenerationContext): IfStatementAST {
-        val condition = generateExpression(context, Type.BoolType)
+        val condition = generateExpression(context, BoolType)
+
         val ifBranch = generateSequence(context.increaseStatementDepth())
         val elseBranch = generateSequence(context.increaseStatementDepth())
 
         return IfStatementAST(condition, ifBranch, elseBranch)
     }
 
-    override fun generatePrintStatement(context: GenerationContext): PrintAST =
-        PrintAST(generateExpression(context, selectionManager.selectType()))
+    override fun generatePrintStatement(context: GenerationContext): PrintAST {
+        val targetType = selectionManager.selectType(literalOnly = true)
+        val safeExpr = generateExpression(context, targetType).makeSafe()
+        return PrintAST(safeExpr)
+    }
 
     override fun generateDeclarationStatement(context: GenerationContext): DeclarationAST {
         val targetType = selectionManager.selectType()
-        val identifier = IdentifierAST(identifierNameGenerator.newIdentifierName(), targetType)
-        val expr = generateExpression(context, targetType)
+        return generateDeclarationStatementForType(context, targetType, false)
+    }
+
+    private fun generateDeclarationStatementForType(
+        context: GenerationContext,
+        targetType: Type,
+        isLiteral: Boolean
+    ): DeclarationAST {
+        val expr =
+            if (isLiteral) generateLiteralForType(context, targetType) else generateExpression(context, targetType)
+
+        val identifierName = identifierNameGenerator.newIdentifierName()
+        val identifier = if (targetType is ArrayType) {
+            val length = if (expr is ArrayIdentifierAST) expr.length else (expr as ArrayInitAST).length
+            ArrayIdentifierAST(identifierName, targetType, length)
+        } else {
+            IdentifierAST(identifierName, targetType)
+        }
 
         context.symbolTable.add(identifier)
 
-        return DeclarationAST(identifier, expr)
+        val safeIdentifier = identifier.makeSafe()
+        val safeExpr = expr.makeSafe()
+        return DeclarationAST(safeIdentifier, safeExpr)
     }
 
-    override fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST =
-        when (selectionManager.selectExpressionType(targetType, context)) {
-            ExpressionType.BINARY -> generateBinaryExpression(context, targetType)
-            ExpressionType.LITERAL -> generateLiteralForType(context, targetType)
-            ExpressionType.IDENTIFIER -> generateIdentifier(context, targetType)
-            ExpressionType.UNARY -> generateUnaryExpression(context, targetType)
+    override fun generateAssignmentStatement(context: GenerationContext): AssignmentAST {
+        val targetType = selectionManager.selectType(literalOnly = true)
+        val identifier = if (selectionManager.randomWeightedSelection(listOf(true to 0.8, false to 0.2))) {
+            generateIdentifier(context, targetType)
+        } else {
+            generateArrayIndex(context, targetType)
         }
+
+        val expr = generateExpression(context, targetType)
+
+        val safeIdentifier = identifier.makeSafe()
+        val safeExpr = expr.makeSafe()
+        return AssignmentAST(safeIdentifier, safeExpr)
+    }
+
+    override fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST {
+        val expr = when (selectionManager.selectExpressionType(targetType, context)) {
+            ExpressionType.UNARY -> generateUnaryExpression(context, targetType)
+            ExpressionType.BINARY -> generateBinaryExpression(context, targetType)
+            ExpressionType.IDENTIFIER -> generateIdentifier(context, targetType)
+            ExpressionType.LITERAL -> generateLiteralForType(context, targetType)
+        }
+        return expr
+    }
 
     override fun generateIdentifier(context: GenerationContext, targetType: Type): IdentifierAST {
-        if (!context.symbolTable.hasType(targetType::class)) {
-            val ident = IdentifierAST(identifierNameGenerator.newIdentifierName(), targetType)
-            val expr = generateLiteralForType(context, targetType)
-            context.addDependentStatement(DeclarationAST(ident, expr))
-            context.symbolTable.add(ident)
+        if (!context.symbolTable.hasType(targetType)) {
+            val decl = generateDeclarationStatementForType(context, targetType, true)
+            context.addDependentStatement(decl)
         }
 
-        return selectionManager.randomSelection(context.symbolTable.withType(targetType::class))
+        val selection = context.symbolTable.withType(targetType)
+        return selectionManager.randomSelection(selection)
+    }
+
+    override fun generateArrayIndex(context: GenerationContext, targetType: Type): ArrayIndexAST {
+        val identifier = generateIdentifier(context, ArrayType(targetType)) as ArrayIdentifierAST
+        val index = IntegerLiteralAST(generateDecimalLiteralValue(false), false)
+
+        return ArrayIndexAST(identifier, index)
     }
 
     override fun generateUnaryExpression(context: GenerationContext, targetType: Type): UnaryExpressionAST {
@@ -103,22 +179,30 @@ class Generator(
         return BinaryExpressionAST(expr1, operator, expr2)
     }
 
-    override fun generateLiteralForType(context: GenerationContext, targetType: Type): LiteralAST =
+    override fun generateLiteralForType(context: GenerationContext, targetType: LiteralType): LiteralAST =
         when (targetType) {
-            Type.BoolType -> generateBooleanLiteral(context)
-            Type.CharType -> generateCharLiteral(context)
-            Type.IntType -> generateIntegerLiteral(context)
-            Type.RealType -> generateRealLiteral(context)
+            BoolType -> generateBooleanLiteral(context)
+            CharType -> generateCharLiteral(context)
+            IntType -> generateIntegerLiteral(context)
+            RealType -> generateRealLiteral(context)
+            // should not be possible to reach here
+            else -> throw UnsupportedOperationException("Trying to generate literal for non-literal type $targetType")
+        }
+
+    private fun generateLiteralForType(context: GenerationContext, targetType: Type): ExpressionAST =
+        when (targetType) {
+            is LiteralType -> generateLiteralForType(context, targetType)
+            is ArrayType -> generateArrayInitialisation(context, targetType)
         }
 
     override fun generateIntegerLiteral(context: GenerationContext): IntegerLiteralAST {
-        val value = if (selectionManager.randomWeightedSelection(listOf(true to 0.7, false to 0.3))) {
-            generateDecimalLiteralValue(negative = true)
-        } else {
-            generateHexLiteralValue(negative = true)
-        }
-        return IntegerLiteralAST(value)
+        val isHex = selectionManager.randomWeightedSelection(listOf(true to 0.7, false to 0.3))
+        val value = generateDecimalLiteralValue(negative = true)
+        return IntegerLiteralAST(value, isHex)
     }
+
+    override fun generateArrayInitialisation(context: GenerationContext, targetType: ArrayType): ArrayInitAST =
+        ArrayInitAST(selectionManager.selectArrayLength(), targetType)
 
     override fun generateBooleanLiteral(context: GenerationContext): BooleanLiteralAST =
         BooleanLiteralAST(random.nextBoolean())
@@ -130,39 +214,17 @@ class Generator(
         return RealLiteralAST("$beforePoint.$afterPoint")
     }
 
-    override fun generateCharLiteral(context: GenerationContext): ExpressionAST.CharacterLiteralAST {
-        return ExpressionAST.CharacterLiteralAST("'c'")
+    override fun generateCharLiteral(context: GenerationContext): CharacterLiteralAST {
+        return CharacterLiteralAST("'c'")
     }
 
     private fun generateDecimalLiteralValue(negative: Boolean = true): String {
-        var value = random.nextInt(1000)
+        var value = selectionManager.selectDecimalLiteral()
 
-        val sb = StringBuilder()
-        sb.append(if (negative && value < 0) "-" else "")
-
-        value = abs(value)
-        do {
-            sb.append(value % 10)
-            value /= 10
-//            if (value != 0 && random.nextBoolean()) sb.append("_")
-        } while (value > 0)
-
-        return sb.toString()
-    }
-
-    private fun generateHexLiteralValue(negative: Boolean = true): String {
-        val hexString = Integer.toHexString(random.nextInt(1000))
-
-        val sb = StringBuilder()
-        if (negative && random.nextBoolean()) sb.append("-")
-        sb.append("0x")
-
-        for (i in hexString.indices) {
-            val c = hexString[i]
-            sb.append(c)
-//            if (i < hexString.length - 1 && random.nextBoolean()) sb.append('_')
+        if (negative && selectionManager.randomWeightedSelection(listOf(true to 0.2, false to 0.8))) {
+            value *= -1
         }
 
-        return sb.toString()
+        return value.toString()
     }
 }

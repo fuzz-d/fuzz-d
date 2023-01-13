@@ -2,19 +2,23 @@ package fuzzd.generator.selection
 
 import fuzzd.generator.GenerationContext
 import fuzzd.generator.ast.Type
+import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
+import fuzzd.generator.ast.operators.BinaryOperator.Companion.isBinaryType
 import fuzzd.generator.ast.operators.UnaryOperator
+import fuzzd.generator.ast.operators.UnaryOperator.Companion.isUnaryType
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.generator.selection.ExpressionType.BINARY
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
 import fuzzd.generator.selection.ExpressionType.UNARY
+import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.DECLARATION
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.PRINT
@@ -23,8 +27,14 @@ import kotlin.random.Random
 class SelectionManager(
     private val random: Random
 ) {
-    fun selectType(): Type {
-        val selection = listOf(RealType to 0.0, IntType to 0.54, BoolType to 0.44, CharType to 0.02)
+    fun selectType(literalOnly: Boolean = false, depth: Int = 1): Type {
+        val arrayTypeProbability = if (depth > 1 || literalOnly) 0.0 else 0.2
+
+        if (random.nextFloat() < arrayTypeProbability) {
+            return ArrayType(selectType(depth = depth + 1))
+        }
+
+        val selection = listOf(RealType to 0.0, IntType to 0.56, BoolType to 0.44, CharType to 0.0)
         return randomWeightedSelection(selection)
     }
 
@@ -52,6 +62,8 @@ class SelectionManager(
                 val selectedIndex = random.nextInt(subclassInstances.size)
                 Pair(subclassInstances[selectedIndex], targetType)
             }
+
+            else -> throw UnsupportedOperationException("Target type $targetType not supported for binary operations")
         }
 
     fun selectUnaryOperator(targetType: Type): UnaryOperator =
@@ -67,15 +79,16 @@ class SelectionManager(
         val remainingProbability = 1 - ifStatementProbability
         val selection = listOf(
             IF to ifStatementProbability,
-            PRINT to remainingProbability / 2,
-            DECLARATION to remainingProbability / 2
+            PRINT to remainingProbability / 3,
+            DECLARATION to remainingProbability / 3,
+            ASSIGN to remainingProbability / 3,
         )
         return randomWeightedSelection(selection)
     }
 
     fun selectExpressionType(targetType: Type, context: GenerationContext): ExpressionType {
-        val binaryProbability = if (targetType != CharType) 0.4 / context.expressionDepth else 0.0
-        val unaryProbability = if (targetType != CharType) 0.2 / context.expressionDepth else 0.0
+        val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0
+        val unaryProbability = if (isUnaryType(targetType)) 0.2 / context.expressionDepth else 0.0
         val remainingProbability = (1 - binaryProbability - unaryProbability) / 2
 
         val selection = listOf(
@@ -93,6 +106,14 @@ class SelectionManager(
         return items[randomIndex]
     }
 
+    fun selectArrayLength(): Int {
+        return random.nextInt(MIN_ARRAY_LENGTH, MAX_ARRAY_LENGTH)
+    }
+
+    fun selectDecimalLiteral(): Int {
+        return random.nextInt(0, MAX_INT_VALUE)
+    }
+
     fun <T> randomWeightedSelection(items: List<Pair<T, Double>>): T {
         val probability = random.nextFloat()
         var wsum = 0.0
@@ -108,5 +129,8 @@ class SelectionManager(
 
     companion object {
         private const val MAX_STATEMENT_DEPTH = 5
+        private const val MIN_ARRAY_LENGTH = 1
+        private const val MAX_ARRAY_LENGTH = 30
+        private const val MAX_INT_VALUE = 1000
     }
 }

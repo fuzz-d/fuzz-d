@@ -1,6 +1,7 @@
 package fuzzd.generator
 
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.symbol_table.SymbolTable
 
 data class GenerationContext(
     val statementDepth: Int = 1,
