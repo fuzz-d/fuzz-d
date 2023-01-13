@@ -3,6 +3,7 @@ package fuzzd.generator.ast
 import fuzzd.generator.ast.FunctionMethodAST.Companion.ABSOLUTE
 import fuzzd.generator.ast.FunctionMethodAST.Companion.MAKE_NOT_ZERO_INT
 import fuzzd.generator.ast.FunctionMethodAST.Companion.MAKE_NOT_ZERO_REAL
+import fuzzd.generator.ast.FunctionMethodAST.Companion.SAFE_SUBTRACT_CHAR
 import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
@@ -13,6 +14,7 @@ import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
+import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 
 sealed class ExpressionAST : ASTElement {
@@ -101,13 +103,18 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): Type = operator.outputType(type1, type2)
 
-        override fun makeSafe(): BinaryExpressionAST {
+        override fun makeSafe(): ExpressionAST {
             val safeExpr1 = expr1.makeSafe()
             val safeExpr2 = expr2.makeSafe()
 
-            return when (operator) {
-                DivisionOperator -> BinaryExpressionAST(safeExpr1, operator, makeNotZero(safeExpr2))
-                ModuloOperator -> BinaryExpressionAST(absolute(safeExpr1), operator, makeNotZero(safeExpr2))
+            return when {
+                operator == DivisionOperator -> BinaryExpressionAST(safeExpr1, operator, makeNotZero(safeExpr2))
+                operator == ModuloOperator -> BinaryExpressionAST(absolute(safeExpr1), operator, makeNotZero(safeExpr2))
+                operator == SubtractionOperator && type() == CharType -> FunctionMethodCallAST(
+                    SAFE_SUBTRACT_CHAR,
+                    listOf(safeExpr1, safeExpr2)
+                )
+
                 else -> BinaryExpressionAST(safeExpr1, operator, safeExpr2)
             }
         }
@@ -116,8 +123,8 @@ sealed class ExpressionAST : ASTElement {
             // we need to add parentheses around expressions when
             // they're boolean binary expressions and have the same precedence
             // otherwise we can choose to / not to wrap
-            val wrapExpr1 = true // expr1 is BinaryExpressionAST && type() == BoolType
-            val wrapExpr2 = true // expr2 is BinaryExpressionAST && type() == BoolType
+            val wrapExpr1 = expr1 is BinaryExpressionAST && type() == BoolType
+            val wrapExpr2 = expr2 is BinaryExpressionAST && type() == BoolType
 
             val sb = StringBuilder()
             sb.append(if (wrapExpr1) "($expr1)" else "$expr1")

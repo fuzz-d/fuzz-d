@@ -5,11 +5,13 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
+import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator
 import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MultiplicationOperator
+import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.utils.indent
 
 class FunctionMethodAST(
@@ -61,6 +63,17 @@ class FunctionMethodAST(
                 BinaryExpressionAST(IdentifierAST("x", IntType), LessThanOperator, IntegerLiteralAST("0")),
                 BinaryExpressionAST(IntegerLiteralAST("-1"), MultiplicationOperator, IdentifierAST("x", IntType)),
                 IdentifierAST("x", IntType)
+            )
+        )
+
+        val SAFE_SUBTRACT_CHAR = FunctionMethodAST(
+            "safeSubtractChar",
+            CharType,
+            listOf(IdentifierAST("c1", CharType), IdentifierAST("c2", CharType)),
+            TernaryExpressionAST(
+                BinaryExpressionAST(IdentifierAST("c1", CharType), LessThanOperator, IdentifierAST("c2", CharType)),
+                BinaryExpressionAST(IdentifierAST("c2", CharType), SubtractionOperator, IdentifierAST("c1", CharType)),
+                BinaryExpressionAST(IdentifierAST("c1", CharType), SubtractionOperator, IdentifierAST("c2", CharType))
             )
         )
     }
