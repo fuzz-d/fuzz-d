@@ -1,4 +1,4 @@
 package fuzzd.utils // ktlint-disable filename
 
-fun indent(str: String): String =
-    str.split("\n").joinToString("\n") { "\t$it" }
+fun <T> indent(item: T): String =
+    item.toString().split("\n").joinToString("\n") { "\t$it" }

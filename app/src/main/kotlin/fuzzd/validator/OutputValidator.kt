@@ -25,16 +25,6 @@ class OutputValidator {
             .map { t -> t.start(); t }
             .map { t -> t.join() }
 
-        val (succeededCompile, failedCompile) = handlers.partition { h ->
-            val c = h.compileResult(); c.terminated && c.exitCode == 0
-        }
-        val (succeededExecute, failedExecute) = succeededCompile.partition { h ->
-            val e = h.executeResult(); e.terminated && e.exitCode == 0
-        }
-
-        val erroneousResult =
-            failedCompile.isNotEmpty() || failedExecute.isNotEmpty() || !succeededExecute.all { h -> h.executeResult().stdOut == succeededExecute[0].executeResult().stdOut }
-
-        return ValidationResult(erroneousResult, succeededExecute, failedExecute, failedCompile)
+        return ValidationResult(handlers)
     }
 }

@@ -11,8 +11,6 @@ abstract class AbstractExecutionHandler(val fileDir: String, val fileName: Strin
     private var compileResult: ExecutionResult = ExecutionResult()
     private var executionResult: ExecutionResult = ExecutionResult()
 
-    protected abstract fun getCompileTarget(): String
-
     protected abstract fun getExecuteCommand(fileDir: String, fileName: String): String
 
     override fun compile(): ExecutionResult {

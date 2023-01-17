@@ -7,4 +7,5 @@ interface ExecutionHandler : Runnable {
     fun compileResult(): ExecutionResult
     fun execute(): ExecutionResult
     fun executeResult(): ExecutionResult
+    fun getCompileTarget(): String
 }

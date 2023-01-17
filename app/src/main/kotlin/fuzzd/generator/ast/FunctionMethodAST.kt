@@ -26,7 +26,7 @@ class FunctionMethodAST(
         sb.append("function method $name(")
         sb.append(params.joinToString(",") { param -> "${param.name}: ${param.type()}" })
         sb.append("): $returnType {\n")
-        sb.append(indent(body.toString()))
+        sb.append(indent(body))
         sb.append("\n}")
 
         return sb.toString()

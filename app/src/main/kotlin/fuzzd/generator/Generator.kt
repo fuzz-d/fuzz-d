@@ -16,6 +16,7 @@ import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST.Companion.ABSOLUTE
 import fuzzd.generator.ast.FunctionMethodAST.Companion.MAKE_NOT_ZERO_INT
 import fuzzd.generator.ast.FunctionMethodAST.Companion.MAKE_NOT_ZERO_REAL
+import fuzzd.generator.ast.FunctionMethodAST.Companion.SAFE_SUBTRACT_CHAR
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
@@ -49,6 +50,7 @@ class Generator(
         ast.add(MAKE_NOT_ZERO_INT)
         ast.add(MAKE_NOT_ZERO_REAL)
         ast.add(ABSOLUTE)
+        ast.add(SAFE_SUBTRACT_CHAR)
 
         val mainFunction = generateMainFunction(context)
         ast.add(mainFunction)
