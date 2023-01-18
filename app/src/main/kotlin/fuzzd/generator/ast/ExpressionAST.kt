@@ -1,9 +1,5 @@
 package fuzzd.generator.ast
 
-import fuzzd.generator.ast.FunctionMethodAST.Companion.ABSOLUTE
-import fuzzd.generator.ast.FunctionMethodAST.Companion.MAKE_NOT_ZERO_INT
-import fuzzd.generator.ast.FunctionMethodAST.Companion.MAKE_NOT_ZERO_REAL
-import fuzzd.generator.ast.FunctionMethodAST.Companion.SAFE_SUBTRACT_CHAR
 import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
@@ -12,10 +8,10 @@ import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.error.InvalidFormatException
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
-import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
-import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.ast.operators.UnaryOperator
+import fuzzd.utils.ABSOLUTE
+import fuzzd.utils.safetyMap
 
 sealed class ExpressionAST : ASTElement {
 
@@ -107,15 +103,11 @@ sealed class ExpressionAST : ASTElement {
             val safeExpr1 = expr1.makeSafe()
             val safeExpr2 = expr2.makeSafe()
 
-            return when {
-                operator == DivisionOperator -> BinaryExpressionAST(safeExpr1, operator, makeNotZero(safeExpr2))
-                operator == ModuloOperator -> BinaryExpressionAST(absolute(safeExpr1), operator, makeNotZero(safeExpr2))
-                operator == SubtractionOperator && type() == CharType -> FunctionMethodCallAST(
-                    SAFE_SUBTRACT_CHAR,
-                    listOf(safeExpr1, safeExpr2)
-                )
-
-                else -> BinaryExpressionAST(safeExpr1, operator, safeExpr2)
+            val key = Pair(operator, type())
+            return if (safetyMap.containsKey(key)) {
+                FunctionMethodCallAST(safetyMap[key]!!, listOf(safeExpr1, safeExpr2))
+            } else {
+                BinaryExpressionAST(safeExpr1, operator, safeExpr2)
             }
         }
 
@@ -206,6 +198,8 @@ sealed class ExpressionAST : ASTElement {
      */
     class IntegerLiteralAST(private val value: String, private val hexFormat: Boolean = false) :
         LiteralAST(value, IntType) {
+        constructor(value: Int) : this(value.toString())
+
         init {
             if (!value.matches(Regex("(-)?[0-9]+([0-9]+)*"))) {
                 throw InvalidFormatException("Value passed (= $value) did not match supported integer format")
@@ -235,6 +229,8 @@ sealed class ExpressionAST : ASTElement {
      * decimaldigits = digit {['_'] digit} '.' digit {['_'] digit}
      */
     class RealLiteralAST(value: String) : LiteralAST(value, RealType) {
+        constructor(value: Float) : this(value.toString())
+
         init {
             if (!value.matches(Regex("(-)?[0-9]+.[0-9]+"))) {
                 throw InvalidFormatException("Value passed (= $value) did not match supported float format")
@@ -243,24 +239,4 @@ sealed class ExpressionAST : ASTElement {
     }
 
     class CharacterLiteralAST(value: String) : LiteralAST(value, CharType)
-
-    companion object {
-        private fun makeNotZero(expr: ExpressionAST): ExpressionAST {
-            val type = expr.type()
-            if (type != IntType && type != RealType) {
-                throw UnsupportedOperationException("Can't apply zero-safety check to type $type")
-            }
-
-            val function = if (type == IntType) MAKE_NOT_ZERO_INT else MAKE_NOT_ZERO_REAL
-            return FunctionMethodCallAST(function, listOf(expr))
-        }
-
-        private fun absolute(expr: ExpressionAST): ExpressionAST {
-            if (expr.type() != IntType) {
-                throw UnsupportedOperationException("Can't apply absolute function to type ${expr.type()}")
-            }
-
-            return FunctionMethodCallAST(ABSOLUTE, listOf(expr))
-        }
-    }
 }

@@ -13,10 +13,6 @@ import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
-import fuzzd.generator.ast.FunctionMethodAST.Companion.ABSOLUTE
-import fuzzd.generator.ast.FunctionMethodAST.Companion.MAKE_NOT_ZERO_INT
-import fuzzd.generator.ast.FunctionMethodAST.Companion.MAKE_NOT_ZERO_REAL
-import fuzzd.generator.ast.FunctionMethodAST.Companion.SAFE_SUBTRACT_CHAR
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
@@ -35,6 +31,17 @@ import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.selection.ExpressionType
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.StatementType
+import fuzzd.utils.ABSOLUTE
+import fuzzd.utils.SAFE_ADDITION_INT
+import fuzzd.utils.SAFE_ADDITION_REAL
+import fuzzd.utils.SAFE_DIVISION_INT
+import fuzzd.utils.SAFE_DIVISION_REAL
+import fuzzd.utils.SAFE_MODULO_INT
+import fuzzd.utils.SAFE_MULTIPLY_INT
+import fuzzd.utils.SAFE_MULTIPLY_REAL
+import fuzzd.utils.SAFE_SUBTRACT_CHAR
+import fuzzd.utils.SAFE_SUBTRACT_INT
+import fuzzd.utils.SAFE_SUBTRACT_REAL
 import kotlin.random.Random
 
 class Generator(
@@ -43,14 +50,22 @@ class Generator(
 ) : ASTGenerator {
     private val random = Random.Default
     override fun generate(): TopLevelAST {
-        val ast = mutableListOf<ASTElement>()
         val context = GenerationContext()
 
-        // safety function methods
-        ast.add(MAKE_NOT_ZERO_INT)
-        ast.add(MAKE_NOT_ZERO_REAL)
-        ast.add(ABSOLUTE)
-        ast.add(SAFE_SUBTRACT_CHAR)
+        // init with safety function methods
+        val ast = mutableListOf<ASTElement>(
+            ABSOLUTE,
+            SAFE_ADDITION_INT,
+            SAFE_ADDITION_REAL,
+            SAFE_DIVISION_INT,
+            SAFE_DIVISION_REAL,
+            SAFE_MODULO_INT,
+            SAFE_MULTIPLY_INT,
+            SAFE_MULTIPLY_REAL,
+            SAFE_SUBTRACT_REAL,
+            SAFE_SUBTRACT_CHAR,
+            SAFE_SUBTRACT_INT
+        )
 
         val mainFunction = generateMainFunction(context)
         ast.add(mainFunction)
@@ -217,7 +232,8 @@ class Generator(
     }
 
     override fun generateCharLiteral(context: GenerationContext): CharacterLiteralAST {
-        return CharacterLiteralAST("'c'")
+        val c = selectionManager.selectCharacter()
+        return CharacterLiteralAST("'$c'")
     }
 
     private fun generateDecimalLiteralValue(negative: Boolean = true): String {

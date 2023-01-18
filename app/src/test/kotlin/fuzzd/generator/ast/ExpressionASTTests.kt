@@ -9,10 +9,6 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
-import fuzzd.generator.ast.FunctionMethodAST.Companion.ABSOLUTE
-import fuzzd.generator.ast.FunctionMethodAST.Companion.MAKE_NOT_ZERO_INT
-import fuzzd.generator.ast.FunctionMethodAST.Companion.MAKE_NOT_ZERO_REAL
-import fuzzd.generator.ast.FunctionMethodAST.Companion.SAFE_SUBTRACT_CHAR
 import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
@@ -22,6 +18,11 @@ import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
 import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
+import fuzzd.utils.ABSOLUTE
+import fuzzd.utils.SAFE_DIVISION_INT
+import fuzzd.utils.SAFE_DIVISION_REAL
+import fuzzd.utils.SAFE_MODULO_INT
+import fuzzd.utils.SAFE_SUBTRACT_CHAR
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -79,7 +80,7 @@ class ExpressionASTTests {
         }
 
         @Test
-        fun givenBinaryExpressionWithIntDivision_whenMakeSafe_expectNonZeroWrapper() {
+        fun givenBinaryExpressionWithIntDivision_whenMakeSafe_expectSafeWrapper() {
             // given
             val lhs = IntegerLiteralAST("123")
             val operator = DivisionOperator
@@ -90,8 +91,7 @@ class ExpressionASTTests {
             val safe = expr.makeSafe()
 
             // expect
-            val expected =
-                BinaryExpressionAST(lhs, DivisionOperator, FunctionMethodCallAST(MAKE_NOT_ZERO_INT, listOf(rhs)))
+            val expected = FunctionMethodCallAST(SAFE_DIVISION_INT, listOf(lhs, rhs))
             assertEquals(expected.toString(), safe.toString())
         }
 
@@ -107,13 +107,12 @@ class ExpressionASTTests {
             val safe = expr.makeSafe()
 
             // expect
-            val expected =
-                BinaryExpressionAST(lhs, DivisionOperator, FunctionMethodCallAST(MAKE_NOT_ZERO_REAL, listOf(rhs)))
+            val expected = FunctionMethodCallAST(SAFE_DIVISION_REAL, listOf(lhs, rhs))
             assertEquals(expected.toString(), safe.toString())
         }
 
         @Test
-        fun givenBinaryExpressionWithModulo_whenMakeSafe_expectAbsoluteWrapper() {
+        fun givenBinaryExpressionWithModulo_whenMakeSafe_expectSafeWrapper() {
             // given
             val lhs = IntegerLiteralAST("1234")
             val operator = ModuloOperator
@@ -124,11 +123,7 @@ class ExpressionASTTests {
             val safe = expr.makeSafe()
 
             // expect
-            val expected = BinaryExpressionAST(
-                FunctionMethodCallAST(ABSOLUTE, listOf(lhs)),
-                operator,
-                FunctionMethodCallAST(MAKE_NOT_ZERO_INT, listOf(rhs))
-            )
+            val expected = FunctionMethodCallAST(SAFE_MODULO_INT, listOf(lhs, rhs))
 
             assertEquals(expected.toString(), safe.toString())
         }

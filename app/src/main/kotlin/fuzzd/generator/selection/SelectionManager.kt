@@ -81,7 +81,7 @@ class SelectionManager(
             IF to ifStatementProbability,
             PRINT to remainingProbability / 3,
             DECLARATION to remainingProbability / 3,
-            ASSIGN to remainingProbability / 3,
+            ASSIGN to remainingProbability / 3
         )
         return randomWeightedSelection(selection)
     }
@@ -106,13 +106,11 @@ class SelectionManager(
         return items[randomIndex]
     }
 
-    fun selectArrayLength(): Int {
-        return random.nextInt(MIN_ARRAY_LENGTH, MAX_ARRAY_LENGTH)
-    }
+    fun selectArrayLength(): Int = random.nextInt(MIN_ARRAY_LENGTH, MAX_ARRAY_LENGTH)
 
-    fun selectDecimalLiteral(): Int {
-        return random.nextInt(0, MAX_INT_VALUE)
-    }
+    fun selectDecimalLiteral(): Int = random.nextInt(0, MAX_INT_VALUE)
+
+    fun selectCharacter(): Char = random.nextInt(0, MAX_CHAR_VALUE).toChar()
 
     fun <T> randomWeightedSelection(items: List<Pair<T, Double>>): T {
         val probability = random.nextFloat()
@@ -132,5 +130,6 @@ class SelectionManager(
         private const val MIN_ARRAY_LENGTH = 1
         private const val MAX_ARRAY_LENGTH = 30
         private const val MAX_INT_VALUE = 1000
+        private const val MAX_CHAR_VALUE = 127
     }
 }
