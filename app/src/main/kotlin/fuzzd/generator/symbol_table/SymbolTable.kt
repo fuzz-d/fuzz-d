@@ -10,6 +10,8 @@ class SymbolTable(private val parent: SymbolTable? = null) {
     private val typeTable = mutableMapOf<Type, MutableList<IdentifierAST>>()
 
     fun add(identifier: IdentifierAST) {
+        if (symbolTable[identifier] != null) return
+
         val type = identifier.type()
         symbolTable[identifier] = type
 

@@ -79,9 +79,9 @@ class SelectionManager(
         val remainingProbability = 1 - ifStatementProbability
         val selection = listOf(
             IF to ifStatementProbability,
-            PRINT to remainingProbability / 3,
-            DECLARATION to remainingProbability / 3,
-            ASSIGN to remainingProbability / 3
+            PRINT to remainingProbability / 6,
+            DECLARATION to 2 * remainingProbability / 6,
+            ASSIGN to 3 * remainingProbability / 6
         )
         return randomWeightedSelection(selection)
     }
@@ -89,11 +89,11 @@ class SelectionManager(
     fun selectExpressionType(targetType: Type, context: GenerationContext): ExpressionType {
         val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) 0.2 / context.expressionDepth else 0.0
-        val remainingProbability = (1 - binaryProbability - unaryProbability) / 2
+        val remainingProbability = (1 - binaryProbability - unaryProbability)
 
         val selection = listOf(
-            LITERAL to remainingProbability,
-            IDENTIFIER to remainingProbability,
+            LITERAL to remainingProbability / 3,
+            IDENTIFIER to 2 * remainingProbability / 3,
             UNARY to unaryProbability,
             BINARY to binaryProbability
         )

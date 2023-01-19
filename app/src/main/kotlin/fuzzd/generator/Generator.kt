@@ -146,6 +146,8 @@ class Generator(
             generateArrayIndex(context, targetType)
         }
 
+        context.symbolTable.add(identifier)
+
         val expr = generateExpression(context, targetType)
 
         val safeIdentifier = identifier.makeSafe()
