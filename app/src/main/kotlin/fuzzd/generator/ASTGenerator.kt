@@ -18,6 +18,7 @@ import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ArrayType
@@ -33,6 +34,8 @@ interface ASTGenerator {
     fun generateStatement(context: GenerationContext): StatementAST
 
     fun generateIfStatement(context: GenerationContext): IfStatementAST
+
+    fun generateWhileStatement(context: GenerationContext): WhileLoopAST
 
     fun generatePrintStatement(context: GenerationContext): PrintAST
 

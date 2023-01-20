@@ -4,5 +4,6 @@ enum class StatementType {
     ASSIGN,
     DECLARATION,
     IF,
-    PRINT
+    PRINT,
+    WHILE
 }

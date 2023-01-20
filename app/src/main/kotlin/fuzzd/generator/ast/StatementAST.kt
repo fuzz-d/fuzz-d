@@ -2,12 +2,13 @@ package fuzzd.generator.ast
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.error.InvalidInputException
+import fuzzd.utils.indent
 
 sealed class StatementAST : ASTElement {
     class IfStatementAST(
         private val condition: ExpressionAST,
         private val ifBranch: SequenceAST,
-        private val elseBranch: SequenceAST
+        private val elseBranch: SequenceAST?
     ) : StatementAST() {
         init {
             if (condition.type() != Type.BoolType) {
@@ -15,7 +16,40 @@ sealed class StatementAST : ASTElement {
             }
         }
 
-        override fun toString(): String = "if ($condition) {\n$ifBranch\n} else {\n$elseBranch\n}"
+        override fun toString(): String {
+            val sb = StringBuilder()
+            sb.appendLine("if ($condition) {")
+            sb.appendLine(ifBranch)
+            sb.append("}")
+
+            if (elseBranch != null) {
+                sb.append(" else {\n")
+                sb.append(elseBranch)
+                sb.append("\n}")
+            }
+
+            sb.append("\n")
+            return sb.toString()
+        }
+    }
+
+    class WhileLoopAST(
+        private val counterInitialisation: DeclarationAST,
+        private val terminationCheck: IfStatementAST,
+        private val condition: ExpressionAST,
+        private val body: SequenceAST,
+        private val counterUpdate: AssignmentAST
+    ) : StatementAST() {
+        override fun toString(): String {
+            val sb = StringBuilder()
+            sb.appendLine(counterInitialisation)
+            sb.appendLine("while ($condition) {")
+            sb.appendLine(indent(terminationCheck))
+            sb.appendLine(body)
+            sb.appendLine(indent(counterUpdate))
+            sb.appendLine("}")
+            return sb.toString()
+        }
     }
 
     class DeclarationAST(private val identifier: IdentifierAST, private val expr: ExpressionAST) : StatementAST() {
@@ -28,5 +62,9 @@ sealed class StatementAST : ASTElement {
 
     class PrintAST(private val expr: ExpressionAST) : StatementAST() {
         override fun toString(): String = "print $expr;"
+    }
+
+    object BreakAST : StatementAST() {
+        override fun toString(): String = "break;"
     }
 }

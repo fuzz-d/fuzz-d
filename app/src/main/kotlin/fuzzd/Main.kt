@@ -1,7 +1,8 @@
 package fuzzd
 
 import fuzzd.generator.Generator
-import fuzzd.generator.IdentifierNameGenerator
+import fuzzd.generator.ast.identifier_generator.IdentifierNameGenerator
+import fuzzd.generator.ast.identifier_generator.LoopCounterGenerator
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.logging.Logger
 import fuzzd.logging.OutputWriter
@@ -14,7 +15,7 @@ class Main(private val path: String) {
 
     fun fuzz(seed: Long = Random.Default.nextLong()) {
         // init
-        val generator = Generator(IdentifierNameGenerator(), SelectionManager(Random(seed)))
+        val generator = Generator(IdentifierNameGenerator(), LoopCounterGenerator(), SelectionManager(Random(seed)))
         val directory = UUID.randomUUID().toString()
         val logger = Logger(path, directory)
 

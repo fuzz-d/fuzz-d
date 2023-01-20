@@ -17,9 +17,11 @@ import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
+import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ArrayType
@@ -28,6 +30,10 @@ import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.identifier_generator.IdentifierNameGenerator
+import fuzzd.generator.ast.identifier_generator.LoopCounterGenerator
+import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.selection.ExpressionType
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.StatementType
@@ -46,6 +52,7 @@ import kotlin.random.Random
 
 class Generator(
     private val identifierNameGenerator: IdentifierNameGenerator,
+    private val loopCounterGenerator: LoopCounterGenerator,
     private val selectionManager: SelectionManager
 ) : ASTGenerator {
     private val random = Random.Default
@@ -93,6 +100,7 @@ class Generator(
             StatementType.DECLARATION -> generateDeclarationStatement(context)
             StatementType.IF -> generateIfStatement(context)
             StatementType.PRINT -> generatePrintStatement(context)
+            StatementType.WHILE -> generateWhileStatement(context)
         }
 
     override fun generateIfStatement(context: GenerationContext): IfStatementAST {
@@ -102,6 +110,38 @@ class Generator(
         val elseBranch = generateSequence(context.increaseStatementDepth())
 
         return IfStatementAST(condition, ifBranch, elseBranch)
+    }
+
+    override fun generateWhileStatement(context: GenerationContext): WhileLoopAST {
+        val counterIdentifierName = loopCounterGenerator.newValue()
+        val counterIdentifier = IdentifierAST(counterIdentifierName, IntType)
+        val counterInitialisation = DeclarationAST(counterIdentifier, IntegerLiteralAST(0))
+
+        var condition: ExpressionAST
+        do {
+            condition = generateExpression(context, BoolType).makeSafe()
+        } while (condition == BooleanLiteralAST(false)) // we don't want while(false) explicitly
+
+        val counterTerminationCheck = IfStatementAST(
+            BinaryExpressionAST(
+                counterIdentifier,
+                GreaterThanEqualOperator,
+                IntegerLiteralAST(
+                    DAFNY_MAX_LOOP_COUNTER
+                )
+            ),
+            SequenceAST(listOf(BreakAST)),
+            null
+        )
+
+        val whileBody = generateSequence(context.increaseStatementDepth())
+
+        val counterUpdate = AssignmentAST(
+            counterIdentifier,
+            BinaryExpressionAST(counterIdentifier, AdditionOperator, IntegerLiteralAST(1))
+        )
+
+        return WhileLoopAST(counterInitialisation, counterTerminationCheck, condition, whileBody, counterUpdate)
     }
 
     override fun generatePrintStatement(context: GenerationContext): PrintAST {
@@ -123,7 +163,7 @@ class Generator(
         val expr =
             if (isLiteral) generateLiteralForType(context, targetType) else generateExpression(context, targetType)
 
-        val identifierName = identifierNameGenerator.newIdentifierName()
+        val identifierName = identifierNameGenerator.newValue()
         val identifier = if (targetType is ArrayType) {
             val length = if (expr is ArrayIdentifierAST) expr.length else (expr as ArrayInitAST).length
             ArrayIdentifierAST(identifierName, targetType, length)
@@ -246,5 +286,9 @@ class Generator(
         }
 
         return value.toString()
+    }
+
+    companion object {
+        private const val DAFNY_MAX_LOOP_COUNTER = 100
     }
 }

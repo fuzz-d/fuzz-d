@@ -22,6 +22,7 @@ import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.DECLARATION
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.PRINT
+import fuzzd.generator.selection.StatementType.WHILE
 import kotlin.random.Random
 
 class SelectionManager(
@@ -76,9 +77,11 @@ class SelectionManager(
     fun selectStatementType(context: GenerationContext): StatementType {
         val ifStatementProbability =
             if (context.statementDepth < MAX_STATEMENT_DEPTH) 0.1 / context.statementDepth else 0.0
-        val remainingProbability = 1 - ifStatementProbability
+        val whileStatementProbability = ifStatementProbability
+        val remainingProbability = 1 - ifStatementProbability - whileStatementProbability
         val selection = listOf(
             IF to ifStatementProbability,
+            WHILE to whileStatementProbability,
             PRINT to remainingProbability / 6,
             DECLARATION to 2 * remainingProbability / 6,
             ASSIGN to 3 * remainingProbability / 6
