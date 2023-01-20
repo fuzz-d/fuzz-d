@@ -37,7 +37,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): Type = function.returnType
 
-        override fun toString(): String = "${function.name}(${params.joinToString(",")})"
+        override fun toString(): String = "${function.name}(${params.joinToString(", ")})"
     }
 
     class TernaryExpressionAST(
@@ -120,7 +120,7 @@ sealed class ExpressionAST : ASTElement {
 
             val sb = StringBuilder()
             sb.append(if (wrapExpr1) "($expr1)" else "$expr1")
-            sb.append(operator)
+            sb.append(" $operator ")
             sb.append(if (wrapExpr2) "($expr2)" else "$expr2")
 
             return sb.toString()
@@ -187,9 +187,15 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = value
 
         override fun type(): Type = type
+
+        override fun equals(other: Any?): Boolean = other is LiteralAST && other.value == value
+
     }
 
-    class BooleanLiteralAST(value: Boolean) : LiteralAST(value.toString(), BoolType)
+    class BooleanLiteralAST(private val value: Boolean) : LiteralAST(value.toString(), BoolType) {
+        override fun equals(other: Any?): Boolean = other is BooleanLiteralAST && other.value == value
+        override fun hashCode(): Int = value.hashCode()
+    }
 
     /**
      * grammar from documentation:
