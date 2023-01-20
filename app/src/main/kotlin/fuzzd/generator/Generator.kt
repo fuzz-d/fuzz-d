@@ -275,7 +275,7 @@ class Generator(
 
     override fun generateCharLiteral(context: GenerationContext): CharacterLiteralAST {
         val c = selectionManager.selectCharacter()
-        return CharacterLiteralAST("'$c'")
+        return CharacterLiteralAST(c)
     }
 
     private fun generateDecimalLiteralValue(negative: Boolean = true): String {

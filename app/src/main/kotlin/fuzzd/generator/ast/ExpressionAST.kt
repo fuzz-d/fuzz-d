@@ -238,5 +238,5 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
-    class CharacterLiteralAST(value: String) : LiteralAST(value, CharType)
+    class CharacterLiteralAST(char: Char) : LiteralAST("'${char}'", CharType)
 }
