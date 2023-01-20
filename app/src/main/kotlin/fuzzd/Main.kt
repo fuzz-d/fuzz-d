@@ -41,4 +41,11 @@ class Main(private val path: String) {
     }
 }
 
-fun main() = Main("../output").fuzz()
+fun main(args: Array<String>) {
+    val seed = if (args.isNotEmpty()) {
+        args[0].toLong()
+    } else {
+        Random.Default.nextLong()
+    }
+    Main("../output").fuzz(seed)
+}
