@@ -11,6 +11,7 @@ import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.utils.ABSOLUTE
+import fuzzd.utils.escape
 import fuzzd.utils.safetyMap
 
 sealed class ExpressionAST : ASTElement {
@@ -244,5 +245,5 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
-    class CharacterLiteralAST(char: Char) : LiteralAST("'${char}'", CharType)
+    class CharacterLiteralAST(char: Char) : LiteralAST("'${char.escape()}'", CharType)
 }
