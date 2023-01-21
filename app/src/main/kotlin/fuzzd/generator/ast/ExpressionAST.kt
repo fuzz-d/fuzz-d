@@ -190,7 +190,6 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): Type = type
 
         override fun equals(other: Any?): Boolean = other is LiteralAST && other.value == value
-
     }
 
     class BooleanLiteralAST(private val value: Boolean) : LiteralAST(value.toString(), BoolType) {

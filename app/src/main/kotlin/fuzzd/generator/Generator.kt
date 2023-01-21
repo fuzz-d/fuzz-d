@@ -80,8 +80,11 @@ class Generator(
         return TopLevelAST(ast)
     }
 
-    override fun generateMainFunction(context: GenerationContext): MainFunctionAST =
-        MainFunctionAST(generateSequence(context))
+    override fun generateMainFunction(context: GenerationContext): MainFunctionAST {
+        val body = generateSequence(context)
+        val prints = (1..20).map { generatePrintStatement(context) }
+        return MainFunctionAST(body.addStatements(prints))
+    }
 
     override fun generateSequence(context: GenerationContext): SequenceAST {
         val n = random.nextInt(1, 20)

@@ -82,9 +82,8 @@ class SelectionManager(
         val selection = listOf(
             IF to ifStatementProbability,
             WHILE to whileStatementProbability,
-            PRINT to remainingProbability / 6,
-            DECLARATION to 2 * remainingProbability / 6,
-            ASSIGN to 3 * remainingProbability / 6
+            DECLARATION to remainingProbability / 3,
+            ASSIGN to 2 * remainingProbability / 3
         )
         return randomWeightedSelection(selection)
     }
