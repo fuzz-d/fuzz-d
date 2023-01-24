@@ -1,6 +1,6 @@
 package fuzzd.generator.selection
 
-import fuzzd.generator.GenerationContext
+import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
@@ -15,13 +15,13 @@ import fuzzd.generator.ast.operators.UnaryOperator.Companion.isUnaryType
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.generator.selection.ExpressionType.BINARY
+import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.DECLARATION
 import fuzzd.generator.selection.StatementType.IF
-import fuzzd.generator.selection.StatementType.PRINT
 import fuzzd.generator.selection.StatementType.WHILE
 import kotlin.random.Random
 
@@ -89,13 +89,15 @@ class SelectionManager(
     }
 
     fun selectExpressionType(targetType: Type, context: GenerationContext): ExpressionType {
-        val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0
-        val unaryProbability = if (isUnaryType(targetType)) 0.2 / context.expressionDepth else 0.0
-        val remainingProbability = (1 - binaryProbability - unaryProbability)
+        val binaryProbability = if (isBinaryType(targetType)) 0.3 / context.expressionDepth else 0.0
+        val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
+        val functionMethodCallProbability = if (targetType !is ArrayType) 0.15 / context.expressionDepth else 0.0
+        val remainingProbability = (1 - binaryProbability - unaryProbability - functionMethodCallProbability)
 
         val selection = listOf(
             LITERAL to remainingProbability / 3,
             IDENTIFIER to 2 * remainingProbability / 3,
+            FUNCTION_METHOD_CALL to functionMethodCallProbability,
             UNARY to unaryProbability,
             BINARY to binaryProbability
         )
@@ -107,6 +109,8 @@ class SelectionManager(
         val randomIndex = random.nextInt(items.size)
         return items[randomIndex]
     }
+
+    fun selectNumberOfParameters(): Int = random.nextInt(0, MAX_PARAMETERS)
 
     fun selectArrayLength(): Int = random.nextInt(MIN_ARRAY_LENGTH, MAX_ARRAY_LENGTH)
 
@@ -133,5 +137,6 @@ class SelectionManager(
         private const val MAX_ARRAY_LENGTH = 30
         private const val MAX_INT_VALUE = 1000
         private const val MAX_CHAR_VALUE = 127
+        private const val MAX_PARAMETERS = 10
     }
 }

@@ -1,6 +1,7 @@
 package fuzzd.generator.symbol_table
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.error.InvalidInputException
@@ -9,8 +10,10 @@ class SymbolTable(private val parent: SymbolTable? = null) {
     private val symbolTable = mutableMapOf<IdentifierAST, Type>()
     private val typeTable = mutableMapOf<Type, MutableList<IdentifierAST>>()
 
+    fun has(identifier: IdentifierAST): Boolean = symbolTable[identifier] != null || parent?.has(identifier) ?: false
+
     fun add(identifier: IdentifierAST) {
-        if (symbolTable[identifier] != null) return
+        if (has(identifier)) return
 
         val type = identifier.type()
         symbolTable[identifier] = type
@@ -46,14 +49,7 @@ class SymbolTable(private val parent: SymbolTable? = null) {
         typeTable[type]?.remove(identifier)
     }
 
-    fun withType(type: Type): List<IdentifierAST> {
-        val results = mutableListOf<IdentifierAST>()
-
-        results.addAll(parent?.withType(type) ?: listOf())
-        results.addAll(typeTable[type] ?: listOf())
-
-        return results
-    }
+    fun withType(type: Type): List<IdentifierAST> = (parent?.withType(type) ?: listOf()) + (typeTable[type] ?: listOf())
 
     fun withInternalType(type: Type): List<IdentifierAST> = withType(ArrayType(type))
 
@@ -62,7 +58,4 @@ class SymbolTable(private val parent: SymbolTable? = null) {
 
     fun hasInternalType(type: Type): Boolean =
         typeTable[ArrayType(type)]?.isNotEmpty() == true || parent?.hasInternalType(type) == true
-
-    fun typeOf(identifier: IdentifierAST): Type = symbolTable[identifier] ?: parent?.typeOf(identifier)
-        ?: throw InvalidInputException("Identifier not found in symbol table")
 }

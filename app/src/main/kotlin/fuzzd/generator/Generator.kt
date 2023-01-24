@@ -8,11 +8,13 @@ import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
+import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
@@ -30,11 +32,19 @@ import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.RealType
-import fuzzd.generator.ast.identifier_generator.IdentifierNameGenerator
-import fuzzd.generator.ast.identifier_generator.LoopCounterGenerator
+import fuzzd.generator.ast.identifier_generator.NameGenerator.FunctionMethodNameGenerator
+import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGenerator
+import fuzzd.generator.ast.identifier_generator.NameGenerator.LoopCounterGenerator
+import fuzzd.generator.ast.identifier_generator.NameGenerator.ParameterNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
-import fuzzd.generator.selection.ExpressionType
+import fuzzd.generator.context.GenerationContext
+import fuzzd.generator.symbol_table.GlobalSymbolTable
+import fuzzd.generator.selection.ExpressionType.BINARY
+import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
+import fuzzd.generator.selection.ExpressionType.IDENTIFIER
+import fuzzd.generator.selection.ExpressionType.LITERAL
+import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.StatementType
 import fuzzd.utils.ABSOLUTE
@@ -53,28 +63,21 @@ import kotlin.random.Random
 class Generator(
     private val identifierNameGenerator: IdentifierNameGenerator,
     private val loopCounterGenerator: LoopCounterGenerator,
+    private val functionMethodNameGenerator: FunctionMethodNameGenerator,
     private val selectionManager: SelectionManager
 ) : ASTGenerator {
     private val random = Random.Default
+
     override fun generate(): TopLevelAST {
-        val context = GenerationContext()
+        val context = GenerationContext(GlobalSymbolTable())
 
         // init with safety function methods
-        val ast = mutableListOf<ASTElement>(
-            ABSOLUTE,
-            SAFE_ADDITION_INT,
-            SAFE_ADDITION_REAL,
-            SAFE_DIVISION_INT,
-            SAFE_DIVISION_REAL,
-            SAFE_MODULO_INT,
-            SAFE_MULTIPLY_INT,
-            SAFE_MULTIPLY_REAL,
-            SAFE_SUBTRACT_REAL,
-            SAFE_SUBTRACT_CHAR,
-            SAFE_SUBTRACT_INT
-        )
+        context.globalSymbolTable.addAllFunctionMethods(WRAPPER_FUNCTIONS)
 
         val mainFunction = generateMainFunction(context)
+        val ast = mutableListOf<ASTElement>()
+
+        ast.addAll(context.globalSymbolTable.functionMethods())
         ast.add(mainFunction)
 
         return TopLevelAST(ast)
@@ -84,6 +87,27 @@ class Generator(
         val body = generateSequence(context)
         val prints = (1..20).map { generatePrintStatement(context) }
         return MainFunctionAST(body.addStatements(prints))
+    }
+
+    override fun generateFunctionMethodAST(context: GenerationContext, targetType: Type?): FunctionMethodAST {
+        val name = functionMethodNameGenerator.newValue()
+        val numberOfParameters = selectionManager.selectNumberOfParameters()
+
+        val parameterNameGenerator = ParameterNameGenerator()
+        val returnType = targetType ?: selectionManager.selectType(literalOnly = true)
+        val parameters = (1..numberOfParameters).map {
+            IdentifierAST(parameterNameGenerator.newValue(), returnType)
+        }
+
+        val functionContext = GenerationContext(context.globalSymbolTable)
+        parameters.forEach { param -> functionContext.symbolTable.add(param) }
+
+        val body = generateExpression(functionContext, returnType).makeSafe()
+        val functionMethodAST = FunctionMethodAST(name, returnType, parameters, body)
+
+        context.globalSymbolTable.addFunctionMethod(functionMethodAST)
+
+        return functionMethodAST
     }
 
     override fun generateSequence(context: GenerationContext): SequenceAST {
@@ -200,12 +224,28 @@ class Generator(
 
     override fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST {
         val expr = when (selectionManager.selectExpressionType(targetType, context)) {
-            ExpressionType.UNARY -> generateUnaryExpression(context, targetType)
-            ExpressionType.BINARY -> generateBinaryExpression(context, targetType)
-            ExpressionType.IDENTIFIER -> generateIdentifier(context, targetType)
-            ExpressionType.LITERAL -> generateLiteralForType(context, targetType)
+            UNARY -> generateUnaryExpression(context, targetType)
+            BINARY -> generateBinaryExpression(context, targetType)
+            FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
+            IDENTIFIER -> generateIdentifier(context, targetType)
+            LITERAL -> generateLiteralForType(context, targetType)
         }
         return expr
+    }
+
+    override fun generateFunctionMethodCall(context: GenerationContext, targetType: Type): FunctionMethodCallAST {
+        if (!context.globalSymbolTable.hasFunctionMethodType(targetType)) {
+            generateFunctionMethodAST(context, targetType)
+        }
+
+        val selection = context.globalSymbolTable.withFunctionMethodType(targetType)
+        val functionMethod = selectionManager.randomSelection(selection)
+
+        val arguments = functionMethod.params.map { param ->
+            generateExpression(context.increaseExpressionDepth(), param.type()).makeSafe()
+        }
+
+        return FunctionMethodCallAST(functionMethod, arguments)
     }
 
     override fun generateIdentifier(context: GenerationContext, targetType: Type): IdentifierAST {
@@ -292,6 +332,19 @@ class Generator(
     }
 
     companion object {
+        private val WRAPPER_FUNCTIONS = listOf(
+            ABSOLUTE,
+            SAFE_ADDITION_INT,
+            SAFE_ADDITION_REAL,
+            SAFE_DIVISION_INT,
+            SAFE_DIVISION_REAL,
+            SAFE_MODULO_INT,
+            SAFE_MULTIPLY_INT,
+            SAFE_MULTIPLY_REAL,
+            SAFE_SUBTRACT_REAL,
+            SAFE_SUBTRACT_CHAR,
+            SAFE_SUBTRACT_INT
+        )
         private const val DAFNY_MAX_LOOP_COUNTER = 100
     }
 }
