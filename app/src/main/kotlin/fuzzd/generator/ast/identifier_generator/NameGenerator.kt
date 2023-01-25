@@ -9,7 +9,9 @@ sealed class NameGenerator(private val namePrefix: String) {
 
     class LoopCounterGenerator : NameGenerator("i")
 
-    class FunctionMethodNameGenerator: NameGenerator("fm")
+    class FunctionMethodNameGenerator : NameGenerator("fm")
 
-    class ParameterNameGenerator: NameGenerator("p")
+    class ParameterNameGenerator : NameGenerator("p")
+
+    class MethodNameGenerator : NameGenerator("m")
 }

@@ -1,6 +1,6 @@
 package fuzzd.generator
 
-import fuzzd.generator.ast.*
+import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
@@ -12,11 +12,19 @@ import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
+import fuzzd.generator.ast.FunctionMethodAST
+import fuzzd.generator.ast.MainFunctionAST
+import fuzzd.generator.ast.MethodAST
+import fuzzd.generator.ast.SequenceAST
+import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.ReturnAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
+import fuzzd.generator.ast.TopLevelAST
+import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.context.GenerationContext
@@ -26,7 +34,11 @@ interface ASTGenerator {
 
     fun generateMainFunction(context: GenerationContext): MainFunctionAST
 
-    fun generateFunctionMethodAST(context: GenerationContext, targetType: Type? = null): FunctionMethodAST
+    fun generateFunctionMethod(context: GenerationContext, targetType: Type? = null): FunctionMethodAST
+
+    fun generateMethod(context: GenerationContext): MethodAST
+
+    fun generateReturnStatement(context: GenerationContext, targetType: Type): ReturnAST
 
     fun generateSequence(context: GenerationContext): SequenceAST
 

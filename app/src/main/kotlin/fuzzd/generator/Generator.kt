@@ -16,6 +16,7 @@ import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.MainFunctionAST
+import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
@@ -23,6 +24,7 @@ import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.ReturnAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.Type
@@ -35,11 +37,11 @@ import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.FunctionMethodNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.LoopCounterGenerator
+import fuzzd.generator.ast.identifier_generator.NameGenerator.MethodNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ParameterNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.context.GenerationContext
-import fuzzd.generator.symbol_table.GlobalSymbolTable
 import fuzzd.generator.selection.ExpressionType.BINARY
 import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
@@ -47,6 +49,7 @@ import fuzzd.generator.selection.ExpressionType.LITERAL
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.StatementType
+import fuzzd.generator.symbol_table.GlobalSymbolTable
 import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.SAFE_ADDITION_INT
 import fuzzd.utils.SAFE_ADDITION_REAL
@@ -61,12 +64,13 @@ import fuzzd.utils.SAFE_SUBTRACT_REAL
 import kotlin.random.Random
 
 class Generator(
-    private val identifierNameGenerator: IdentifierNameGenerator,
-    private val loopCounterGenerator: LoopCounterGenerator,
-    private val functionMethodNameGenerator: FunctionMethodNameGenerator,
     private val selectionManager: SelectionManager
 ) : ASTGenerator {
     private val random = Random.Default
+    private val functionMethodNameGenerator = FunctionMethodNameGenerator()
+    private val identifierNameGenerator = IdentifierNameGenerator()
+    private val loopCounterGenerator = LoopCounterGenerator()
+    private val methodNameGenerator = MethodNameGenerator()
 
     override fun generate(): TopLevelAST {
         val context = GenerationContext(GlobalSymbolTable())
@@ -89,7 +93,7 @@ class Generator(
         return MainFunctionAST(body.addStatements(prints))
     }
 
-    override fun generateFunctionMethodAST(context: GenerationContext, targetType: Type?): FunctionMethodAST {
+    override fun generateFunctionMethod(context: GenerationContext, targetType: Type?): FunctionMethodAST {
         val name = functionMethodNameGenerator.newValue()
         val numberOfParameters = selectionManager.selectNumberOfParameters()
 
@@ -109,6 +113,28 @@ class Generator(
 
         return functionMethodAST
     }
+
+    override fun generateMethod(context: GenerationContext): MethodAST {
+        val name = methodNameGenerator.newValue()
+        val returnType = selectionManager.selectMethodReturnType()
+
+        val numberOfParameters = selectionManager.selectNumberOfParameters()
+        val parameterNameGenerator = ParameterNameGenerator()
+        val parameters = (1..numberOfParameters).map {
+            IdentifierAST(parameterNameGenerator.newValue(), selectionManager.selectType(literalOnly = true))
+        }
+
+        val functionContext = GenerationContext(context.globalSymbolTable)
+        parameters.forEach { param -> functionContext.symbolTable.add(param) }
+
+        val body = generateSequence(functionContext)
+        val returnStatement = if (returnType != null) generateReturnStatement(functionContext, returnType) else null
+
+        return MethodAST(name, parameters, returnType, body, returnStatement)
+    }
+
+    override fun generateReturnStatement(context: GenerationContext, targetType: Type): ReturnAST =
+        ReturnAST(generateExpression(context, targetType))
 
     override fun generateSequence(context: GenerationContext): SequenceAST {
         val n = random.nextInt(1, 20)
@@ -235,7 +261,7 @@ class Generator(
 
     override fun generateFunctionMethodCall(context: GenerationContext, targetType: Type): FunctionMethodCallAST {
         if (!context.globalSymbolTable.hasFunctionMethodType(targetType)) {
-            generateFunctionMethodAST(context, targetType)
+            generateFunctionMethod(context, targetType)
         }
 
         val selection = context.globalSymbolTable.withFunctionMethodType(targetType)

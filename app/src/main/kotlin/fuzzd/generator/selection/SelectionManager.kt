@@ -1,6 +1,5 @@
 package fuzzd.generator.selection
 
-import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
@@ -14,6 +13,7 @@ import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator.Companion.isUnaryType
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
+import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.selection.ExpressionType.BINARY
 import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
@@ -37,6 +37,10 @@ class SelectionManager(
 
         val selection = listOf(RealType to 0.0, IntType to 0.56, BoolType to 0.44, CharType to 0.0)
         return randomWeightedSelection(selection)
+    }
+
+    fun selectMethodReturnType(): Type? {
+        return randomWeightedSelection(listOf(null to 0.1, selectType(true) to 0.9))
     }
 
     // selects operator, returning the operator and a selected input type for inner expressions
