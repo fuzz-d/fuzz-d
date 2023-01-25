@@ -64,6 +64,10 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "print $expr;"
     }
 
+    class ReturnAST(private val expr: ExpressionAST) : StatementAST() {
+        override fun toString(): String = "return $expr"
+    }
+
     object BreakAST : StatementAST() {
         override fun toString(): String = "break;"
     }

@@ -2,7 +2,7 @@ package fuzzd.utils
 
 fun Char.escape(): String =
     if (this == '\\' || this == '\'' || this == '\n') {
-        "\\${this}"
+        "a"
     } else {
         this.toString()
     }
