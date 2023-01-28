@@ -14,6 +14,8 @@ sealed class Type {
         override fun toString(): String = "array<$internalType>"
     }
 
+    class MethodReturnType(val types: List<Type>) : Type()
+
     abstract class LiteralType : Type()
 
     object BoolType : LiteralType() {

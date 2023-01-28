@@ -30,6 +30,7 @@ import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.context.GenerationContext
 
 interface ASTGenerator {
+    /* ========================================== TOP LEVEL ========================================== */
     fun generate(): TopLevelAST
 
     fun generateMainFunction(context: GenerationContext): MainFunctionAST
@@ -42,6 +43,8 @@ interface ASTGenerator {
 
     fun generateSequence(context: GenerationContext): SequenceAST
 
+    /* ========================================== STATEMENTS ========================================== */
+
     fun generateStatement(context: GenerationContext): StatementAST
 
     fun generateIfStatement(context: GenerationContext): IfStatementAST
@@ -53,6 +56,10 @@ interface ASTGenerator {
     fun generateDeclarationStatement(context: GenerationContext): DeclarationAST
 
     fun generateAssignmentStatement(context: GenerationContext): AssignmentAST
+
+    fun generateMethodCall(context: GenerationContext): StatementAST
+
+    /* ========================================== EXPRESSIONS ========================================== */
 
     fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST
 

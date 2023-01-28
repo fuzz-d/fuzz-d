@@ -39,8 +39,9 @@ class SelectionManager(
         return randomWeightedSelection(selection)
     }
 
-    fun selectMethodReturnType(): Type? {
-        return randomWeightedSelection(listOf(null to 0.1, selectType(true) to 0.9))
+    fun selectMethodReturnType(): List<Type> {
+        val numberOfReturns = random.nextInt(MAX_RETURNS)
+        return (1..numberOfReturns).map { selectType(literalOnly = true) }
     }
 
     // selects operator, returning the operator and a selected input type for inner expressions
@@ -141,6 +142,7 @@ class SelectionManager(
         private const val MAX_ARRAY_LENGTH = 30
         private const val MAX_INT_VALUE = 1000
         private const val MAX_CHAR_VALUE = 127
-        private const val MAX_PARAMETERS = 10
+        private const val MAX_PARAMETERS = 15
+        private const val MAX_RETURNS = 15
     }
 }

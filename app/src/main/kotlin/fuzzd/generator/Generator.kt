@@ -12,6 +12,7 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
+import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
@@ -25,6 +26,7 @@ import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.ReturnAST
+import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.Type
@@ -39,6 +41,7 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGene
 import fuzzd.generator.ast.identifier_generator.NameGenerator.LoopCounterGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.MethodNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ParameterNameGenerator
+import fuzzd.generator.ast.identifier_generator.NameGenerator.ReturnsNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.context.GenerationContext
@@ -48,7 +51,12 @@ import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.SelectionManager
-import fuzzd.generator.selection.StatementType
+import fuzzd.generator.selection.StatementType.ASSIGN
+import fuzzd.generator.selection.StatementType.DECLARATION
+import fuzzd.generator.selection.StatementType.IF
+import fuzzd.generator.selection.StatementType.METHOD_CALL
+import fuzzd.generator.selection.StatementType.PRINT
+import fuzzd.generator.selection.StatementType.WHILE
 import fuzzd.generator.symbol_table.GlobalSymbolTable
 import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.SAFE_ADDITION_INT
@@ -118,19 +126,26 @@ class Generator(
         val name = methodNameGenerator.newValue()
         val returnType = selectionManager.selectMethodReturnType()
 
+        val returnsNameGenerator = ReturnsNameGenerator()
+        val returns = returnType.map { t -> IdentifierAST(returnsNameGenerator.newValue(), t) }
+
         val numberOfParameters = selectionManager.selectNumberOfParameters()
         val parameterNameGenerator = ParameterNameGenerator()
         val parameters = (1..numberOfParameters).map {
-            IdentifierAST(parameterNameGenerator.newValue(), selectionManager.selectType(literalOnly = true))
+            IdentifierAST(
+                parameterNameGenerator.newValue(),
+                selectionManager.selectType(literalOnly = true),
+                mutable = false
+            )
         }
 
         val functionContext = GenerationContext(context.globalSymbolTable)
         parameters.forEach { param -> functionContext.symbolTable.add(param) }
+        returns.forEach { r -> functionContext.symbolTable.add(r) }
 
         val body = generateSequence(functionContext)
-        val returnStatement = if (returnType != null) generateReturnStatement(functionContext, returnType) else null
 
-        return MethodAST(name, parameters, returnType, body, returnStatement)
+        return MethodAST(name, parameters, returns, body)
     }
 
     override fun generateReturnStatement(context: GenerationContext, targetType: Type): ReturnAST =
@@ -149,11 +164,12 @@ class Generator(
 
     override fun generateStatement(context: GenerationContext): StatementAST =
         when (selectionManager.selectStatementType(context)) {
-            StatementType.ASSIGN -> generateAssignmentStatement(context)
-            StatementType.DECLARATION -> generateDeclarationStatement(context)
-            StatementType.IF -> generateIfStatement(context)
-            StatementType.PRINT -> generatePrintStatement(context)
-            StatementType.WHILE -> generateWhileStatement(context)
+            ASSIGN -> generateAssignmentStatement(context)
+            DECLARATION -> generateDeclarationStatement(context)
+            IF -> generateIfStatement(context)
+            METHOD_CALL -> generateMethodCall(context)
+            PRINT -> generatePrintStatement(context)
+            WHILE -> generateWhileStatement(context)
         }
 
     override fun generateIfStatement(context: GenerationContext): IfStatementAST {
@@ -248,6 +264,18 @@ class Generator(
         return AssignmentAST(safeIdentifier, safeExpr)
     }
 
+    override fun generateMethodCall(context: GenerationContext): StatementAST {
+        TODO("Not yet implemented")
+    }
+
+    private fun generateVoidMethodCall(context: GenerationContext): VoidMethodCallAST {
+        TODO()
+    }
+
+    private fun generateNonVoidMethodCall(context: GenerationContext): NonVoidMethodCallAST {
+        TODO()
+    }
+
     override fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST {
         val expr = when (selectionManager.selectExpressionType(targetType, context)) {
             UNARY -> generateUnaryExpression(context, targetType)
@@ -321,6 +349,7 @@ class Generator(
         when (targetType) {
             is LiteralType -> generateLiteralForType(context, targetType)
             is ArrayType -> generateArrayInitialisation(context, targetType)
+            else -> throw UnsupportedOperationException("Trying to generate literal for unsupported type")
         }
 
     override fun generateIntegerLiteral(context: GenerationContext): IntegerLiteralAST {

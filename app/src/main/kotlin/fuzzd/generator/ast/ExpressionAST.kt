@@ -4,6 +4,7 @@ import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.error.InvalidFormatException
 import fuzzd.generator.ast.error.InvalidInputException
@@ -20,7 +21,28 @@ sealed class ExpressionAST : ASTElement {
 
     open fun makeSafe(): ExpressionAST = this
 
-    class FunctionMethodCallAST(private val function: FunctionMethodAST, val params: List<ExpressionAST>) :
+    class NonVoidMethodCallAST(private val method: MethodAST, private val params: List<ExpressionAST>) :
+        ExpressionAST() {
+        init {
+            if (params.size != method.params.size) {
+                throw InvalidInputException("Number of parameters for call to ${method.name} doesn't match. Expected ${method.params.size}, Got ${params.size}")
+            }
+
+            (params.indices).forEach() { i ->
+                val paramType = params[i].type()
+                val expectedType = method.params[i].type()
+                if (paramType != expectedType) {
+                    throw InvalidInputException("Method call parameter type mismatch for parameter $i. Expected $expectedType, got $paramType")
+                }
+            }
+        }
+
+        override fun type(): Type = MethodReturnType(method.returns.map { it.type() })
+
+        override fun toString(): String = "${method.name}(${params.joinToString(", ")})"
+    }
+
+    class FunctionMethodCallAST(private val function: FunctionMethodAST, private val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
             if (params.size != function.params.size) {
@@ -130,7 +152,8 @@ sealed class ExpressionAST : ASTElement {
 
     open class IdentifierAST(
         val name: String,
-        private val type: Type
+        private val type: Type,
+        val mutable: Boolean = true
     ) : ExpressionAST() {
         override fun type(): Type = type
 
