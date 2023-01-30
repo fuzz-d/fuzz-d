@@ -24,6 +24,7 @@ import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.ReturnAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
@@ -145,7 +146,9 @@ class Generator(
 
         val body = generateSequence(functionContext)
 
-        return MethodAST(name, parameters, returns, body)
+        val method = MethodAST(name, parameters, returns, body)
+        context.globalSymbolTable.addMethod(method)
+        return method
     }
 
     override fun generateReturnStatement(context: GenerationContext, targetType: Type): ReturnAST =
@@ -265,15 +268,23 @@ class Generator(
     }
 
     override fun generateMethodCall(context: GenerationContext): StatementAST {
-        TODO("Not yet implemented")
-    }
+        val method = if (context.globalSymbolTable.methods().isEmpty() || selectionManager.generateNewMethod()) {
+            generateMethod(context)
+        } else {
+            selectionManager.randomSelection(context.globalSymbolTable.methods())
+        }
 
-    private fun generateVoidMethodCall(context: GenerationContext): VoidMethodCallAST {
-        TODO()
-    }
+        val params = method.params.map { param -> generateExpression(context, param.type()) }
 
-    private fun generateNonVoidMethodCall(context: GenerationContext): NonVoidMethodCallAST {
-        TODO()
+        return if (method.returns.isEmpty()) {
+            // void method type
+            VoidMethodCallAST(method, params)
+        } else {
+            // non-void method type
+            val idents = method.returns.map { r -> IdentifierAST(identifierNameGenerator.newValue(), r.type()) }
+            idents.forEach { ident -> context.symbolTable.add(ident) }
+            MultiDeclarationAST(idents, listOf(NonVoidMethodCallAST(method, params)))
+        }
     }
 
     override fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST {

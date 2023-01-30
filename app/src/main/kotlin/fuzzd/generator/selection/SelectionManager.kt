@@ -93,6 +93,8 @@ class SelectionManager(
         return randomWeightedSelection(selection)
     }
 
+    fun generateNewMethod() = randomWeightedSelection(listOf(true to 0.2, false to 0.8))
+
     fun selectExpressionType(targetType: Type, context: GenerationContext): ExpressionType {
         val binaryProbability = if (isBinaryType(targetType)) 0.3 / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
