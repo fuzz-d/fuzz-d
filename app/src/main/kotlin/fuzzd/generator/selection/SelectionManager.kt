@@ -22,6 +22,7 @@ import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.DECLARATION
 import fuzzd.generator.selection.StatementType.IF
+import fuzzd.generator.selection.StatementType.METHOD_CALL
 import fuzzd.generator.selection.StatementType.WHILE
 import kotlin.random.Random
 
@@ -83,17 +84,25 @@ class SelectionManager(
         val ifStatementProbability =
             if (context.statementDepth < MAX_STATEMENT_DEPTH) 0.1 / context.statementDepth else 0.0
         val whileStatementProbability = ifStatementProbability
-        val remainingProbability = 1 - ifStatementProbability - whileStatementProbability
+        val methodCallProbability = if (context.methodContext != null) 0.2 else 0.0
+        val remainingProbability = 1 - methodCallProbability - whileStatementProbability - ifStatementProbability
+
         val selection = listOf(
             IF to ifStatementProbability,
             WHILE to whileStatementProbability,
+            METHOD_CALL to methodCallProbability,
             DECLARATION to remainingProbability / 3,
             ASSIGN to 2 * remainingProbability / 3
         )
+
         return randomWeightedSelection(selection)
     }
 
-    fun generateNewMethod() = randomWeightedSelection(listOf(true to 0.2, false to 0.8))
+    fun generateNewMethod(context: GenerationContext): Boolean {
+        val trueWeighting =
+            0.2 / maxOf(context.statementDepth, context.expressionDepth, context.globalSymbolTable.methods().size)
+        return randomWeightedSelection(listOf(true to trueWeighting, false to 1 - trueWeighting))
+    }
 
     fun selectExpressionType(targetType: Type, context: GenerationContext): ExpressionType {
         val binaryProbability = if (isBinaryType(targetType)) 0.3 / context.expressionDepth else 0.0

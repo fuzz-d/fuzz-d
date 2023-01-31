@@ -65,7 +65,7 @@ interface ASTGenerator {
 
     fun generateFunctionMethodCall(context: GenerationContext, targetType: Type): FunctionMethodCallAST
 
-    fun generateIdentifier(context: GenerationContext, targetType: Type): IdentifierAST
+    fun generateIdentifier(context: GenerationContext, targetType: Type, mutableConstraint: Boolean = false): IdentifierAST
 
     fun generateUnaryExpression(context: GenerationContext, targetType: Type): UnaryExpressionAST
 

@@ -262,6 +262,7 @@ sealed class ExpressionAST : ASTElement {
 
         init {
             if (!value.matches(Regex("(-)?[0-9]+.[0-9]+"))) {
+                println(value)
                 throw InvalidFormatException("Value passed (= $value) did not match supported float format")
             }
         }

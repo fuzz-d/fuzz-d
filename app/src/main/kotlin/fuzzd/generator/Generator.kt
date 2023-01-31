@@ -90,7 +90,17 @@ class Generator(
         val mainFunction = generateMainFunction(context)
         val ast = mutableListOf<ASTElement>()
 
+        context.globalSymbolTable.methods().forEach { method ->
+            val functionContext = GenerationContext(context.globalSymbolTable)
+            method.params.forEach { param -> functionContext.symbolTable.add(param) }
+            method.returns.forEach { r -> functionContext.symbolTable.add(r) }
+
+            val body = generateSequence(functionContext)
+            method.setBody(body)
+        }
+
         ast.addAll(context.globalSymbolTable.functionMethods())
+        ast.addAll(context.globalSymbolTable.methods())
         ast.add(mainFunction)
 
         return TopLevelAST(ast)
@@ -140,13 +150,7 @@ class Generator(
             )
         }
 
-        val functionContext = GenerationContext(context.globalSymbolTable)
-        parameters.forEach { param -> functionContext.symbolTable.add(param) }
-        returns.forEach { r -> functionContext.symbolTable.add(r) }
-
-        val body = generateSequence(functionContext)
-
-        val method = MethodAST(name, parameters, returns, body)
+        val method = MethodAST(name, parameters, returns)
         context.globalSymbolTable.addMethod(method)
         return method
     }
@@ -176,7 +180,7 @@ class Generator(
         }
 
     override fun generateIfStatement(context: GenerationContext): IfStatementAST {
-        val condition = generateExpression(context, BoolType)
+        val condition = generateExpression(context, BoolType).makeSafe()
 
         val ifBranch = generateSequence(context.increaseStatementDepth())
         val elseBranch = generateSequence(context.increaseStatementDepth())
@@ -253,7 +257,7 @@ class Generator(
     override fun generateAssignmentStatement(context: GenerationContext): AssignmentAST {
         val targetType = selectionManager.selectType(literalOnly = true)
         val identifier = if (selectionManager.randomWeightedSelection(listOf(true to 0.8, false to 0.2))) {
-            generateIdentifier(context, targetType)
+            generateIdentifier(context, targetType, mutableConstraint = true)
         } else {
             generateArrayIndex(context, targetType)
         }
@@ -268,13 +272,13 @@ class Generator(
     }
 
     override fun generateMethodCall(context: GenerationContext): StatementAST {
-        val method = if (context.globalSymbolTable.methods().isEmpty() || selectionManager.generateNewMethod()) {
+        val method = if (context.globalSymbolTable.methods().isEmpty() || selectionManager.generateNewMethod(context)) {
             generateMethod(context)
         } else {
             selectionManager.randomSelection(context.globalSymbolTable.methods())
         }
 
-        val params = method.params.map { param -> generateExpression(context, param.type()) }
+        val params = method.params.map { param -> generateExpression(context, param.type()).makeSafe() }
 
         return if (method.returns.isEmpty()) {
             // void method type
@@ -313,14 +317,18 @@ class Generator(
         return FunctionMethodCallAST(functionMethod, arguments)
     }
 
-    override fun generateIdentifier(context: GenerationContext, targetType: Type): IdentifierAST {
-        if (!context.symbolTable.hasType(targetType)) {
+    override fun generateIdentifier(context: GenerationContext, targetType: Type, mutableConstraint: Boolean): IdentifierAST {
+        var withType = context.symbolTable.withType(targetType)
+        if (mutableConstraint) {
+            withType = withType.filter { it.mutable }
+        }
+
+        if (withType.isEmpty()) {
             val decl = generateDeclarationStatementForType(context, targetType, true)
             context.addDependentStatement(decl)
         }
 
-        val selection = context.symbolTable.withType(targetType)
-        return selectionManager.randomSelection(selection)
+        return selectionManager.randomSelection(context.symbolTable.withType(targetType))
     }
 
     override fun generateArrayIndex(context: GenerationContext, targetType: Type): ArrayIndexAST {
