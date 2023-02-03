@@ -26,7 +26,6 @@ import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
-import fuzzd.generator.ast.StatementAST.ReturnAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
@@ -81,6 +80,8 @@ class Generator(
     private val loopCounterGenerator = LoopCounterGenerator()
     private val methodNameGenerator = MethodNameGenerator()
 
+    /* ==================================== TOP LEVEL ==================================== */
+
     override fun generate(): TopLevelAST {
         val context = GenerationContext(GlobalSymbolTable())
 
@@ -122,7 +123,7 @@ class Generator(
             IdentifierAST(parameterNameGenerator.newValue(), returnType)
         }
 
-        val functionContext = GenerationContext(context.globalSymbolTable)
+        val functionContext = GenerationContext(context.globalSymbolTable, onDemandIdentifiers = false)
         parameters.forEach { param -> functionContext.symbolTable.add(param) }
 
         val body = generateExpression(functionContext, returnType).makeSafe()
@@ -155,9 +156,6 @@ class Generator(
         return method
     }
 
-    override fun generateReturnStatement(context: GenerationContext, targetType: Type): ReturnAST =
-        ReturnAST(generateExpression(context, targetType))
-
     override fun generateSequence(context: GenerationContext): SequenceAST {
         val n = random.nextInt(1, 20)
 
@@ -168,6 +166,8 @@ class Generator(
 
         return SequenceAST(allStatements)
     }
+
+    /* ==================================== STATEMENTS ==================================== */
 
     override fun generateStatement(context: GenerationContext): StatementAST =
         when (selectionManager.selectStatementType(context)) {
@@ -291,6 +291,8 @@ class Generator(
         }
     }
 
+    /* ==================================== EXPRESSIONS ==================================== */
+
     override fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST {
         val expr = when (selectionManager.selectExpressionType(targetType, context)) {
             UNARY -> generateUnaryExpression(context, targetType)
@@ -317,7 +319,11 @@ class Generator(
         return FunctionMethodCallAST(functionMethod, arguments)
     }
 
-    override fun generateIdentifier(context: GenerationContext, targetType: Type, mutableConstraint: Boolean): IdentifierAST {
+    override fun generateIdentifier(
+        context: GenerationContext,
+        targetType: Type,
+        mutableConstraint: Boolean
+    ): IdentifierAST {
         var withType = context.symbolTable.withType(targetType)
         if (mutableConstraint) {
             withType = withType.filter { it.mutable }
@@ -394,6 +400,13 @@ class Generator(
         val c = selectionManager.selectCharacter()
         return CharacterLiteralAST(c)
     }
+
+    override fun generateType(context: GenerationContext, literalOnly: Boolean): Type =
+        if (!context.onDemandIdentifiers) {
+            selectionManager.randomSelection(context.symbolTable.types())
+        } else {
+            selectionManager.selectType(literalOnly = literalOnly)
+        }
 
     private fun generateDecimalLiteralValue(negative: Boolean = true): String {
         var value = selectionManager.selectDecimalLiteral()

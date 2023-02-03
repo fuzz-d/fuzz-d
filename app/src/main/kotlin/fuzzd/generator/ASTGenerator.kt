@@ -21,7 +21,6 @@ import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
-import fuzzd.generator.ast.StatementAST.ReturnAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.Type
@@ -38,8 +37,6 @@ interface ASTGenerator {
     fun generateFunctionMethod(context: GenerationContext, targetType: Type? = null): FunctionMethodAST
 
     fun generateMethod(context: GenerationContext): MethodAST
-
-    fun generateReturnStatement(context: GenerationContext, targetType: Type): ReturnAST
 
     fun generateSequence(context: GenerationContext): SequenceAST
 
@@ -84,4 +81,8 @@ interface ASTGenerator {
     fun generateRealLiteral(context: GenerationContext): RealLiteralAST
 
     fun generateCharLiteral(context: GenerationContext): CharacterLiteralAST
+
+    /* ========================================== TYPE ========================================== */
+
+    fun generateType(context: GenerationContext, literalOnly: Boolean = true): Type
 }

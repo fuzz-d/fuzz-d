@@ -13,7 +13,7 @@
 - [ ] Multi-dimensional arrays
 - [ ] Sequences, sets, multisets, maps
 - [x] function methods
-- [ ] functions - avoid recursion -- track method calls structure
+- [ ] functions - avoid recursion -- track method calls structure -- ensure returns have value
 - [ ] parameter support in functions & function methods for data structures
 - [ ] continue + break support in loops
 - [ ] parallel assignment to arrays via ```forall```

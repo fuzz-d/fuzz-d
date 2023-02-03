@@ -60,7 +60,7 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "var ${identifiers.joinToString(", ")} := ${exprs.joinToString(", ")};"
     }
 
-    class DeclarationAST(private val identifier: IdentifierAST, private val expr: ExpressionAST) :
+    class DeclarationAST(identifier: IdentifierAST, expr: ExpressionAST) :
         MultiDeclarationAST(listOf(identifier), listOf(expr))
 
     open class MultiAssignmentAST(
@@ -71,7 +71,7 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "${identifiers.joinToString(", ")} := ${exprs.joinToString(", ")};"
     }
 
-    class AssignmentAST(private val identifier: IdentifierAST, private val expr: ExpressionAST) :
+    class AssignmentAST(identifier: IdentifierAST, expr: ExpressionAST) :
         MultiAssignmentAST(listOf(identifier), listOf(expr))
 
     class PrintAST(private val expr: ExpressionAST) : StatementAST() {
@@ -102,12 +102,6 @@ sealed class StatementAST : ASTElement {
             sb.append("${method.name}(${params.joinToString(", ")})")
             return sb.toString()
         }
-    }
-
-    class ReturnAST(private val expr: ExpressionAST) : StatementAST() {
-        override fun toString(): String = "return $expr"
-
-        fun type() = expr.type()
     }
 
     object BreakAST : StatementAST() {

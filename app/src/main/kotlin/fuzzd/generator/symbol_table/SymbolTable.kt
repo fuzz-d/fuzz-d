@@ -1,10 +1,8 @@
 package fuzzd.generator.symbol_table
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
-import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ArrayType
-import fuzzd.generator.ast.error.InvalidInputException
 
 class SymbolTable(private val parent: SymbolTable? = null) {
     private val symbolTable = mutableMapOf<IdentifierAST, Type>()
@@ -50,6 +48,8 @@ class SymbolTable(private val parent: SymbolTable? = null) {
     }
 
     fun withType(type: Type): List<IdentifierAST> = (parent?.withType(type) ?: listOf()) + (typeTable[type] ?: listOf())
+
+    fun types(): List<Type> = typeTable.keys.toList()
 
     fun withInternalType(type: Type): List<IdentifierAST> = withType(ArrayType(type))
 
