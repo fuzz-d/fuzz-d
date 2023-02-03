@@ -132,7 +132,7 @@ class SelectionManager(
 
     fun selectDecimalLiteral(): Int = random.nextInt(0, MAX_INT_VALUE)
 
-    fun selectCharacter(): Char = random.nextInt(0, MAX_CHAR_VALUE).toChar()
+    fun selectCharacter(): Char = random.nextInt(20, MAX_CHAR_VALUE).toChar()
 
     fun <T> randomWeightedSelection(items: List<Pair<T, Double>>): T {
         val probability = random.nextFloat()

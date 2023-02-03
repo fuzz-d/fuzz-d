@@ -109,7 +109,8 @@ class Generator(
 
     override fun generateMainFunction(context: GenerationContext): MainFunctionAST {
         val body = generateSequence(context)
-        val prints = (1..20).map { generatePrintStatement(context) }
+        val printContext = context.disableOnDemand()
+        val prints = (1..20).map { generatePrintStatement(printContext) }
         return MainFunctionAST(body.addStatements(prints))
     }
 
@@ -118,7 +119,7 @@ class Generator(
         val numberOfParameters = selectionManager.selectNumberOfParameters()
 
         val parameterNameGenerator = ParameterNameGenerator()
-        val returnType = targetType ?: selectionManager.selectType(literalOnly = true)
+        val returnType = targetType ?: generateType(context, literalOnly = true)
         val parameters = (1..numberOfParameters).map {
             IdentifierAST(parameterNameGenerator.newValue(), returnType)
         }
@@ -146,7 +147,7 @@ class Generator(
         val parameters = (1..numberOfParameters).map {
             IdentifierAST(
                 parameterNameGenerator.newValue(),
-                selectionManager.selectType(literalOnly = true),
+                generateType(context, literalOnly = true),
                 mutable = false
             )
         }
@@ -221,13 +222,13 @@ class Generator(
     }
 
     override fun generatePrintStatement(context: GenerationContext): PrintAST {
-        val targetType = selectionManager.selectType(literalOnly = true)
+        val targetType = generateType(context, literalOnly = true)
         val safeExpr = generateExpression(context, targetType).makeSafe()
         return PrintAST(safeExpr)
     }
 
     override fun generateDeclarationStatement(context: GenerationContext): DeclarationAST {
-        val targetType = selectionManager.selectType()
+        val targetType = generateType(context)
         return generateDeclarationStatementForType(context, targetType, false)
     }
 
@@ -255,7 +256,7 @@ class Generator(
     }
 
     override fun generateAssignmentStatement(context: GenerationContext): AssignmentAST {
-        val targetType = selectionManager.selectType(literalOnly = true)
+        val targetType = generateType(context, literalOnly = true)
         val identifier = if (selectionManager.randomWeightedSelection(listOf(true to 0.8, false to 0.2))) {
             generateIdentifier(context, targetType, mutableConstraint = true)
         } else {
@@ -325,6 +326,7 @@ class Generator(
         mutableConstraint: Boolean
     ): IdentifierAST {
         var withType = context.symbolTable.withType(targetType)
+
         if (mutableConstraint) {
             withType = withType.filter { it.mutable }
         }
@@ -334,7 +336,7 @@ class Generator(
             context.addDependentStatement(decl)
         }
 
-        return selectionManager.randomSelection(context.symbolTable.withType(targetType))
+        return selectionManager.randomSelection(context.symbolTable.withType(targetType).filter { it.mutable })
     }
 
     override fun generateArrayIndex(context: GenerationContext, targetType: Type): ArrayIndexAST {

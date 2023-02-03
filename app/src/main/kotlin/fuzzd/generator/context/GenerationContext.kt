@@ -27,9 +27,34 @@ data class GenerationContext(
     }
 
     fun increaseExpressionDepth(): GenerationContext =
-        GenerationContext(globalSymbolTable, statementDepth, expressionDepth + 1, symbolTable, methodContext, onDemandIdentifiers, dependentStatements)
+        GenerationContext(
+            globalSymbolTable,
+            statementDepth,
+            expressionDepth + 1,
+            symbolTable,
+            methodContext,
+            onDemandIdentifiers,
+            dependentStatements
+        )
 
     fun increaseStatementDepth(): GenerationContext =
-        GenerationContext(globalSymbolTable, statementDepth + 1, expressionDepth, SymbolTable(symbolTable), methodContext, onDemandIdentifiers)
+        GenerationContext(
+            globalSymbolTable,
+            statementDepth + 1,
+            expressionDepth,
+            SymbolTable(symbolTable),
+            methodContext,
+            onDemandIdentifiers
+        )
 
+    fun disableOnDemand(): GenerationContext =
+        GenerationContext(
+            globalSymbolTable,
+            statementDepth,
+            expressionDepth,
+            symbolTable,
+            methodContext,
+            false,
+            dependentStatements
+        )
 }
