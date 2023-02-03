@@ -45,8 +45,8 @@ sealed class StatementAST : ASTElement {
             sb.appendLine(counterInitialisation)
             sb.appendLine("while ($condition) {")
             sb.appendLine(indent(terminationCheck))
-            sb.appendLine(body)
             sb.appendLine(indent(counterUpdate))
+            sb.appendLine(body)
             sb.appendLine("}")
             return sb.toString()
         }
