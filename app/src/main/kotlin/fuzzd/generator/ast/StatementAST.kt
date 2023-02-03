@@ -97,11 +97,7 @@ sealed class StatementAST : ASTElement {
             }
         }
 
-        override fun toString(): String {
-            val sb = StringBuilder()
-            sb.append("${method.name}(${params.joinToString(", ")})")
-            return sb.toString()
-        }
+        override fun toString(): String = "${method.name}(${params.joinToString(", ")});"
     }
 
     object BreakAST : StatementAST() {

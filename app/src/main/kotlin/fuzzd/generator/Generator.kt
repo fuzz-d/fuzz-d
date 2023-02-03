@@ -92,7 +92,7 @@ class Generator(
         val ast = mutableListOf<ASTElement>()
 
         context.globalSymbolTable.methods().forEach { method ->
-            val functionContext = GenerationContext(context.globalSymbolTable)
+            val functionContext = GenerationContext(context.globalSymbolTable, methodContext = method)
             method.params.forEach { param -> functionContext.symbolTable.add(param) }
             method.returns.forEach { r -> functionContext.symbolTable.add(r) }
 

@@ -22,7 +22,12 @@ class MethodAST(
 
     override fun toString(): String {
         val sb = StringBuilder()
-        sb.append("method $name(${params.joinToString(", ")})} returns (${returns.joinToString(", ")}})")
+        sb.append("method $name(${params.joinToString(", ") { p -> "$p: ${p.type()}" }}) ")
+
+        if (returns.isNotEmpty()) {
+            sb.append("returns (${returns.joinToString(", ") { p -> "$p: ${p.type()}" }}) ")
+        }
+
         sb.appendLine("{")
         sb.appendLine(body)
         sb.appendLine("}")

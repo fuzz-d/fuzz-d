@@ -84,7 +84,7 @@ class SelectionManager(
         val ifStatementProbability =
             if (context.statementDepth < MAX_STATEMENT_DEPTH) 0.1 / context.statementDepth else 0.0
         val whileStatementProbability = ifStatementProbability
-        val methodCallProbability = if (context.methodContext != null) 0.2 else 0.0
+        val methodCallProbability = if (context.methodContext == null) 0.2 else 0.0
         val remainingProbability = 1 - methodCallProbability - whileStatementProbability - ifStatementProbability
 
         val selection = listOf(
