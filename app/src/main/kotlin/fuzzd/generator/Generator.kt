@@ -96,7 +96,7 @@ class Generator(
             method.params.forEach { param -> functionContext.symbolTable.add(param) }
             method.returns.forEach { r -> functionContext.symbolTable.add(r) }
 
-            val body = generateSequence(functionContext)
+            val body = generateMethodBody(functionContext, method)
             method.setBody(body)
         }
 
@@ -105,6 +105,17 @@ class Generator(
         ast.add(mainFunction)
 
         return TopLevelAST(ast)
+    }
+
+    fun generateMethodBody(context: GenerationContext, method: MethodAST): SequenceAST {
+        val body = generateSequence(context)
+
+        val returnAssigns = method.returns.map { r ->
+            val expr = generateExpression(context, r.type())
+            AssignmentAST(r, expr)
+        }
+
+        return body.addStatements(returnAssigns)
     }
 
     override fun generateMainFunction(context: GenerationContext): MainFunctionAST {
