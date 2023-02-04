@@ -6,11 +6,16 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
+import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
+import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.Type.ArrayType
+import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
@@ -26,8 +31,188 @@ import fuzzd.utils.SAFE_SUBTRACT_CHAR
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import kotlin.test.assertFailsWith
 
 class ExpressionASTTests {
+
+    @Nested
+    inner class FunctionMethodCallTests {
+
+        @Test
+        fun givenFunctionMethod_whenMethodCallWithCorrectParams_expectSuccessfulInit() {
+            // given
+            val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
+            val body = IntegerLiteralAST(37481)
+            val method = FunctionMethodAST("fm1", IntType, params, body)
+
+            // when
+            val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false))
+            val methodCall = FunctionMethodCallAST(method, callParams)
+
+            // expect success
+        }
+
+        @Test
+        fun givenFunctionMethod_whenMethodCallWithTooManyParams_expectError() {
+            // given
+            val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
+            val body = IntegerLiteralAST(37481)
+            val method = FunctionMethodAST("fm1", IntType, params, body)
+
+            val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false), IntegerLiteralAST(135))
+
+            // expect
+            assertFailsWith<InvalidInputException>("Number of parameters doesn't match. Expected 2, Got 3") {
+                val methodCall = FunctionMethodCallAST(method, callParams)
+            }
+        }
+
+        @Test
+        fun givenFunctionMethod_whenMethodCallWithTooFewParams_expectError() {
+            // given
+            val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
+            val body = IntegerLiteralAST(37481)
+            val method = FunctionMethodAST("fm1", IntType, params, body)
+
+            val callParams = listOf<ExpressionAST>()
+
+            // expect
+            assertFailsWith<InvalidInputException>("Number of parameters doesn't match. Expected 2, Got 0") {
+                val methodCall = FunctionMethodCallAST(method, callParams)
+            }
+        }
+
+        @Test
+        fun givenFunctionMethod_whenMethodCallWithIncorrectParamTypes_expectError() {
+            // given
+            val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
+            val body = IntegerLiteralAST(37481)
+            val method = FunctionMethodAST("fm1", IntType, params, body)
+
+            val callParams = listOf<ExpressionAST>(IdentifierAST("p1", BoolType), IdentifierAST("p2", IntType))
+
+            // expect
+            assertFailsWith<InvalidInputException>("Function call parameter type mismatch for parameter 0. Expected int, got bool") {
+                val methodCall = FunctionMethodCallAST(method, callParams)
+            }
+        }
+    }
+
+    @Nested
+    inner class NonVoidMethodCallTests {
+
+        @Test
+        fun givenMethod_whenMethodCallWithCorrectParams_expectSuccessfulInit() {
+            // given
+            val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
+            val returns = listOf(IdentifierAST("r1", IntType), IdentifierAST("r2", IntType))
+            val method = MethodAST("m1", params, returns)
+
+            // when
+            val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false))
+            val methodCall = NonVoidMethodCallAST(method, callParams)
+
+            // expect success
+        }
+
+        @Test
+        fun givenMethod_whenMethodCallWithTooManyParams_expectError() {
+            // given
+            val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
+            val returns = listOf(IdentifierAST("r1", IntType), IdentifierAST("r2", IntType))
+            val method = MethodAST("m1", params, returns)
+
+            // when
+            val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false), IntegerLiteralAST(13))
+            assertFailsWith<InvalidInputException>("Number of parameters for call to m1 doesn't match. Expected 2, Got 3") {
+                val methodCall = NonVoidMethodCallAST(method, callParams)
+            }
+        }
+
+        @Test
+        fun givenMethod_whenMethodCallWithTooFewParams_expectError() {
+            // given
+            val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
+            val returns = listOf(IdentifierAST("r1", IntType), IdentifierAST("r2", IntType))
+            val method = MethodAST("m1", params, returns)
+
+            // when
+            val callParams = listOf<ExpressionAST>()
+            assertFailsWith<InvalidInputException>("Number of parameters for call to m1 doesn't match. Expected 2, Got 0") {
+                val methodCall = NonVoidMethodCallAST(method, callParams)
+            }
+        }
+
+        @Test
+        fun givenMethod_whenMethodCallWithIncorrectTypeParams_expectError() {
+            // given
+            val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
+            val returns = listOf(IdentifierAST("r1", IntType), IdentifierAST("r2", IntType))
+            val method = MethodAST("m1", params, returns)
+
+            // when
+            val callParams = listOf(BooleanLiteralAST(false), IntegerLiteralAST(13))
+            assertFailsWith<InvalidInputException>("Method call parameter type mismatch for parameter 0. Expected int, got bool") {
+                val methodCall = NonVoidMethodCallAST(method, callParams)
+            }
+        }
+    }
+
+    @Nested
+    inner class TernaryExpressionASTTests {
+        @Test
+        fun givenValidConditionAndBranches_whenInit_expectSuccess() {
+            // given
+            val condition = BooleanLiteralAST(true)
+            val ifBranch = IntegerLiteralAST(53)
+            val elseBranch = IntegerLiteralAST(43)
+
+            // when
+            TernaryExpressionAST(condition, ifBranch, elseBranch)
+
+            // expect success
+        }
+
+        @Test
+        fun givenValidConditionAndBranches_whenType_expectCorrectType() {
+            // given
+            val condition = BooleanLiteralAST(true)
+            val ifBranch = IntegerLiteralAST(53)
+            val elseBranch = IntegerLiteralAST(43)
+
+            // when
+            val expr = TernaryExpressionAST(condition, ifBranch, elseBranch)
+
+            // expect valid type
+            assertEquals(IntType, expr.type())
+        }
+
+        @Test
+        fun givenNonBoolCondition_whenInit_expectError() {
+            // given
+            val condition = IntegerLiteralAST(314)
+            val ifBranch = IntegerLiteralAST(31)
+            val elseBranch = IntegerLiteralAST(43)
+
+            // expect
+            assertFailsWith<InvalidInputException>("Invalid input type for ternary expression condition. Got int") {
+                TernaryExpressionAST(condition, ifBranch, elseBranch)
+            }
+        }
+
+        @Test
+        fun givenBranchesOfDifferentTypes_whenInit_expectError() {
+            // given
+            val condition = BooleanLiteralAST(false)
+            val ifBranch = IntegerLiteralAST(31)
+            val elseBranch = CharacterLiteralAST('c')
+
+            // expect
+            assertFailsWith<InvalidInputException>("Ternary expression branches have different types. If branch: int. Else branch: char") {
+                TernaryExpressionAST(condition, ifBranch, elseBranch)
+            }
+        }
+    }
 
     @Nested
     inner class UnaryExpressionASTTests {
@@ -60,7 +245,7 @@ class ExpressionASTTests {
             val str = bexp.toString()
 
             // expect
-            assertEquals("($lhs)$operator$rhs", str)
+            assertEquals("($lhs) $operator $rhs", str)
         }
 
         @Test
@@ -76,7 +261,7 @@ class ExpressionASTTests {
             val str = bexp.toString()
 
             // expect
-            assertEquals("$lhs$operator$rhs", str)
+            assertEquals("$lhs $operator $rhs", str)
         }
 
         @Test
@@ -131,9 +316,9 @@ class ExpressionASTTests {
         @Test
         fun givenBinaryExpressionWithCharSubtraction_whenMakeSafe_expectSafeCharSubtractionWrapper() {
             // given
-            val lhs = CharacterLiteralAST("B")
+            val lhs = CharacterLiteralAST('B')
             val operator = SubtractionOperator
-            val rhs = CharacterLiteralAST("a")
+            val rhs = CharacterLiteralAST('a')
 
             val expr = BinaryExpressionAST(lhs, operator, rhs)
 
