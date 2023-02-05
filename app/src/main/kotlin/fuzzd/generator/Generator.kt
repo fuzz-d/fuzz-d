@@ -36,6 +36,7 @@ import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.error.IdentifierOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator.FunctionMethodNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.LoopCounterGenerator
@@ -45,6 +46,7 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.ReturnsNameGenerat
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.context.GenerationContext
+import fuzzd.generator.selection.ExpressionType
 import fuzzd.generator.selection.ExpressionType.BINARY
 import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
@@ -107,17 +109,6 @@ class Generator(
         return TopLevelAST(ast)
     }
 
-    fun generateMethodBody(context: GenerationContext, method: MethodAST): SequenceAST {
-        val body = generateSequence(context)
-
-        val returnAssigns = method.returns.map { r ->
-            val expr = generateExpression(context, r.type())
-            AssignmentAST(r, expr)
-        }
-
-        return body.addStatements(returnAssigns)
-    }
-
     override fun generateMainFunction(context: GenerationContext): MainFunctionAST {
         val body = generateSequence(context)
         val printContext = context.disableOnDemand()
@@ -168,13 +159,23 @@ class Generator(
         return method
     }
 
-    override fun generateSequence(context: GenerationContext): SequenceAST {
-        val n = random.nextInt(1, 20)
+    private fun generateMethodBody(context: GenerationContext, method: MethodAST): SequenceAST {
+        val body = generateSequence(context, maxStatements = 10)
+
+        val returnAssigns = method.returns.map { r ->
+            val expr = generateExpression(context, r.type()).makeSafe()
+            AssignmentAST(r, expr)
+        }
+
+        return body.addStatements(context.clearDependentStatements() + returnAssigns)
+    }
+
+    override fun generateSequence(context: GenerationContext, maxStatements: Int): SequenceAST {
+        val n = random.nextInt(1, maxStatements)
 
         val statements = (1..n).map { generateStatement(context) }.toList()
 
-        val allStatements = context.getDependentStatements() + statements
-        context.clearDependentStatements()
+        val allStatements = context.clearDependentStatements() + statements
 
         return SequenceAST(allStatements)
     }
@@ -306,15 +307,29 @@ class Generator(
     /* ==================================== EXPRESSIONS ==================================== */
 
     override fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST {
-        val expr = when (selectionManager.selectExpressionType(targetType, context)) {
+        return try {
+            generateExpressionFromType(selectionManager.selectExpressionType(targetType, context), context, targetType)
+        } catch (e: IdentifierOnDemandException) {
+            generateExpressionFromType(
+                selectionManager.selectExpressionType(targetType, context, identifier = false),
+                context,
+                targetType
+            )
+        }
+    }
+
+    private fun generateExpressionFromType(
+        exprType: ExpressionType,
+        context: GenerationContext,
+        targetType: Type
+    ): ExpressionAST =
+        when (exprType) {
             UNARY -> generateUnaryExpression(context, targetType)
             BINARY -> generateBinaryExpression(context, targetType)
             FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
             IDENTIFIER -> generateIdentifier(context, targetType)
             LITERAL -> generateLiteralForType(context, targetType)
         }
-        return expr
-    }
 
     override fun generateFunctionMethodCall(context: GenerationContext, targetType: Type): FunctionMethodCallAST {
         if (!context.globalSymbolTable.hasFunctionMethodType(targetType)) {
@@ -331,6 +346,7 @@ class Generator(
         return FunctionMethodCallAST(functionMethod, arguments)
     }
 
+    @Throws(IdentifierOnDemandException::class)
     override fun generateIdentifier(
         context: GenerationContext,
         targetType: Type,
@@ -343,6 +359,8 @@ class Generator(
         }
 
         if (withType.isEmpty()) {
+            if (!context.onDemandIdentifiers) throw IdentifierOnDemandException("Identifier of type $targetType not available")
+
             val decl = generateDeclarationStatementForType(context, targetType, true)
             context.addDependentStatement(decl)
         }
@@ -416,7 +434,7 @@ class Generator(
 
     override fun generateType(context: GenerationContext, literalOnly: Boolean): Type =
         if (!context.onDemandIdentifiers) {
-            selectionManager.randomSelection(context.symbolTable.types())
+            selectionManager.randomSelection(context.symbolTable.types().filter { it == IntType || it == BoolType })
         } else {
             selectionManager.selectType(literalOnly = literalOnly)
         }

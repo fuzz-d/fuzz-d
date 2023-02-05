@@ -38,7 +38,7 @@ interface ASTGenerator {
 
     fun generateMethod(context: GenerationContext): MethodAST
 
-    fun generateSequence(context: GenerationContext): SequenceAST
+    fun generateSequence(context: GenerationContext, maxStatements: Int = 15): SequenceAST
 
     /* ========================================== STATEMENTS ========================================== */
 

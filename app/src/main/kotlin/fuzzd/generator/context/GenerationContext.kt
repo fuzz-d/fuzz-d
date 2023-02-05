@@ -22,8 +22,10 @@ data class GenerationContext(
         return dependentStatements
     }
 
-    fun clearDependentStatements() {
+    fun clearDependentStatements(): List<StatementAST> {
+        val statements = dependentStatements.map { it }.toList()
         dependentStatements.clear()
+        return statements
     }
 
     fun increaseExpressionDepth(): GenerationContext =

@@ -36,7 +36,7 @@ class SelectionManager(
             return ArrayType(selectType(depth = depth + 1))
         }
 
-        val selection = listOf(RealType to 0.0, IntType to 0.56, BoolType to 0.44, CharType to 0.0)
+        val selection = listOf(/*RealType to 0.0, */IntType to 0.56, BoolType to 0.44/*, CharType to 0.0*/)
         return randomWeightedSelection(selection)
     }
 
@@ -104,15 +104,17 @@ class SelectionManager(
         return randomWeightedSelection(listOf(true to trueWeighting, false to 1 - trueWeighting))
     }
 
-    fun selectExpressionType(targetType: Type, context: GenerationContext): ExpressionType {
+    fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability = if (isBinaryType(targetType)) 0.3 / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
         val functionMethodCallProbability = if (targetType !is ArrayType) 0.15 / context.expressionDepth else 0.0
         val remainingProbability = (1 - binaryProbability - unaryProbability - functionMethodCallProbability)
+        val identifierProbability = if (identifier) 2 * remainingProbability / 3 else 0.0
+        val literalProbability = if (identifier) remainingProbability / 3 else remainingProbability
 
         val selection = listOf(
-            LITERAL to remainingProbability / 3,
-            IDENTIFIER to 2 * remainingProbability / 3,
+            LITERAL to literalProbability,
+            IDENTIFIER to identifierProbability,
             FUNCTION_METHOD_CALL to functionMethodCallProbability,
             UNARY to unaryProbability,
             BINARY to binaryProbability

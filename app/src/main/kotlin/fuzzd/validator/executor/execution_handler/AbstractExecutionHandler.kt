@@ -16,7 +16,13 @@ abstract class AbstractExecutionHandler(val fileDir: String, val fileName: Strin
     override fun compile(): ExecutionResult {
         val process = compileDafny(getCompileTarget(), fileDir, fileName)
         val termination = process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        return ExecutionResult(termination, process.exitValue(), process.readInputStream(), process.readErrorStream())
+
+        return ExecutionResult(
+            termination,
+            if (termination) process.exitValue() else TIMEOUT_RETURN_CODE,
+            process.readInputStream(),
+            process.readErrorStream()
+        )
     }
 
     override fun compileResult(): ExecutionResult = compileResult
@@ -24,7 +30,12 @@ abstract class AbstractExecutionHandler(val fileDir: String, val fileName: Strin
     override fun execute(): ExecutionResult {
         val process = runCommand(getExecuteCommand(fileDir, fileName))
         val termination = process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        return ExecutionResult(termination, process.exitValue(), process.readInputStream(), process.readErrorStream())
+        return ExecutionResult(
+            termination,
+            if (termination) process.exitValue() else TIMEOUT_RETURN_CODE,
+            process.readInputStream(),
+            process.readErrorStream()
+        )
     }
 
     override fun executeResult(): ExecutionResult = executionResult
@@ -39,5 +50,6 @@ abstract class AbstractExecutionHandler(val fileDir: String, val fileName: Strin
 
     companion object {
         private const val TIMEOUT_SECONDS = 15L
+        private const val TIMEOUT_RETURN_CODE = 2
     }
 }

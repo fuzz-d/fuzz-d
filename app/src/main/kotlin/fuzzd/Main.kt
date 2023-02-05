@@ -20,17 +20,25 @@ class Main(private val path: String) {
         logger.log { "Fuzzing with seed: $seed" }
 
         // generate program
-        val ast = generator.generate()
-        // output program
-        val writer = OutputWriter(path, directory, "$DAFNY_MAIN.$DAFNY_TYPE")
-        writer.write { ast }
-        writer.close()
+        try {
+            val ast = generator.generate()
 
-        // differential testing; log results
-        val validationResult = validator.validateFile(writer.dirPath, DAFNY_MAIN)
-        logger.log { validationResult }
+            // output program
+            val writer = OutputWriter(path, directory, "$DAFNY_MAIN.$DAFNY_TYPE")
+            writer.write { ast }
+            writer.close()
 
-        logger.close()
+            // differential testing; log results
+            val validationResult = validator.validateFile(writer.dirPath, DAFNY_MAIN)
+            logger.log { validationResult }
+        } catch (e: Exception) {
+            // do nothing
+            logger.log { "Generation threw error" }
+            logger.log { "======================" }
+            logger.log { e.stackTraceToString() }
+        } finally {
+            logger.close()
+        }
     }
 
     companion object {
