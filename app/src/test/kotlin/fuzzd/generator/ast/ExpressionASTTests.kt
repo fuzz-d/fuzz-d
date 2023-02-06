@@ -43,11 +43,11 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val body = IntegerLiteralAST(37481)
-            val method = FunctionMethodAST("fm1", IntType, params, body)
+            val method = FunctionMethodAST(FunctionMethodSignatureAST("fm1", IntType, params), body)
 
             // when
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false))
-            val methodCall = FunctionMethodCallAST(method, callParams)
+            FunctionMethodCallAST(method, callParams)
 
             // expect success
         }
@@ -57,13 +57,13 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val body = IntegerLiteralAST(37481)
-            val method = FunctionMethodAST("fm1", IntType, params, body)
+            val method = FunctionMethodAST(FunctionMethodSignatureAST("fm1", IntType, params), body)
 
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false), IntegerLiteralAST(135))
 
             // expect
             assertFailsWith<InvalidInputException>("Number of parameters doesn't match. Expected 2, Got 3") {
-                val methodCall = FunctionMethodCallAST(method, callParams)
+                FunctionMethodCallAST(method, callParams)
             }
         }
 
@@ -72,13 +72,13 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val body = IntegerLiteralAST(37481)
-            val method = FunctionMethodAST("fm1", IntType, params, body)
+            val method = FunctionMethodAST(FunctionMethodSignatureAST("fm1", IntType, params), body)
 
             val callParams = listOf<ExpressionAST>()
 
             // expect
             assertFailsWith<InvalidInputException>("Number of parameters doesn't match. Expected 2, Got 0") {
-                val methodCall = FunctionMethodCallAST(method, callParams)
+                FunctionMethodCallAST(method, callParams)
             }
         }
 
@@ -87,13 +87,13 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val body = IntegerLiteralAST(37481)
-            val method = FunctionMethodAST("fm1", IntType, params, body)
+            val method = FunctionMethodAST(FunctionMethodSignatureAST("fm1", IntType, params), body)
 
             val callParams = listOf<ExpressionAST>(IdentifierAST("p1", BoolType), IdentifierAST("p2", IntType))
 
             // expect
             assertFailsWith<InvalidInputException>("Function call parameter type mismatch for parameter 0. Expected int, got bool") {
-                val methodCall = FunctionMethodCallAST(method, callParams)
+                FunctionMethodCallAST(method, callParams)
             }
         }
     }
@@ -110,7 +110,7 @@ class ExpressionASTTests {
 
             // when
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false))
-            val methodCall = NonVoidMethodCallAST(method, callParams)
+            NonVoidMethodCallAST(method, callParams)
 
             // expect success
         }
@@ -125,7 +125,7 @@ class ExpressionASTTests {
             // when
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false), IntegerLiteralAST(13))
             assertFailsWith<InvalidInputException>("Number of parameters for call to m1 doesn't match. Expected 2, Got 3") {
-                val methodCall = NonVoidMethodCallAST(method, callParams)
+                NonVoidMethodCallAST(method, callParams)
             }
         }
 
@@ -139,7 +139,7 @@ class ExpressionASTTests {
             // when
             val callParams = listOf<ExpressionAST>()
             assertFailsWith<InvalidInputException>("Number of parameters for call to m1 doesn't match. Expected 2, Got 0") {
-                val methodCall = NonVoidMethodCallAST(method, callParams)
+                NonVoidMethodCallAST(method, callParams)
             }
         }
 
@@ -153,7 +153,7 @@ class ExpressionASTTests {
             // when
             val callParams = listOf(BooleanLiteralAST(false), IntegerLiteralAST(13))
             assertFailsWith<InvalidInputException>("Method call parameter type mismatch for parameter 0. Expected int, got bool") {
-                val methodCall = NonVoidMethodCallAST(method, callParams)
+                NonVoidMethodCallAST(method, callParams)
             }
         }
     }

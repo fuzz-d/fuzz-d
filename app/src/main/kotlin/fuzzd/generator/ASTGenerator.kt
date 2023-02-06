@@ -13,6 +13,7 @@ import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
+import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
@@ -35,6 +36,8 @@ interface ASTGenerator {
     fun generateMainFunction(context: GenerationContext): MainFunctionAST
 
     fun generateFunctionMethod(context: GenerationContext, targetType: Type? = null): FunctionMethodAST
+
+    fun generateFunctionMethodSignature(context: GenerationContext, targetType: Type? = null): FunctionMethodSignatureAST
 
     fun generateMethod(context: GenerationContext): MethodAST
 

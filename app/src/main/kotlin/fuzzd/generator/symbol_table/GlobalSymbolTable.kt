@@ -12,7 +12,7 @@ class GlobalSymbolTable {
         allFunctionMethods.forEach(this::addFunctionMethod)
 
     fun addFunctionMethod(functionMethod: FunctionMethodAST) {
-        functionMethods[functionMethod] = functionMethod.returnType
+        functionMethods[functionMethod] = functionMethod.returnType()
     }
 
     fun hasFunctionMethodType(type: Type): Boolean = functionMethods.any { it.value == type }

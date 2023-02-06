@@ -45,22 +45,24 @@ sealed class ExpressionAST : ASTElement {
     class FunctionMethodCallAST(private val function: FunctionMethodAST, private val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
-            if (params.size != function.params.size) {
-                throw InvalidInputException("Number of parameters doesn't match. Expected ${function.params.size}, Got ${params.size}")
+            val functionParams = function.params()
+
+            if (params.size != functionParams.size) {
+                throw InvalidInputException("Number of parameters doesn't match. Expected ${functionParams.size}, Got ${params.size}")
             }
 
             (params.indices).forEach { i ->
                 val paramType = params[i].type()
-                val expectedType = function.params[i].type()
+                val expectedType = functionParams[i].type()
                 if (paramType != expectedType) {
                     throw InvalidInputException("Function call parameter type mismatch for parameter $i. Expected $expectedType, got $paramType")
                 }
             }
         }
 
-        override fun type(): Type = function.returnType
+        override fun type(): Type = function.returnType()
 
-        override fun toString(): String = "${function.name}(${params.joinToString(", ")})"
+        override fun toString(): String = "${function.name()}(${params.joinToString(", ")})"
     }
 
     class TernaryExpressionAST(
@@ -161,6 +163,12 @@ sealed class ExpressionAST : ASTElement {
 
         override fun makeSafe(): IdentifierAST = this
     }
+
+//    class ClassFieldAST(
+//
+//        name: String,
+//        type: Type
+//    ) : IdentifierAST(name, type)
 
     class ArrayIdentifierAST(
         name: String,

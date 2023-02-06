@@ -16,6 +16,7 @@ import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
+import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
@@ -121,6 +122,23 @@ class Generator(
     }
 
     override fun generateFunctionMethod(context: GenerationContext, targetType: Type?): FunctionMethodAST {
+        val functionMethodSignature = generateFunctionMethodSignature(context, targetType)
+
+        val functionContext = GenerationContext(context.globalSymbolTable, onDemandIdentifiers = false)
+        functionMethodSignature.params.forEach { param -> functionContext.symbolTable.add(param) }
+
+        val body = generateExpression(functionContext, functionMethodSignature.returnType).makeSafe()
+        val functionMethodAST = FunctionMethodAST(functionMethodSignature, body)
+
+        context.globalSymbolTable.addFunctionMethod(functionMethodAST)
+
+        return functionMethodAST
+    }
+
+    override fun generateFunctionMethodSignature(
+        context: GenerationContext,
+        targetType: Type?
+    ): FunctionMethodSignatureAST {
         val name = functionMethodNameGenerator.newValue()
         val numberOfParameters = selectionManager.selectNumberOfParameters()
 
@@ -130,15 +148,7 @@ class Generator(
             IdentifierAST(parameterNameGenerator.newValue(), returnType)
         }
 
-        val functionContext = GenerationContext(context.globalSymbolTable, onDemandIdentifiers = false)
-        parameters.forEach { param -> functionContext.symbolTable.add(param) }
-
-        val body = generateExpression(functionContext, returnType).makeSafe()
-        val functionMethodAST = FunctionMethodAST(name, returnType, parameters, body)
-
-        context.globalSymbolTable.addFunctionMethod(functionMethodAST)
-
-        return functionMethodAST
+        return FunctionMethodSignatureAST(name, returnType, parameters)
     }
 
     override fun generateMethod(context: GenerationContext): MethodAST {
@@ -367,7 +377,7 @@ class Generator(
         val selection = context.globalSymbolTable.withFunctionMethodType(targetType)
         val functionMethod = selectionManager.randomSelection(selection)
 
-        val arguments = functionMethod.params.map { param ->
+        val arguments = functionMethod.params().map { param ->
             generateExpression(context.increaseExpressionDepth(), param.type()).makeSafe()
         }
 
