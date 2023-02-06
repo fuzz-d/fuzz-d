@@ -100,8 +100,8 @@ class Generator(
 
         context.globalSymbolTable.methods().forEach { method ->
             val functionContext = GenerationContext(context.globalSymbolTable, methodContext = method)
-            method.params.forEach { param -> functionContext.symbolTable.add(param) }
-            method.returns.forEach { r -> functionContext.symbolTable.add(r) }
+            method.params().forEach { param -> functionContext.symbolTable.add(param) }
+            method.returns().forEach { r -> functionContext.symbolTable.add(r) }
 
             val body = generateMethodBody(functionContext, method)
             method.setBody(body)
@@ -176,7 +176,7 @@ class Generator(
     private fun generateMethodBody(context: GenerationContext, method: MethodAST): SequenceAST {
         val body = generateSequence(context, maxStatements = 10)
 
-        val returnAssigns = method.returns.map { r ->
+        val returnAssigns = method.returns().map { r ->
             val expr = generateExpression(context, r.type()).makeSafe()
             AssignmentAST(r, expr)
         }
@@ -314,7 +314,7 @@ class Generator(
 
         // no support for on demand method generation within methods
         if (methods.isEmpty() && context.methodContext != null) {
-            throw MethodOnDemandException("Callable method unavailable for context ${context.methodContext.name}")
+            throw MethodOnDemandException("Callable method unavailable for context ${context.methodContext.name()}")
         }
 
         // generate new method if a callable method doesn't exist
@@ -324,19 +324,21 @@ class Generator(
             selectionManager.randomSelection(methods)
         }
 
-        val params = method.params.map { param -> generateExpression(context, param.type()).makeSafe() }
+        val params = method.params().map { param -> generateExpression(context, param.type()).makeSafe() }
 
         // add call for method context
         if (context.methodContext != null) {
             methodCallTable.addCall(method, context.methodContext)
         }
 
-        return if (method.returns.isEmpty()) {
+        val returns = method.returns()
+
+        return if (returns.isEmpty()) {
             // void method type
             VoidMethodCallAST(method, params)
         } else {
             // non-void method type
-            val idents = method.returns.map { r -> IdentifierAST(identifierNameGenerator.newValue(), r.type()) }
+            val idents = returns.map { r -> IdentifierAST(identifierNameGenerator.newValue(), r.type()) }
             idents.forEach { ident -> context.symbolTable.add(ident) }
             MultiDeclarationAST(idents, listOf(NonVoidMethodCallAST(method, params)))
         }

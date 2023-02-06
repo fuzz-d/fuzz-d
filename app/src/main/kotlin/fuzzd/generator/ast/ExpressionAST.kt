@@ -24,22 +24,24 @@ sealed class ExpressionAST : ASTElement {
     class NonVoidMethodCallAST(private val method: MethodAST, private val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
-            if (params.size != method.params.size) {
-                throw InvalidInputException("Number of parameters for call to ${method.name} doesn't match. Expected ${method.params.size}, Got ${params.size}")
+            val methodParams = method.params()
+
+            if (params.size != methodParams.size) {
+                throw InvalidInputException("Number of parameters for call to ${method.name()} doesn't match. Expected ${methodParams.size}, Got ${params.size}")
             }
 
             (params.indices).forEach() { i ->
                 val paramType = params[i].type()
-                val expectedType = method.params[i].type()
+                val expectedType = methodParams[i].type()
                 if (paramType != expectedType) {
                     throw InvalidInputException("Method call parameter type mismatch for parameter $i. Expected $expectedType, got $paramType")
                 }
             }
         }
 
-        override fun type(): Type = MethodReturnType(method.returns.map { it.type() })
+        override fun type(): Type = MethodReturnType(method.returns().map { it.type() })
 
-        override fun toString(): String = "${method.name}(${params.joinToString(", ")})"
+        override fun toString(): String = "${method.name()}(${params.joinToString(", ")})"
     }
 
     class FunctionMethodCallAST(private val function: FunctionMethodAST, private val params: List<ExpressionAST>) :
