@@ -23,12 +23,12 @@ class MethodCallTable {
 
     private fun findCallersFor(target: MethodAST): Set<MethodAST> {
         val calls = mutableSetOf<MethodAST>()
-        val queue = mutableListOf<MethodAST>()
+        val queue = ArrayDeque<MethodAST>()
 
         queue.addAll(callers[target] ?: listOf())
 
         while (queue.isNotEmpty()) {
-            val caller = queue.removeAt(0)
+            val caller = queue.removeFirst()
 
             if (caller !in calls) {
                 calls.add(caller)

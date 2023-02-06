@@ -37,6 +37,7 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
+import fuzzd.generator.ast.error.MethodOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator.FunctionMethodNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.LoopCounterGenerator
@@ -53,6 +54,7 @@ import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.SelectionManager
+import fuzzd.generator.selection.StatementType
 import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.DECLARATION
 import fuzzd.generator.selection.StatementType.IF
@@ -60,6 +62,7 @@ import fuzzd.generator.selection.StatementType.METHOD_CALL
 import fuzzd.generator.selection.StatementType.PRINT
 import fuzzd.generator.selection.StatementType.WHILE
 import fuzzd.generator.symbol_table.GlobalSymbolTable
+import fuzzd.generator.symbol_table.MethodCallTable
 import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.SAFE_ADDITION_INT
 import fuzzd.utils.SAFE_ADDITION_REAL
@@ -81,6 +84,7 @@ class Generator(
     private val identifierNameGenerator = IdentifierNameGenerator()
     private val loopCounterGenerator = LoopCounterGenerator()
     private val methodNameGenerator = MethodNameGenerator()
+    private val methodCallTable = MethodCallTable()
 
     /* ==================================== TOP LEVEL ==================================== */
 
@@ -183,7 +187,14 @@ class Generator(
     /* ==================================== STATEMENTS ==================================== */
 
     override fun generateStatement(context: GenerationContext): StatementAST =
-        when (selectionManager.selectStatementType(context)) {
+        try {
+            generateStatementFromType(selectionManager.selectStatementType(context), context)
+        } catch (e: MethodOnDemandException) {
+            generateStatementFromType(selectionManager.selectStatementType(context, methodCalls = false), context)
+        }
+
+    private fun generateStatementFromType(type: StatementType, context: GenerationContext): StatementAST =
+        when (type) {
             ASSIGN -> generateAssignmentStatement(context)
             DECLARATION -> generateDeclarationStatement(context)
             IF -> generateIfStatement(context)
@@ -285,13 +296,29 @@ class Generator(
     }
 
     override fun generateMethodCall(context: GenerationContext): StatementAST {
-        val method = if (context.globalSymbolTable.methods().isEmpty() || selectionManager.generateNewMethod(context)) {
+        // get callable methods
+        val methods = context.globalSymbolTable.methods().filter { method ->
+            context.methodContext == null || methodCallTable.canCall(context.methodContext, method)
+        }
+
+        // no support for on demand method generation within methods
+        if (methods.isEmpty() && context.methodContext != null) {
+            throw MethodOnDemandException("Callable method unavailable for context ${context.methodContext.name}")
+        }
+
+        // generate new method if a callable method doesn't exist
+        val method = if (methods.isEmpty() || selectionManager.generateNewMethod(context)) {
             generateMethod(context)
         } else {
-            selectionManager.randomSelection(context.globalSymbolTable.methods())
+            selectionManager.randomSelection(methods)
         }
 
         val params = method.params.map { param -> generateExpression(context, param.type()).makeSafe() }
+
+        // add call for method context
+        if (context.methodContext != null) {
+            methodCallTable.addCall(method, context.methodContext)
+        }
 
         return if (method.returns.isEmpty()) {
             // void method type
@@ -352,10 +379,8 @@ class Generator(
         targetType: Type,
         mutableConstraint: Boolean
     ): IdentifierAST {
-        var withType = context.symbolTable.withType(targetType)
-
-        if (mutableConstraint) {
-            withType = withType.filter { it.mutable }
+        val withType = context.symbolTable.withType(targetType).filter {
+            !mutableConstraint || it.mutable
         }
 
         if (withType.isEmpty()) {

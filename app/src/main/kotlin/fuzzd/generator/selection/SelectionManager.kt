@@ -80,11 +80,15 @@ class SelectionManager(
             else -> throw InvalidInputException("Target type $targetType not supported for unary operations")
         }
 
-    fun selectStatementType(context: GenerationContext): StatementType {
+    fun selectStatementType(context: GenerationContext, methodCalls: Boolean = true): StatementType {
         val ifStatementProbability =
             if (context.statementDepth < MAX_STATEMENT_DEPTH) 0.1 / context.statementDepth else 0.0
         val whileStatementProbability = ifStatementProbability
-        val methodCallProbability = if (context.methodContext == null) 0.2 else 0.0
+
+        val methodCallProbability = if (methodCalls) {
+            if (context.methodContext == null) 0.2 else 0.05
+        } else 0.0 // TODO() is there a better heuristic?
+
         val remainingProbability = 1 - methodCallProbability - whileStatementProbability - ifStatementProbability
 
         val selection = listOf(
@@ -101,7 +105,9 @@ class SelectionManager(
     fun generateNewMethod(context: GenerationContext): Boolean {
         val trueWeighting =
             0.2 / maxOf(context.statementDepth, context.expressionDepth, context.globalSymbolTable.methods().size)
-        return randomWeightedSelection(listOf(true to trueWeighting, false to 1 - trueWeighting))
+
+        return context.methodContext == null &&
+            randomWeightedSelection(listOf(true to trueWeighting, false to 1 - trueWeighting))
     }
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
