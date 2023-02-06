@@ -8,7 +8,7 @@
 
 plugins {
     // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
-    id 'org.jetbrains.kotlin.jvm' version '1.6.21'
+    id 'org.jetbrains.kotlin.jvm' version "1.8.10"
 
     // Apply the application plugin to add support for building a CLI application in Java.
     id 'application'
@@ -19,14 +19,17 @@ repositories {
     mavenCentral()
 }
 
+def KOTLIN_VERSION = "1.8.10"
+
 dependencies {
+
     // Align versions of all Kotlin components
     implementation platform('org.jetbrains.kotlin:kotlin-bom')
 
     implementation 'com.google.guava:guava:31.0.1-jre'
-    implementation "org.jetbrains.kotlin:kotlin-reflect:1.6.21"
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
+    implementation "org.jetbrains.kotlin:kotlin-reflect:${KOTLIN_VERSION}"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${KOTLIN_VERSION}"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
 
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
     testImplementation 'org.jetbrains.kotlin:kotlin-test-junit'
