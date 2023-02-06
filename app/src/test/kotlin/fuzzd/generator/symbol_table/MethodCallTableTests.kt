@@ -27,7 +27,7 @@ class MethodCallTableTests {
     }
 
     @Test
-    fun whenCanCallWithRecusion_expectFalse() {
+    fun whenCanCallWithRecursion_expectFalse() {
         assertFalse(methodCallTable.canCall(method1, method1))
     }
 
