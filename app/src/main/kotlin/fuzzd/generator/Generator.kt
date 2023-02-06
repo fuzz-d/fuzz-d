@@ -295,6 +295,7 @@ class Generator(
         return AssignmentAST(safeIdentifier, safeExpr)
     }
 
+    @Throws(MethodOnDemandException::class)
     override fun generateMethodCall(context: GenerationContext): StatementAST {
         // get callable methods
         val methods = context.globalSymbolTable.methods().filter { method ->
