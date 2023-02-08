@@ -12,13 +12,14 @@ class TraitAST(
     private val fields: Set<IdentifierAST>
 ) : ASTElement {
     fun extends(): Set<TraitAST> =
-        extends + (extends.map { it.extends() }).unionAll()
+        extends union (extends.map { it.extends() }).unionAll()
 
-    fun functionMethods(): Set<FunctionMethodSignatureAST> = extends().map { it.functionMethods }.unionAll()
+    fun functionMethods(): Set<FunctionMethodSignatureAST> =
+        functionMethods union extends().map { it.functionMethods }.unionAll()
 
-    fun methods(): Set<MethodSignatureAST> = extends().map { it.methods }.unionAll()
+    fun methods(): Set<MethodSignatureAST> = methods union extends().map { it.methods }.unionAll()
 
-    fun fields(): Set<IdentifierAST> = extends().map { it.fields }.unionAll()
+    fun fields(): Set<IdentifierAST> = fields union extends().map { it.fields }.unionAll()
 
     override fun toString(): String {
         val sb = StringBuilder()
