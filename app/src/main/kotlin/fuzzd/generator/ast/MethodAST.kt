@@ -3,7 +3,7 @@ package fuzzd.generator.ast
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 
 class MethodAST(
-    private val signature: MethodSignatureAST
+    val signature: MethodSignatureAST
 ) : ASTElement {
     constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>) :
         this(MethodSignatureAST(name, params, returns))

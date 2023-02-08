@@ -80,24 +80,28 @@ sealed class StatementAST : ASTElement {
 
     class VoidMethodCallAST(private val method: MethodAST, private val params: List<ExpressionAST>) : StatementAST() {
         init {
-            if (method.returns.isNotEmpty()) {
-                throw InvalidInputException("Generating invalid method call to non-void method ${method.name}")
+            val methodName = method.name()
+
+            if (method.returns().isNotEmpty()) {
+                throw InvalidInputException("Generating invalid method call to non-void method $methodName")
             }
 
-            if (params.size != method.params.size) {
-                throw InvalidInputException("Generating method call to ${method.name} with incorrect no. of parameters. Got ${params.size}, expected ${method.params.size}")
+            val methodParams = method.params()
+
+            if (params.size != methodParams.size) {
+                throw InvalidInputException("Generating method call to $methodName with incorrect no. of parameters. Got ${params.size}, expected ${methodParams.size}")
             }
 
             (params.indices).forEach { i ->
                 val paramType = params[i].type()
-                val expectedType = method.params[i].type()
+                val expectedType = methodParams[i].type()
                 if (paramType != expectedType) {
                     throw InvalidInputException("Method call parameter type mismatch for parameter $i. Expected $expectedType, got $paramType")
                 }
             }
         }
 
-        override fun toString(): String = "${method.name}(${params.joinToString(", ")});"
+        override fun toString(): String = "${method.name()}(${params.joinToString(", ")});"
     }
 
     object BreakAST : StatementAST() {

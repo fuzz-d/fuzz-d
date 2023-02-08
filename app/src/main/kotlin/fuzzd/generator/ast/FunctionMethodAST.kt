@@ -4,7 +4,7 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.utils.indent
 
 class FunctionMethodAST(
-    private val signature: FunctionMethodSignatureAST,
+    val signature: FunctionMethodSignatureAST,
     private val body: ExpressionAST
 ) : ASTElement {
     constructor(name: String, returnType: Type, params: List<IdentifierAST>, body: ExpressionAST) :
