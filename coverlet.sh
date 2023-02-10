@@ -1,0 +1,1 @@
+cd $DAFNYBIN && coverlet . --target "dotnet" --targetargs "Dafny.dll /noVerify /compile:2 /out:/Users/alex/fyp/fuzz-d/output /Users/alex/fyp/fuzz-d/output/js-timeout/main.dfy " -f cobertura -o /Users/alex/fyp/fuzz-d/output/js-timeout/coverage.cobertura.xml
