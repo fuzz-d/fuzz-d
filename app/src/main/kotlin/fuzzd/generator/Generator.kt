@@ -75,12 +75,10 @@ import fuzzd.utils.SAFE_MULTIPLY_REAL
 import fuzzd.utils.SAFE_SUBTRACT_CHAR
 import fuzzd.utils.SAFE_SUBTRACT_INT
 import fuzzd.utils.SAFE_SUBTRACT_REAL
-import kotlin.random.Random
 
 class Generator(
     private val selectionManager: SelectionManager,
 ) : ASTGenerator {
-    private val random = Random.Default
     private val functionMethodNameGenerator = FunctionMethodNameGenerator()
     private val identifierNameGenerator = IdentifierNameGenerator()
     private val loopCounterGenerator = LoopCounterGenerator()
@@ -185,7 +183,7 @@ class Generator(
     }
 
     override fun generateSequence(context: GenerationContext, maxStatements: Int): SequenceAST {
-        val n = random.nextInt(1, maxStatements)
+        val n = selectionManager.selectSequenceLength(maxStatements)
 
         val statements = (1..n).map { generateStatement(context) }.toList()
 
@@ -456,7 +454,7 @@ class Generator(
         ArrayInitAST(selectionManager.selectArrayLength(), targetType)
 
     override fun generateBooleanLiteral(context: GenerationContext): BooleanLiteralAST =
-        BooleanLiteralAST(random.nextBoolean())
+        BooleanLiteralAST(selectionManager.selectBoolean())
 
     override fun generateRealLiteral(context: GenerationContext): RealLiteralAST {
         val beforePoint = generateDecimalLiteralValue(negative = true)

@@ -18,10 +18,6 @@ data class GenerationContext(
         dependentStatements.add(statement)
     }
 
-    fun getDependentStatements(): List<StatementAST> {
-        return dependentStatements
-    }
-
     fun clearDependentStatements(): List<StatementAST> {
         val statements = dependentStatements.map { it }.toList()
         dependentStatements.clear()

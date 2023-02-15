@@ -140,9 +140,13 @@ class SelectionManager(
 
     fun selectArrayLength(): Int = random.nextInt(MIN_ARRAY_LENGTH, MAX_ARRAY_LENGTH)
 
+    fun selectSequenceLength(maxLength: Int) = random.nextInt(1, maxLength)
+
     fun selectDecimalLiteral(): Int = random.nextInt(0, MAX_INT_VALUE)
 
     fun selectCharacter(): Char = random.nextInt(20, MAX_CHAR_VALUE).toChar()
+
+    fun selectBoolean(): Boolean = random.nextBoolean()
 
     fun <T> randomWeightedSelection(items: List<Pair<T, Double>>): T {
         val probability = random.nextFloat()
