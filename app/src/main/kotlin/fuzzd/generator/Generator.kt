@@ -40,8 +40,6 @@ import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
 import fuzzd.generator.ast.error.MethodOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator.FunctionMethodNameGenerator
-import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGenerator
-import fuzzd.generator.ast.identifier_generator.NameGenerator.LoopCounterGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.MethodNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ParameterNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ReturnsNameGenerator
@@ -80,8 +78,6 @@ class Generator(
     private val selectionManager: SelectionManager,
 ) : ASTGenerator {
     private val functionMethodNameGenerator = FunctionMethodNameGenerator()
-    private val identifierNameGenerator = IdentifierNameGenerator()
-    private val loopCounterGenerator = LoopCounterGenerator()
     private val methodNameGenerator = MethodNameGenerator()
     private val methodCallTable = MethodCallTable()
 
@@ -221,7 +217,7 @@ class Generator(
     }
 
     override fun generateWhileStatement(context: GenerationContext): WhileLoopAST {
-        val counterIdentifierName = loopCounterGenerator.newValue()
+        val counterIdentifierName = context.loopCounterGenerator.newValue()
         val counterIdentifier = IdentifierAST(counterIdentifierName, IntType)
         val counterInitialisation = DeclarationAST(counterIdentifier, IntegerLiteralAST(0))
 
@@ -271,7 +267,7 @@ class Generator(
         val expr =
             if (isLiteral) generateLiteralForType(context, targetType) else generateExpression(context, targetType)
 
-        val identifierName = identifierNameGenerator.newValue()
+        val identifierName = context.identifierNameGenerator.newValue()
         val identifier = if (targetType is ArrayType) {
             val length = if (expr is ArrayIdentifierAST) expr.length else (expr as ArrayInitAST).length
             ArrayIdentifierAST(identifierName, targetType, length)
@@ -336,7 +332,7 @@ class Generator(
             VoidMethodCallAST(method, params)
         } else {
             // non-void method type
-            val idents = returns.map { r -> IdentifierAST(identifierNameGenerator.newValue(), r.type()) }
+            val idents = returns.map { r -> IdentifierAST(context.identifierNameGenerator.newValue(), r.type()) }
             idents.forEach { ident -> context.symbolTable.add(ident) }
             MultiDeclarationAST(idents, listOf(NonVoidMethodCallAST(method, params)))
         }
