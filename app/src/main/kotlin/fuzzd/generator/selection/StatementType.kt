@@ -6,5 +6,5 @@ enum class StatementType {
     IF,
     METHOD_CALL,
     PRINT,
-    WHILE
+    WHILE,
 }

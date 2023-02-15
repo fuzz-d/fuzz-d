@@ -5,7 +5,7 @@ import fuzzd.utils.indent
 
 class FunctionMethodAST(
     val signature: FunctionMethodSignatureAST,
-    private val body: ExpressionAST
+    private val body: ExpressionAST,
 ) : ASTElement {
     constructor(name: String, returnType: Type, params: List<IdentifierAST>, body: ExpressionAST) :
         this(FunctionMethodSignatureAST(name, returnType, params), body)
@@ -22,7 +22,7 @@ class FunctionMethodAST(
 class FunctionMethodSignatureAST(
     val name: String,
     val returnType: Type,
-    val params: List<IdentifierAST>
+    val params: List<IdentifierAST>,
 ) : ASTElement {
     override fun toString(): String =
         "function method $name(${params.joinToString(", ") { param -> "${param.name}: ${param.type()}" }}): $returnType"

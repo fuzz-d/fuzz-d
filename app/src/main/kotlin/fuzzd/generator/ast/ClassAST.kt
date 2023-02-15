@@ -11,7 +11,7 @@ class ClassAST(
     private val extends: Set<TraitAST>,
     private val functionMethods: Set<FunctionMethodAST>,
     private val methods: Set<MethodAST>,
-    private val fields: Set<IdentifierAST>
+    private val fields: Set<IdentifierAST>,
 ) : ASTElement {
     private val constructor: ConstructorAST
 
@@ -27,7 +27,7 @@ class ClassAST(
         val missingFunctionMethods = requiredFunctionMethods subtract functionMethods.map { it.signature }.toSet()
         if (missingFunctionMethods.isNotEmpty()) {
             throw InvalidInputException(
-                "Missing function methods for class declaration $name: ${missingFunctionMethods.joinToString(", ") { it.name }}"
+                "Missing function methods for class declaration $name: ${missingFunctionMethods.joinToString(", ") { it.name }}",
             )
         }
 

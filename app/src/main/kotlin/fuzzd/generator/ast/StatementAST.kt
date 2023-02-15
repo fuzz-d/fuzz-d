@@ -8,7 +8,7 @@ sealed class StatementAST : ASTElement {
     class IfStatementAST(
         private val condition: ExpressionAST,
         private val ifBranch: SequenceAST,
-        private val elseBranch: SequenceAST?
+        private val elseBranch: SequenceAST?,
     ) : StatementAST() {
         init {
             if (condition.type() != Type.BoolType) {
@@ -38,7 +38,7 @@ sealed class StatementAST : ASTElement {
         private val terminationCheck: IfStatementAST,
         private val condition: ExpressionAST,
         private val body: SequenceAST,
-        private val counterUpdate: AssignmentAST
+        private val counterUpdate: AssignmentAST,
     ) : StatementAST() {
         override fun toString(): String {
             val sb = StringBuilder()
@@ -54,7 +54,7 @@ sealed class StatementAST : ASTElement {
 
     open class MultiDeclarationAST(
         private val identifiers: List<IdentifierAST>,
-        private val exprs: List<ExpressionAST>
+        private val exprs: List<ExpressionAST>,
     ) :
         StatementAST() {
         override fun toString(): String = "var ${identifiers.joinToString(", ")} := ${exprs.joinToString(", ")};"
@@ -65,7 +65,7 @@ sealed class StatementAST : ASTElement {
 
     open class MultiAssignmentAST(
         private val identifiers: List<IdentifierAST>,
-        private val exprs: List<ExpressionAST>
+        private val exprs: List<ExpressionAST>,
     ) :
         StatementAST() {
         override fun toString(): String = "${identifiers.joinToString(", ")} := ${exprs.joinToString(", ")};"

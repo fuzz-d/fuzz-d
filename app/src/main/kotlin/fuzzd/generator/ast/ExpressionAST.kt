@@ -70,7 +70,7 @@ sealed class ExpressionAST : ASTElement {
     class TernaryExpressionAST(
         private val condition: ExpressionAST,
         private val ifBranch: ExpressionAST,
-        private val elseBranch: ExpressionAST
+        private val elseBranch: ExpressionAST,
     ) : ExpressionAST() {
         init {
             if (condition.type() != BoolType) {
@@ -113,7 +113,7 @@ sealed class ExpressionAST : ASTElement {
     class BinaryExpressionAST(
         private val expr1: ExpressionAST,
         private val operator: BinaryOperator,
-        private val expr2: ExpressionAST
+        private val expr2: ExpressionAST,
     ) : ExpressionAST() {
         private val type1: Type = expr1.type()
         private val type2: Type = expr2.type()
@@ -157,7 +157,7 @@ sealed class ExpressionAST : ASTElement {
     open class IdentifierAST(
         val name: String,
         private val type: Type,
-        val mutable: Boolean = true
+        val mutable: Boolean = true,
     ) : ExpressionAST() {
         override fun type(): Type = type
 
@@ -175,17 +175,17 @@ sealed class ExpressionAST : ASTElement {
     class ArrayIdentifierAST(
         name: String,
         private val type: ArrayType,
-        val length: Int
+        val length: Int,
     ) : IdentifierAST(name, type) {
         override fun type(): ArrayType = type
     }
 
     class ArrayIndexAST(
         val array: ArrayIdentifierAST,
-        val index: ExpressionAST
+        val index: ExpressionAST,
     ) : IdentifierAST(
         array.name,
-        array.type().internalType
+        array.type().internalType,
     ) {
         init {
             if (index.type() != IntType) {
@@ -201,8 +201,8 @@ sealed class ExpressionAST : ASTElement {
                 BinaryExpressionAST(
                     FunctionMethodCallAST(ABSOLUTE, listOf(safeIndex)),
                     ModuloOperator,
-                    IntegerLiteralAST(array.length.toString())
-                )
+                    IntegerLiteralAST(array.length.toString()),
+                ),
             )
         }
 

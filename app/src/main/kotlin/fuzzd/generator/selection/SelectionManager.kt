@@ -27,7 +27,7 @@ import fuzzd.generator.selection.StatementType.WHILE
 import kotlin.random.Random
 
 class SelectionManager(
-    private val random: Random
+    private val random: Random,
 ) {
     fun selectType(literalOnly: Boolean = false, depth: Int = 1): Type {
         val arrayTypeProbability = if (depth > 1 || literalOnly) 0.0 else 0.2
@@ -87,7 +87,9 @@ class SelectionManager(
 
         val methodCallProbability = if (methodCalls) {
             if (context.methodContext == null) 0.2 else 0.05
-        } else 0.0 // TODO() is there a better heuristic?
+        } else {
+            0.0 // TODO() is there a better heuristic?
+        }
 
         val remainingProbability = 1 - methodCallProbability - whileStatementProbability - ifStatementProbability
 
@@ -96,7 +98,7 @@ class SelectionManager(
             WHILE to whileStatementProbability,
             METHOD_CALL to methodCallProbability,
             DECLARATION to remainingProbability / 3,
-            ASSIGN to 2 * remainingProbability / 3
+            ASSIGN to 2 * remainingProbability / 3,
         )
 
         return randomWeightedSelection(selection)
@@ -123,7 +125,7 @@ class SelectionManager(
             IDENTIFIER to identifierProbability,
             FUNCTION_METHOD_CALL to functionMethodCallProbability,
             UNARY to unaryProbability,
-            BINARY to binaryProbability
+            BINARY to binaryProbability,
         )
 
         return randomWeightedSelection(selection)

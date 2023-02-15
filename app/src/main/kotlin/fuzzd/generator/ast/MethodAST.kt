@@ -3,7 +3,7 @@ package fuzzd.generator.ast
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 
 class MethodAST(
-    val signature: MethodSignatureAST
+    val signature: MethodSignatureAST,
 ) : ASTElement {
     constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>) :
         this(MethodSignatureAST(name, params, returns))
@@ -26,7 +26,7 @@ class MethodAST(
 class MethodSignatureAST(
     val name: String,
     val params: List<IdentifierAST>,
-    val returns: List<IdentifierAST>
+    val returns: List<IdentifierAST>,
 ) {
     override fun toString(): String {
         val sb = StringBuilder()

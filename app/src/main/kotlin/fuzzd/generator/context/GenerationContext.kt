@@ -12,7 +12,7 @@ data class GenerationContext(
     val symbolTable: SymbolTable = SymbolTable(),
     val methodContext: MethodAST? = null, // track if we are inside a method
     val onDemandIdentifiers: Boolean = true,
-    private val dependentStatements: MutableList<StatementAST.DeclarationAST> = mutableListOf()
+    private val dependentStatements: MutableList<StatementAST.DeclarationAST> = mutableListOf(),
 ) {
     fun addDependentStatement(statement: StatementAST.DeclarationAST) {
         dependentStatements.add(statement)
@@ -36,7 +36,7 @@ data class GenerationContext(
             symbolTable,
             methodContext,
             onDemandIdentifiers,
-            dependentStatements
+            dependentStatements,
         )
 
     fun increaseStatementDepth(): GenerationContext =
@@ -46,7 +46,7 @@ data class GenerationContext(
             expressionDepth,
             SymbolTable(symbolTable),
             methodContext,
-            onDemandIdentifiers
+            onDemandIdentifiers,
         )
 
     fun disableOnDemand(): GenerationContext =
@@ -57,6 +57,6 @@ data class GenerationContext(
             symbolTable,
             methodContext,
             false,
-            dependentStatements
+            dependentStatements,
         )
 }

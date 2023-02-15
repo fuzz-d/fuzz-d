@@ -5,5 +5,5 @@ enum class ExpressionType {
     BINARY,
     FUNCTION_METHOD_CALL,
     IDENTIFIER,
-    LITERAL
+    LITERAL,
 }

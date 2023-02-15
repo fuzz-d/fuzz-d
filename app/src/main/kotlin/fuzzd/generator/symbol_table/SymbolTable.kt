@@ -53,8 +53,7 @@ class SymbolTable(private val parent: SymbolTable? = null) {
 
     fun withInternalType(type: Type): List<IdentifierAST> = withType(ArrayType(type))
 
-    fun hasType(type: Type): Boolean =
-        typeTable[type]?.isNotEmpty() == true || parent?.hasType(type) == true
+    fun hasType(type: Type): Boolean = typeTable[type]?.isNotEmpty() == true || parent?.hasType(type) == true
 
     fun hasInternalType(type: Type): Boolean =
         typeTable[ArrayType(type)]?.isNotEmpty() == true || parent?.hasInternalType(type) == true
