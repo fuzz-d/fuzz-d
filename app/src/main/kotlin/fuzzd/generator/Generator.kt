@@ -78,7 +78,7 @@ import fuzzd.utils.SAFE_SUBTRACT_REAL
 import kotlin.random.Random
 
 class Generator(
-    private val selectionManager: SelectionManager
+    private val selectionManager: SelectionManager,
 ) : ASTGenerator {
     private val random = Random.Default
     private val functionMethodNameGenerator = FunctionMethodNameGenerator()
@@ -137,7 +137,7 @@ class Generator(
 
     override fun generateFunctionMethodSignature(
         context: GenerationContext,
-        targetType: Type?
+        targetType: Type?,
     ): FunctionMethodSignatureAST {
         val name = functionMethodNameGenerator.newValue()
         val numberOfParameters = selectionManager.selectNumberOfParameters()
@@ -164,7 +164,7 @@ class Generator(
             IdentifierAST(
                 parameterNameGenerator.newValue(),
                 generateType(context, literalOnly = true),
-                mutable = false
+                mutable = false,
             )
         }
 
@@ -237,18 +237,18 @@ class Generator(
                 counterIdentifier,
                 GreaterThanEqualOperator,
                 IntegerLiteralAST(
-                    DAFNY_MAX_LOOP_COUNTER
-                )
+                    DAFNY_MAX_LOOP_COUNTER,
+                ),
             ),
             SequenceAST(listOf(BreakAST)),
-            null
+            null,
         )
 
         val whileBody = generateSequence(context.increaseStatementDepth())
 
         val counterUpdate = AssignmentAST(
             counterIdentifier,
-            BinaryExpressionAST(counterIdentifier, AdditionOperator, IntegerLiteralAST(1))
+            BinaryExpressionAST(counterIdentifier, AdditionOperator, IntegerLiteralAST(1)),
         )
 
         return WhileLoopAST(counterInitialisation, counterTerminationCheck, condition, whileBody, counterUpdate)
@@ -268,7 +268,7 @@ class Generator(
     private fun generateDeclarationStatementForType(
         context: GenerationContext,
         targetType: Type,
-        isLiteral: Boolean
+        isLiteral: Boolean,
     ): DeclarationAST {
         val expr =
             if (isLiteral) generateLiteralForType(context, targetType) else generateExpression(context, targetType)
@@ -353,7 +353,7 @@ class Generator(
             generateExpressionFromType(
                 selectionManager.selectExpressionType(targetType, context, identifier = false),
                 context,
-                targetType
+                targetType,
             )
         }
     }
@@ -361,7 +361,7 @@ class Generator(
     private fun generateExpressionFromType(
         exprType: ExpressionType,
         context: GenerationContext,
-        targetType: Type
+        targetType: Type,
     ): ExpressionAST =
         when (exprType) {
             UNARY -> generateUnaryExpression(context, targetType)
@@ -390,7 +390,7 @@ class Generator(
     override fun generateIdentifier(
         context: GenerationContext,
         targetType: Type,
-        mutableConstraint: Boolean
+        mutableConstraint: Boolean,
     ): IdentifierAST {
         val withType = context.symbolTable.withType(targetType).filter {
             !mutableConstraint || it.mutable
@@ -499,7 +499,7 @@ class Generator(
             SAFE_MULTIPLY_REAL,
             SAFE_SUBTRACT_REAL,
             SAFE_SUBTRACT_CHAR,
-            SAFE_SUBTRACT_INT
+            SAFE_SUBTRACT_INT,
         )
         private const val DAFNY_MAX_LOOP_COUNTER = 100
     }
