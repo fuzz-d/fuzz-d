@@ -142,6 +142,14 @@ class SelectionManager(
 
     fun selectSequenceLength(maxLength: Int) = random.nextInt(1, maxLength)
 
+    fun selectNumberOfFields() = random.nextInt(0, MAX_FIELDS)
+
+    fun selectNumberOfFunctionMethods() = random.nextInt(0, MAX_FUNCTION_METHODS)
+
+    fun selectNumberOfMethods() = random.nextInt(0, MAX_METHODS)
+
+    fun selectNumberOfTraits() = random.nextInt(0, MAX_TRAITS)
+
     fun selectDecimalLiteral(): Int = random.nextInt(0, MAX_INT_VALUE)
 
     fun selectCharacter(): Char = random.nextInt(20, MAX_CHAR_VALUE).toChar()
@@ -169,5 +177,9 @@ class SelectionManager(
         private const val MAX_CHAR_VALUE = 127
         private const val MAX_PARAMETERS = 15
         private const val MAX_RETURNS = 15
+        private const val MAX_FIELDS = 5
+        private const val MAX_FUNCTION_METHODS = 10
+        private const val MAX_METHODS = 3
+        private const val MAX_TRAITS = 3
     }
 }

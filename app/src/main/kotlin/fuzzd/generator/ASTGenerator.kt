@@ -1,5 +1,6 @@
 package fuzzd.generator
 
+import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
@@ -16,6 +17,7 @@ import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
+import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
@@ -24,6 +26,7 @@ import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
+import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.LiteralType
@@ -35,11 +38,22 @@ interface ASTGenerator {
 
     fun generateMainFunction(context: GenerationContext): MainFunctionAST
 
+    fun generateTrait(context: GenerationContext): TraitAST
+
+    fun generateClass(context: GenerationContext): ClassAST
+
+    fun generateField(context: GenerationContext): IdentifierAST
+
     fun generateFunctionMethod(context: GenerationContext, targetType: Type? = null): FunctionMethodAST
 
-    fun generateFunctionMethodSignature(context: GenerationContext, targetType: Type? = null): FunctionMethodSignatureAST
+    fun generateFunctionMethodSignature(
+        context: GenerationContext,
+        targetType: Type? = null,
+    ): FunctionMethodSignatureAST
 
     fun generateMethod(context: GenerationContext): MethodAST
+
+    fun generateMethodSignature(context: GenerationContext): MethodSignatureAST
 
     fun generateSequence(context: GenerationContext, maxStatements: Int = 15): SequenceAST
 
@@ -65,7 +79,11 @@ interface ASTGenerator {
 
     fun generateFunctionMethodCall(context: GenerationContext, targetType: Type): FunctionMethodCallAST
 
-    fun generateIdentifier(context: GenerationContext, targetType: Type, mutableConstraint: Boolean = false): IdentifierAST
+    fun generateIdentifier(
+        context: GenerationContext,
+        targetType: Type,
+        mutableConstraint: Boolean = false,
+    ): IdentifierAST
 
     fun generateUnaryExpression(context: GenerationContext, targetType: Type): UnaryExpressionAST
 
