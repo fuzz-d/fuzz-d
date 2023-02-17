@@ -3,6 +3,12 @@
 - [ ] Test case reduction workflow
 - [x] instrumenting Dafny
 - [ ] OOP integration
+    - Class method + field calls
+    - Class Instantiation AST expression
+    - Trait & class extension tracking
+    - Trait generation with extends
+    - ~~Class & Trait AST definitions~~
+    - ~~Class & Trait Generation~~
 - [ ] proper checksum
 - [ ] further unit testing
 - [ ] parameter support in functions & function methods for data structures

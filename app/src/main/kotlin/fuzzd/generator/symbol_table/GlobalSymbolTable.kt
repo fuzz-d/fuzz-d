@@ -1,5 +1,6 @@
 package fuzzd.generator.symbol_table
 
+import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.MethodAST
@@ -12,6 +13,7 @@ class GlobalSymbolTable {
     private val methods = mutableListOf<MethodAST>()
 
     private val traits = mutableListOf<TraitAST>()
+    private val classes = mutableListOf<ClassAST>()
 
     fun addField(field: IdentifierAST) {
         fields.add(field)
@@ -44,4 +46,10 @@ class GlobalSymbolTable {
     }
 
     fun traits(): List<TraitAST> = traits
+
+    fun addClass(clazz: ClassAST) {
+        classes.add(clazz)
+    }
+
+    fun classes(): List<ClassAST> = classes
 }

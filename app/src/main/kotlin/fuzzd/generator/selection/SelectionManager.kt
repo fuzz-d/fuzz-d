@@ -4,8 +4,11 @@ import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
+import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.Companion.isBinaryType
@@ -29,20 +32,38 @@ import kotlin.random.Random
 class SelectionManager(
     private val random: Random,
 ) {
-    fun selectType(literalOnly: Boolean = false, depth: Int = 1): Type {
-        val arrayTypeProbability = if (depth > 1 || literalOnly) 0.0 else 0.2
+    fun selectType(context: GenerationContext, literalOnly: Boolean = false): Type {
+        val selection = listOf<Pair<(GenerationContext) -> Type, Double>>(
+//            this::selectClassType to 0.0,
+//            this::selectTraitType to 0.0,
+            this::selectArrayType to if (literalOnly) 0.0 else 0.2,
+            this::selectLiteralType to 0.8,
+        )
 
-        if (random.nextFloat() < arrayTypeProbability) {
-            return ArrayType(selectType(depth = depth + 1))
-        }
-
-        val selection = listOf(/*RealType to 0.0, */IntType to 0.56, BoolType to 0.44/*, CharType to 0.0*/)
-        return randomWeightedSelection(selection)
+        return randomWeightedSelection(selection).invoke(context)
     }
 
-    fun selectMethodReturnType(): List<Type> {
+    private fun selectClassType(context: GenerationContext): ClassType =
+        ClassType(randomSelection(context.globalSymbolTable.classes()))
+
+    private fun selectTraitType(context: GenerationContext): TraitType =
+        TraitType(randomSelection(context.globalSymbolTable.traits()))
+
+    private fun selectArrayType(context: GenerationContext): ArrayType = selectArrayTypeWithDepth(context, 1)
+
+    private fun selectArrayTypeWithDepth(context: GenerationContext, depth: Int): ArrayType {
+        // TODO: Multi dimensional arrays
+        val innerType =
+            if (withProbability(0.0 / depth)) selectArrayTypeWithDepth(context, depth + 1) else selectLiteralType(context)
+        return ArrayType(innerType)
+    }
+
+    private fun selectLiteralType(context: GenerationContext): LiteralType =
+        randomWeightedSelection(listOf(IntType to 0.5, BoolType to 0.5))
+
+    fun selectMethodReturnType(context: GenerationContext): List<Type> {
         val numberOfReturns = random.nextInt(MAX_RETURNS)
-        return (1..numberOfReturns).map { selectType(literalOnly = true) }
+        return (1..numberOfReturns).map { selectType(context, literalOnly = true) }
     }
 
     // selects operator, returning the operator and a selected input type for inner expressions
@@ -136,6 +157,21 @@ class SelectionManager(
         return items[randomIndex]
     }
 
+    fun <T> randomWeightedSelection(items: List<Pair<T, Double>>): T {
+        val probability = random.nextFloat()
+        var wsum = 0.0
+
+        for ((item, w) in items) {
+            wsum += w
+
+            if (probability < wsum) return item
+        }
+
+        return items[0].first // default
+    }
+
+    fun withProbability(probability: Double): Boolean = random.nextFloat() < probability
+
     fun selectNumberOfParameters(): Int = random.nextInt(0, MAX_PARAMETERS)
 
     fun selectArrayLength(): Int = random.nextInt(MIN_ARRAY_LENGTH, MAX_ARRAY_LENGTH)
@@ -155,19 +191,6 @@ class SelectionManager(
     fun selectCharacter(): Char = random.nextInt(20, MAX_CHAR_VALUE).toChar()
 
     fun selectBoolean(): Boolean = random.nextBoolean()
-
-    fun <T> randomWeightedSelection(items: List<Pair<T, Double>>): T {
-        val probability = random.nextFloat()
-        var wsum = 0.0
-
-        for ((item, w) in items) {
-            wsum += w
-
-            if (probability < wsum) return item
-        }
-
-        return items[0].first // default
-    }
 
     companion object {
         private const val MAX_STATEMENT_DEPTH = 5

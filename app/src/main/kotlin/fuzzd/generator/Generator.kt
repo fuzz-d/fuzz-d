@@ -180,7 +180,7 @@ class Generator(
     }
 
     override fun generateField(context: GenerationContext) =
-        IdentifierAST(fieldNameGenerator.newValue(), selectionManager.selectType())
+        IdentifierAST(fieldNameGenerator.newValue(), selectionManager.selectType(context))
 
     override fun generateFunctionMethod(
         context: GenerationContext,
@@ -228,7 +228,7 @@ class Generator(
 
     override fun generateMethodSignature(context: GenerationContext): MethodSignatureAST {
         val name = methodNameGenerator.newValue()
-        val returnType = selectionManager.selectMethodReturnType()
+        val returnType = selectionManager.selectMethodReturnType(context)
 
         val returnsNameGenerator = ReturnsNameGenerator()
         val returns = returnType.map { t -> IdentifierAST(returnsNameGenerator.newValue(), t) }
@@ -584,7 +584,7 @@ class Generator(
                 context.symbolTable.types().filter { it == IntType || it == BoolType },
             )
         } else {
-            selectionManager.selectType(literalOnly = literalOnly)
+            selectionManager.selectType(context, literalOnly = literalOnly)
         }
 
     private fun generateDecimalLiteralValue(negative: Boolean = true): String {
