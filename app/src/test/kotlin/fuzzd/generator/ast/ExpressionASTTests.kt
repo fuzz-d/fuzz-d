@@ -5,6 +5,7 @@ import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
@@ -29,11 +30,94 @@ import fuzzd.utils.SAFE_DIVISION_REAL
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.SAFE_SUBTRACT_CHAR
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class ExpressionASTTests {
+
+    @Nested
+    inner class ClassInstantiationTests {
+
+        @Test
+        fun givenClassInstantiationAST_whenInitWithCorrectParams_expectSuccessfulInit() {
+            // given
+            val classFields = setOf(IdentifierAST("cf1", BoolType), IdentifierAST("cf2", IntType))
+            val clazz = ClassAST.builder().withName("C1").withFields(classFields).build()
+
+            val params = listOf(BooleanLiteralAST(false), IntegerLiteralAST(50))
+
+            // when
+            ClassInstantiationAST(clazz, params)
+
+            // expect nothing
+        }
+
+        @Test
+        fun givenClassInstantiationAST_whenInitWithTooManyParams_expectInvalidInputError() {
+            // given
+            val classFields = setOf(IdentifierAST("cf1", BoolType), IdentifierAST("cf2", IntType))
+            val clazz = ClassAST.builder().withName("C1").withFields(classFields).build()
+
+            val params = listOf(BooleanLiteralAST(false), IntegerLiteralAST(50), BooleanLiteralAST(true))
+
+            runCatching {
+                ClassInstantiationAST(clazz, params)
+            }.onSuccess {
+                fail()
+            }.onFailure { throwable ->
+                assertTrue(throwable is InvalidInputException)
+                assertEquals(
+                    "Number of parameters for context {constructor call for C1} doesn't match. Expected 2, got 3",
+                    throwable.message,
+                )
+            }
+        }
+
+        @Test
+        fun givenClassInstantiationAST_whenInitWithTooFewParams_expectInvalidInputError() {
+            // given
+            val classFields = setOf(IdentifierAST("cf1", BoolType), IdentifierAST("cf2", IntType))
+            val clazz = ClassAST.builder().withName("C1").withFields(classFields).build()
+
+            val params = listOf(BooleanLiteralAST(false))
+
+            runCatching {
+                ClassInstantiationAST(clazz, params)
+            }.onSuccess {
+                fail()
+            }.onFailure { throwable ->
+                assertTrue(throwable is InvalidInputException)
+                assertEquals(
+                    "Number of parameters for context {constructor call for C1} doesn't match. Expected 2, got 1",
+                    throwable.message,
+                )
+            }
+        }
+
+        @Test
+        fun givenClassInstantiationAST_whenInitWithIncorrectParameterType_expectInvalidInputError() {
+            // given
+            val classFields = setOf(IdentifierAST("cf1", BoolType), IdentifierAST("cf2", IntType))
+            val clazz = ClassAST.builder().withName("C1").withFields(classFields).build()
+
+            val params = listOf(IntegerLiteralAST(42), IntegerLiteralAST(52))
+
+            runCatching {
+                ClassInstantiationAST(clazz, params)
+            }.onSuccess {
+                fail()
+            }.onFailure { throwable ->
+                assertTrue(throwable is InvalidInputException)
+                assertEquals(
+                    "Parameter type mismatch for parameter 0 in context {constructor call for C1}. Expected bool, got int",
+                    throwable.message,
+                )
+            }
+        }
+    }
 
     @Nested
     inner class FunctionMethodCallTests {
@@ -62,8 +146,16 @@ class ExpressionASTTests {
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false), IntegerLiteralAST(135))
 
             // expect
-            assertFailsWith<InvalidInputException>("Number of parameters doesn't match. Expected 2, Got 3") {
+            runCatching {
                 FunctionMethodCallAST(method, callParams)
+            }.onSuccess {
+                fail()
+            }.onFailure { throwable ->
+                assertTrue { throwable is InvalidInputException }
+                assertEquals(
+                    throwable.message,
+                    "Number of parameters for context {function method call to fm1} doesn't match. Expected 2, got 3",
+                )
             }
         }
 
@@ -77,8 +169,16 @@ class ExpressionASTTests {
             val callParams = listOf<ExpressionAST>()
 
             // expect
-            assertFailsWith<InvalidInputException>("Number of parameters doesn't match. Expected 2, Got 0") {
+            runCatching {
                 FunctionMethodCallAST(method, callParams)
+            }.onSuccess {
+                fail()
+            }.onFailure { throwable ->
+                assertTrue { throwable is InvalidInputException }
+                assertEquals(
+                    throwable.message,
+                    "Number of parameters for context {function method call to fm1} doesn't match. Expected 2, got 0",
+                )
             }
         }
 
@@ -92,8 +192,16 @@ class ExpressionASTTests {
             val callParams = listOf<ExpressionAST>(IdentifierAST("p1", BoolType), IdentifierAST("p2", IntType))
 
             // expect
-            assertFailsWith<InvalidInputException>("Function call parameter type mismatch for parameter 0. Expected int, got bool") {
+            runCatching {
                 FunctionMethodCallAST(method, callParams)
+            }.onSuccess {
+                fail()
+            }.onFailure { throwable ->
+                assertTrue { throwable is InvalidInputException }
+                assertEquals(
+                    throwable.message,
+                    "Parameter type mismatch for parameter 0 in context {function method call to fm1}. Expected int, got bool",
+                )
             }
         }
     }
@@ -350,8 +458,8 @@ class ExpressionASTTests {
                 BinaryExpressionAST(
                     FunctionMethodCallAST(ABSOLUTE, listOf(index)),
                     ModuloOperator,
-                    IntegerLiteralAST("5")
-                )
+                    IntegerLiteralAST("5"),
+                ),
             )
 
             assertEquals(expected.toString(), safe.toString())

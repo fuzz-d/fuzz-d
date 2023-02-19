@@ -1,8 +1,10 @@
 package fuzzd.generator.ast
 
+import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
+import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.RealType
@@ -15,28 +17,44 @@ import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.escape
 import fuzzd.utils.safetyMap
 
+fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, context: String) {
+    if (expected.size != actual.size) {
+        throw InvalidInputException("Number of parameters for context {$context} doesn't match. Expected ${expected.size}, got ${actual.size}")
+    }
+
+    (expected.indices).forEach { i ->
+        val expectedType = expected[i].type()
+        val actualType = actual[i].type()
+
+        if (actualType != expectedType) {
+            throw InvalidInputException("Parameter type mismatch for parameter $i in context {$context}. Expected $expectedType, got $actualType")
+        }
+    }
+}
+
 sealed class ExpressionAST : ASTElement {
 
     abstract fun type(): Type
 
     open fun makeSafe(): ExpressionAST = this
 
+    class ClassInstantiationAST(private val clazz: ClassAST, private val params: List<ExpressionAST>) :
+        ExpressionAST() {
+        init {
+            val expectedParams = clazz.fields.toList()
+            checkParams(expectedParams, params, "constructor call for ${clazz.name}")
+        }
+
+        override fun type(): Type = ClassType(clazz)
+
+        override fun toString(): String = "new ${clazz.name}(${params.joinToString(", ")});"
+    }
+
     class NonVoidMethodCallAST(private val method: MethodAST, private val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
             val methodParams = method.params()
-
-            if (params.size != methodParams.size) {
-                throw InvalidInputException("Number of parameters for call to ${method.name()} doesn't match. Expected ${methodParams.size}, Got ${params.size}")
-            }
-
-            (params.indices).forEach() { i ->
-                val paramType = params[i].type()
-                val expectedType = methodParams[i].type()
-                if (paramType != expectedType) {
-                    throw InvalidInputException("Method call parameter type mismatch for parameter $i. Expected $expectedType, got $paramType")
-                }
-            }
+            checkParams(methodParams, params, "method call to ${method.name()}")
         }
 
         override fun type(): Type = MethodReturnType(method.returns().map { it.type() })
@@ -48,18 +66,7 @@ sealed class ExpressionAST : ASTElement {
         ExpressionAST() {
         init {
             val functionParams = function.params()
-
-            if (params.size != functionParams.size) {
-                throw InvalidInputException("Number of parameters doesn't match. Expected ${functionParams.size}, Got ${params.size}")
-            }
-
-            (params.indices).forEach { i ->
-                val paramType = params[i].type()
-                val expectedType = functionParams[i].type()
-                if (paramType != expectedType) {
-                    throw InvalidInputException("Function call parameter type mismatch for parameter $i. Expected $expectedType, got $paramType")
-                }
-            }
+            checkParams(functionParams, params, "function method call to ${function.name()}")
         }
 
         override fun type(): Type = function.returnType()

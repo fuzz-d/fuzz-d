@@ -11,7 +11,7 @@ class ClassAST(
     private val extends: Set<TraitAST>,
     private val functionMethods: Set<FunctionMethodAST>,
     private val methods: Set<MethodAST>,
-    private val fields: Set<IdentifierAST>,
+    val fields: Set<IdentifierAST>,
 ) : ASTElement {
     private val constructor: ConstructorAST
 
