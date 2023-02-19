@@ -23,6 +23,7 @@ import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.StatementType.ASSIGN
+import fuzzd.generator.selection.StatementType.CLASS_INSTANTIATION
 import fuzzd.generator.selection.StatementType.DECLARATION
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.METHOD_CALL
@@ -37,10 +38,12 @@ class SelectionManager(
 //            this::selectClassType to 0.0,
 //            this::selectTraitType to 0.0,
             this::selectArrayType to if (literalOnly) 0.0 else 0.2,
-            this::selectLiteralType to 0.8,
+            this::selectLiteralType to if (literalOnly) 1.0 else 0.8,
         )
 
-        return randomWeightedSelection(selection).invoke(context)
+        val selected = randomWeightedSelection(selection).invoke(context)
+        println("$literalOnly, $selected")
+        return selected
     }
 
     private fun selectClassType(context: GenerationContext): ClassType =
@@ -54,7 +57,13 @@ class SelectionManager(
     private fun selectArrayTypeWithDepth(context: GenerationContext, depth: Int): ArrayType {
         // TODO: Multi dimensional arrays
         val innerType =
-            if (withProbability(0.0 / depth)) selectArrayTypeWithDepth(context, depth + 1) else selectLiteralType(context)
+            if (withProbability(0.0 / depth)) {
+                selectArrayTypeWithDepth(context, depth + 1)
+            } else {
+                selectLiteralType(
+                    context,
+                )
+            }
         return ArrayType(innerType)
     }
 
@@ -118,8 +127,9 @@ class SelectionManager(
             IF to ifStatementProbability,
             WHILE to whileStatementProbability,
             METHOD_CALL to methodCallProbability,
-            DECLARATION to remainingProbability / 3,
-            ASSIGN to 2 * remainingProbability / 3,
+            DECLARATION to 4 * remainingProbability / 6,
+            ASSIGN to 2 * remainingProbability / 6,
+//            CLASS_INSTANTIATION to remainingProbability / 6,
         )
 
         return randomWeightedSelection(selection)
@@ -132,6 +142,8 @@ class SelectionManager(
         return context.methodContext == null &&
             randomWeightedSelection(listOf(true to trueWeighting, false to 1 - trueWeighting))
     }
+
+    fun generateNewClass(): Boolean = random.nextFloat() < 0.1
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability = if (isBinaryType(targetType)) 0.3 / context.expressionDepth else 0.0

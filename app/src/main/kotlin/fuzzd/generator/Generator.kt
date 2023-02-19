@@ -9,6 +9,7 @@ import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
@@ -37,6 +38,7 @@ import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
+import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.RealType
@@ -61,6 +63,7 @@ import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.StatementType
 import fuzzd.generator.selection.StatementType.ASSIGN
+import fuzzd.generator.selection.StatementType.CLASS_INSTANTIATION
 import fuzzd.generator.selection.StatementType.DECLARATION
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.METHOD_CALL
@@ -113,6 +116,8 @@ class Generator(
 
         ast.addAll(context.globalSymbolTable.functionMethods())
         ast.addAll(context.globalSymbolTable.methods())
+        ast.addAll(context.globalSymbolTable.traits())
+        ast.addAll(context.globalSymbolTable.classes())
         ast.add(mainFunction)
 
         return TopLevelAST(ast)
@@ -173,10 +178,13 @@ class Generator(
             .unionAll()
             .map { signature -> generateMethod(signature) }
             .toSet()
-        requiredMethods.forEach { method -> method.setBody(generateMethodBody(context, method)) }
         val methods = requiredMethods union additionalMethods
+        methods.forEach { method -> method.setBody(generateMethodBody(context, method)) }
 
-        return ClassAST(classNameGenerator.newValue(), selectedTraits, functionMethods, methods, fields)
+        val clazz = ClassAST(classNameGenerator.newValue(), selectedTraits, functionMethods, methods, fields)
+        context.globalSymbolTable.addClass(clazz)
+
+        return clazz
     }
 
     override fun generateField(context: GenerationContext) =
@@ -283,6 +291,7 @@ class Generator(
         context: GenerationContext,
     ): StatementAST = when (type) {
         ASSIGN -> generateAssignmentStatement(context)
+        CLASS_INSTANTIATION -> generateClassInstantiation(context)
         DECLARATION -> generateDeclarationStatement(context)
         IF -> generateIfStatement(context)
         METHOD_CALL -> generateMethodCall(context)
@@ -394,6 +403,23 @@ class Generator(
         return AssignmentAST(safeIdentifier, safeExpr)
     }
 
+    override fun generateClassInstantiation(context: GenerationContext): DeclarationAST {
+        // on demand create class if one doesn't exist
+        if (!context.globalSymbolTable.hasClasses() || selectionManager.generateNewClass()) {
+            generateClass(context)
+        }
+
+        val selectedClass = selectionManager.randomSelection(context.globalSymbolTable.classes())
+        val requiredFields = selectedClass.fields
+
+        val params = requiredFields.map { field -> generateExpression(context, field.type()).makeSafe() }
+        val ident = IdentifierAST(context.identifierNameGenerator.newValue(), ClassType(selectedClass))
+
+        context.symbolTable.add(ident)
+
+        return DeclarationAST(ident, ClassInstantiationAST(selectedClass, params))
+    }
+
     @Throws(MethodOnDemandException::class)
     override fun generateMethodCall(context: GenerationContext): StatementAST {
         // get callable methods
@@ -503,7 +529,9 @@ class Generator(
     }
 
     override fun generateArrayIndex(context: GenerationContext, targetType: Type): ArrayIndexAST {
-        val identifier = generateIdentifier(context, ArrayType(targetType)) as ArrayIdentifierAST
+        val ident = generateIdentifier(context, ArrayType(targetType))
+
+        val identifier = ident as ArrayIdentifierAST
         val index = IntegerLiteralAST(generateDecimalLiteralValue(false), false)
 
         return ArrayIndexAST(identifier, index)

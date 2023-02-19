@@ -71,6 +71,8 @@ interface ASTGenerator {
 
     fun generateAssignmentStatement(context: GenerationContext): AssignmentAST
 
+    fun generateClassInstantiation(context: GenerationContext): DeclarationAST
+
     fun generateMethodCall(context: GenerationContext): StatementAST
 
     /* ========================================== EXPRESSIONS ========================================== */

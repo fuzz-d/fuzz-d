@@ -51,5 +51,7 @@ class GlobalSymbolTable {
         classes.add(clazz)
     }
 
+    fun hasClasses(): Boolean = classes.isNotEmpty()
+
     fun classes(): List<ClassAST> = classes
 }
