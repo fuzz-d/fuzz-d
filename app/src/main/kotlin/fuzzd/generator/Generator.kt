@@ -433,10 +433,12 @@ class Generator(
         }
 
         // generate new method if a callable method doesn't exist
-        val method = if (methods.isEmpty() || selectionManager.generateNewMethod(context)) {
-            generateMethod(context)
+        val method: MethodAST
+        if (methods.isEmpty() || selectionManager.generateNewMethod(context)) {
+            method = generateMethod(context)
+            context.globalSymbolTable.addMethod(method)
         } else {
-            selectionManager.randomSelection(methods)
+            method = selectionManager.randomSelection(methods)
         }
 
         val params = method.params().map { param -> generateExpression(context, param.type()).makeSafe() }
