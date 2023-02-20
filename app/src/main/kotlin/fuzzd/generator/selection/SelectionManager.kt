@@ -42,7 +42,6 @@ class SelectionManager(
         )
 
         val selected = randomWeightedSelection(selection).invoke(context)
-        println("$literalOnly, $selected")
         return selected
     }
 
