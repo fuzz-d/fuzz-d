@@ -3,7 +3,7 @@ package fuzzd.generator.ast
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.utils.indent
 
-class FunctionMethodAST(
+open class FunctionMethodAST(
     val signature: FunctionMethodSignatureAST,
     private val body: ExpressionAST,
 ) : ASTElement {

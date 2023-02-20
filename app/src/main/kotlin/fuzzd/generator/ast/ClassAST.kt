@@ -9,8 +9,8 @@ import fuzzd.utils.unionAll
 class ClassAST(
     val name: String,
     private val extends: Set<TraitAST>,
-    private val functionMethods: Set<FunctionMethodAST>,
-    private val methods: Set<MethodAST>,
+    val functionMethods: Set<FunctionMethodAST>,
+    val methods: Set<MethodAST>,
     val fields: Set<IdentifierAST>,
 ) : ASTElement {
     private val constructor: ConstructorAST

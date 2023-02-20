@@ -1,6 +1,7 @@
 package fuzzd.generator.ast
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.utils.indent
 
@@ -78,7 +79,8 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "print $expr;"
     }
 
-    class VoidMethodCallAST(private val method: MethodAST, private val params: List<ExpressionAST>) : StatementAST() {
+    class VoidMethodCallAST(private val method: MethodAST, private val params: List<ExpressionAST>) :
+        StatementAST() {
         init {
             val methodName = method.name()
 
