@@ -47,7 +47,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): Type = ClassType(clazz)
 
-        override fun toString(): String = "new ${clazz.name}(${params.joinToString(", ")});"
+        override fun toString(): String = "new ${clazz.name}(${params.joinToString(", ")})"
     }
 
     class NonVoidMethodCallAST(private val method: MethodAST, private val params: List<ExpressionAST>) :

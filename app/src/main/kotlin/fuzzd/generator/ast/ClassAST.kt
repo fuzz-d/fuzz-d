@@ -49,13 +49,14 @@ class ClassAST(
         }
         sb.appendLine(" {")
 
-        fields.forEach { field -> sb.appendLine(indent("${field.name} : ${field.type()};")) }
+        fields.forEach { field -> sb.appendLine(indent("var ${field.name} : ${field.type()};")) }
 
         sb.appendLine(indent(constructor))
 
         functionMethods.forEach { fm -> sb.appendLine(indent(fm)) }
         methods.forEach { m -> sb.appendLine(indent(m)) }
 
+        sb.appendLine("}")
         return sb.toString()
     }
 

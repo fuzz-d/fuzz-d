@@ -406,7 +406,8 @@ class Generator(
     override fun generateClassInstantiation(context: GenerationContext): DeclarationAST {
         // on demand create class if one doesn't exist
         if (!context.globalSymbolTable.hasClasses() || selectionManager.generateNewClass()) {
-            generateClass(context)
+            val classContext = GenerationContext(context.globalSymbolTable)
+            generateClass(classContext)
         }
 
         val selectedClass = selectionManager.randomSelection(context.globalSymbolTable.classes())
@@ -610,9 +611,7 @@ class Generator(
 
     override fun generateType(context: GenerationContext, literalOnly: Boolean): Type =
         if (!context.onDemandIdentifiers) {
-            selectionManager.randomSelection(
-                context.symbolTable.types().filter { it == IntType || it == BoolType },
-            )
+            selectionManager.randomSelection(listOf(IntType, BoolType))
         } else {
             selectionManager.selectType(context, literalOnly = literalOnly)
         }

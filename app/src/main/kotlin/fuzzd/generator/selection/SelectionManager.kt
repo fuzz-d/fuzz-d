@@ -126,9 +126,9 @@ class SelectionManager(
             IF to ifStatementProbability,
             WHILE to whileStatementProbability,
             METHOD_CALL to methodCallProbability,
-            DECLARATION to 4 * remainingProbability / 6,
-            ASSIGN to 2 * remainingProbability / 6,
-//            CLASS_INSTANTIATION to remainingProbability / 6,
+            DECLARATION to 2 * remainingProbability / 6,
+            ASSIGN to 3 * remainingProbability / 6,
+            CLASS_INSTANTIATION to remainingProbability / 6,
         )
 
         return randomWeightedSelection(selection)
