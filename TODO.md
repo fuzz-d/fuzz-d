@@ -2,9 +2,10 @@
     
 - [ ] Test case reduction workflow
 - [x] instrumenting Dafny
+- [ ] avoid array constructors as parameters
 - [ ] OOP integration
     - Class method + field calls
-    - Class Instantiation AST expression
+    - ~~Class Instantiation AST expression~~
     - Trait & class extension tracking
     - Trait generation with extends
     - ~~Class & Trait AST definitions~~
