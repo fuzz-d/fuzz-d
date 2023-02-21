@@ -11,6 +11,10 @@ class SymbolTable(private val parent: SymbolTable? = null) {
 
     fun has(identifier: IdentifierAST): Boolean = symbolTable[identifier] != null || parent?.has(identifier) ?: false
 
+    fun addAll(identifiers: Iterable<IdentifierAST>) {
+        identifiers.forEach(this::add)
+    }
+
     fun add(identifier: IdentifierAST) {
         if (has(identifier)) return
 

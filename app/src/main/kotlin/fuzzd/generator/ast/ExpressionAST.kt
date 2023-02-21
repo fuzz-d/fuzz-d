@@ -61,7 +61,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun toString(): String = "${method.name()}(${params.joinToString(", ")})"
     }
-    
+
     class FunctionMethodCallAST(private val function: FunctionMethodAST, private val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
@@ -171,13 +171,16 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = name
 
         override fun makeSafe(): IdentifierAST = this
+
+        override fun equals(other: Any?): Boolean =
+            other is IdentifierAST && other.name == this.name && other.type == this.type && other.mutable == this.mutable
     }
 
     class ClassInstanceAST(
         clazz: ClassAST,
         name: String,
     ) : IdentifierAST(name, ClassType(clazz)) {
-        val fields = clazz.fields.map { IdentifierAST("$name.${it.name}}", it.type()) }
+        val fields = clazz.fields.map { IdentifierAST("$name.${it.name}", it.type()) }
         val functionMethods =
             clazz.functionMethods.map { FunctionMethodSignatureAST("$name.${it.name()}", it.returnType(), it.params()) }
         val methods = clazz.methods.map { MethodSignatureAST("$name.${it.name()}", it.params(), it.returns()) }

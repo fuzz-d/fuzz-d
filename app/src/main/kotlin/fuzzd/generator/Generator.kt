@@ -105,6 +105,7 @@ class Generator(
         val mainFunction = generateMainFunction(context)
         val ast = mutableListOf<ASTElement>()
 
+        // TODO: fix error with class methods & function methods being inserted into symbol table
         context.globalSymbolTable.methods().forEach { method ->
             val functionContext = GenerationContext(context.globalSymbolTable, methodContext = method)
             method.params().forEach { param -> functionContext.symbolTable.add(param) }
@@ -141,10 +142,12 @@ class Generator(
 
         // TODO: extends map + extend traits
 
-        return TraitAST(traitNameGenerator.newValue(), setOf() /* TOOD() */, functionMethods, methods, fields)
+        return TraitAST(traitNameGenerator.newValue(), setOf() /* TODO() */, functionMethods, methods, fields)
     }
 
     override fun generateClass(context: GenerationContext): ClassAST {
+        val classContext = GenerationContext(context.globalSymbolTable.clone())
+
         // get traits
         val numberOfTraits = selectionManager.selectNumberOfTraits()
         val traits = context.globalSymbolTable.traits().toMutableList()
@@ -159,13 +162,15 @@ class Generator(
         }
 
         // generate fields
-        val additionalFields = (1..selectionManager.selectNumberOfFields()).map { generateField(context) }.toSet()
+        val additionalFields = (1..selectionManager.selectNumberOfFields()).map { generateField(classContext) }.toSet()
         val requiredFields = traits.map { it.fields() }.unionAll()
         val fields = requiredFields union additionalFields
 
+        classContext.symbolTable.addAll(fields)
+
         // generate function methods
         val additionalFunctionMethods =
-            (1..selectionManager.selectNumberOfFunctionMethods()).map { generateFunctionMethod(context) }.toSet()
+            (1..selectionManager.selectNumberOfFunctionMethods()).map { generateFunctionMethod(classContext) }.toSet()
         val requiredFunctionMethods = traits.map { it.functionMethods() }
             .unionAll()
             .map { signature -> generateFunctionMethod(context, signature) }
@@ -173,7 +178,7 @@ class Generator(
         val functionMethods = requiredFunctionMethods union additionalFunctionMethods
 
         // generate methods
-        val additionalMethods = (1..selectionManager.selectNumberOfMethods()).map { generateMethod(context) }.toSet()
+        val additionalMethods = (1..selectionManager.selectNumberOfMethods()).map { generateMethod(classContext) }.toSet()
         val requiredMethods = traits.map { it.methods() }
             .unionAll()
             .map { signature -> generateMethod(signature) }
@@ -182,6 +187,7 @@ class Generator(
         methods.forEach { method -> method.setBody(generateMethodBody(context, method)) }
 
         val clazz = ClassAST(classNameGenerator.newValue(), selectedTraits, functionMethods, methods, fields)
+
         context.globalSymbolTable.addClass(clazz)
 
         return clazz
@@ -268,7 +274,7 @@ class Generator(
     override fun generateSequence(context: GenerationContext, maxStatements: Int): SequenceAST {
         val n = selectionManager.selectSequenceLength(maxStatements)
 
-        val statements = (1..n).map { generateStatement(context) }.toList()
+        val statements = (1..n).map { generateStatement(context) }
 
         val allStatements = context.clearDependentStatements() + statements
 
@@ -406,8 +412,7 @@ class Generator(
     override fun generateClassInstantiation(context: GenerationContext): DeclarationAST {
         // on demand create class if one doesn't exist
         if (!context.globalSymbolTable.hasClasses() || selectionManager.generateNewClass()) {
-            val classContext = GenerationContext(context.globalSymbolTable)
-            generateClass(classContext)
+            generateClass(context)
         }
 
         val selectedClass = selectionManager.randomSelection(context.globalSymbolTable.classes())
@@ -528,7 +533,9 @@ class Generator(
             context.addDependentStatement(decl)
         }
 
-        return selectionManager.randomSelection(context.symbolTable.withType(targetType).filter { it.mutable })
+        return selectionManager.randomSelection(
+            context.symbolTable.withType(targetType).filter { !mutableConstraint || it.mutable },
+        )
     }
 
     override fun generateArrayIndex(context: GenerationContext, targetType: Type): ArrayIndexAST {
