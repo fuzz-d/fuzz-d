@@ -150,7 +150,12 @@ class SelectionManager(
         val functionMethodCallProbability = if (targetType !is ArrayType) 0.15 / context.expressionDepth else 0.0
         val remainingProbability = (1 - binaryProbability - unaryProbability - functionMethodCallProbability)
         val identifierProbability = if (identifier) 2 * remainingProbability / 3 else 0.0
-        val literalProbability = if (identifier) remainingProbability / 3 else remainingProbability
+        val literalProbability =
+            if (targetType is ArrayType && context.expressionDepth > 1) {
+                0.0
+            } else {
+                if (identifier) remainingProbability / 3 else remainingProbability
+            }
 
         val selection = listOf(
             LITERAL to literalProbability,
@@ -160,7 +165,17 @@ class SelectionManager(
             BINARY to binaryProbability,
         )
 
-        return randomWeightedSelection(selection)
+        val selected = randomWeightedSelection(normaliseWeights(selection))
+//        println(targetType)
+//        println(selected)
+        return selected
+    }
+
+    fun <T> normaliseWeights(items: List<Pair<T, Double>>): List<Pair<T, Double>> {
+        var weightSum = 0.0
+
+        items.forEach { item -> weightSum += item.second }
+        return items.map { item -> Pair(item.first, item.second / weightSum) }
     }
 
     fun <T> randomSelection(items: List<T>): T {

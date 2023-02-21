@@ -37,7 +37,7 @@ class GlobalSymbolTable {
 
     fun methods(): List<MethodAST> = methods
 
-    private fun addAllTraits(traits: Iterable<TraitAST>) {
+    fun addAllTraits(traits: Iterable<TraitAST>) {
         traits.forEach(this::addTrait)
     }
 
@@ -47,7 +47,7 @@ class GlobalSymbolTable {
 
     fun traits(): List<TraitAST> = traits
 
-    private fun addAllClasses(classes: Iterable<ClassAST>) {
+    fun addAllClasses(classes: Iterable<ClassAST>) {
         classes.forEach(this::addClass)
     }
 

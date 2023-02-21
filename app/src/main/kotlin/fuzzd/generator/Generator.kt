@@ -43,6 +43,7 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
+import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.error.MethodOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ClassNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.FieldNameGenerator
@@ -105,7 +106,6 @@ class Generator(
         val mainFunction = generateMainFunction(context)
         val ast = mutableListOf<ASTElement>()
 
-        // TODO: fix error with class methods & function methods being inserted into symbol table
         context.globalSymbolTable.methods().forEach { method ->
             val functionContext = GenerationContext(context.globalSymbolTable, methodContext = method)
             method.params().forEach { param -> functionContext.symbolTable.add(param) }
@@ -173,22 +173,30 @@ class Generator(
             (1..selectionManager.selectNumberOfFunctionMethods()).map { generateFunctionMethod(classContext) }.toSet()
         val requiredFunctionMethods = traits.map { it.functionMethods() }
             .unionAll()
-            .map { signature -> generateFunctionMethod(context, signature) }
+            .map { signature -> generateFunctionMethod(classContext, signature) }
             .toSet()
         val functionMethods = requiredFunctionMethods union additionalFunctionMethods
 
         // generate methods
-        val additionalMethods = (1..selectionManager.selectNumberOfMethods()).map { generateMethod(classContext) }.toSet()
+        val additionalMethods =
+            (1..selectionManager.selectNumberOfMethods()).map { generateMethod(classContext) }.toSet()
         val requiredMethods = traits.map { it.methods() }
             .unionAll()
             .map { signature -> generateMethod(signature) }
             .toSet()
         val methods = requiredMethods union additionalMethods
-        methods.forEach { method -> method.setBody(generateMethodBody(context, method)) }
+        methods.forEach { method -> method.setBody(generateMethodBody(classContext, method)) }
 
         val clazz = ClassAST(classNameGenerator.newValue(), selectedTraits, functionMethods, methods, fields)
 
         context.globalSymbolTable.addClass(clazz)
+
+        context.globalSymbolTable.addAllClasses(
+            classContext.globalSymbolTable.classes() subtract context.globalSymbolTable.classes().toSet(),
+        )
+        context.globalSymbolTable.addAllTraits(
+            classContext.globalSymbolTable.traits() subtract context.globalSymbolTable.traits().toSet(),
+        )
 
         return clazz
     }
@@ -264,7 +272,7 @@ class Generator(
         val body = generateSequence(context, maxStatements = 10)
 
         val returnAssigns = method.returns().map { r ->
-            val expr = generateExpression(context, r.type()).makeSafe()
+            val expr = generateExpression(context.disableOnDemand(), r.type()).makeSafe()
             AssignmentAST(r, expr)
         }
 
@@ -275,6 +283,9 @@ class Generator(
         val n = selectionManager.selectSequenceLength(maxStatements)
 
         val statements = (1..n).map { generateStatement(context) }
+
+//        println("On demand statements")
+//        println("${context.dependentStatements}")
 
         val allStatements = context.clearDependentStatements() + statements
 
@@ -586,7 +597,13 @@ class Generator(
         targetType: Type,
     ): ExpressionAST = when (targetType) {
         is LiteralType -> generateLiteralForType(context, targetType)
-        is ArrayType -> generateArrayInitialisation(context, targetType)
+        is ArrayType ->
+            if (context.expressionDepth > 1) {
+                throw InvalidInputException("Generating array constructor in incorrect location")
+            } else {
+                generateArrayInitialisation(context, targetType)
+            }
+
         else -> throw UnsupportedOperationException("Trying to generate literal for unsupported type")
     }
 
