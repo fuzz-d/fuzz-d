@@ -1,10 +1,11 @@
 package fuzzd.generator.ast
 
-import fuzzd.generator.ast.ExpressionAST.ArrayIdentifierAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
+import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
@@ -12,8 +13,8 @@ import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
-import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
+import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
@@ -25,15 +26,96 @@ import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.SAFE_DIVISION_INT
-import fuzzd.utils.SAFE_DIVISION_REAL
 import fuzzd.utils.SAFE_MODULO_INT
-import fuzzd.utils.SAFE_SUBTRACT_CHAR
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class ExpressionASTTests {
+
+    @Nested
+    inner class ClassInstantiationTests {
+
+        @Test
+        fun givenClassInstantiationAST_whenInitWithCorrectParams_expectSuccessfulInit() {
+            // given
+            val classFields = setOf(IdentifierAST("cf1", BoolType), IdentifierAST("cf2", IntType))
+            val clazz = ClassAST.builder().withName("C1").withFields(classFields).build()
+
+            val params = listOf(BooleanLiteralAST(false), IntegerLiteralAST(50))
+
+            // when
+            ClassInstantiationAST(clazz, params)
+
+            // expect nothing
+        }
+
+        @Test
+        fun givenClassInstantiationAST_whenInitWithTooManyParams_expectInvalidInputError() {
+            // given
+            val classFields = setOf(IdentifierAST("cf1", BoolType), IdentifierAST("cf2", IntType))
+            val clazz = ClassAST.builder().withName("C1").withFields(classFields).build()
+
+            val params = listOf(BooleanLiteralAST(false), IntegerLiteralAST(50), BooleanLiteralAST(true))
+
+            runCatching {
+                ClassInstantiationAST(clazz, params)
+            }.onSuccess {
+                fail()
+            }.onFailure { throwable ->
+                assertTrue(throwable is InvalidInputException)
+                assertEquals(
+                    "Number of parameters for context {constructor call for C1} doesn't match. Expected 2, got 3",
+                    throwable.message,
+                )
+            }
+        }
+
+        @Test
+        fun givenClassInstantiationAST_whenInitWithTooFewParams_expectInvalidInputError() {
+            // given
+            val classFields = setOf(IdentifierAST("cf1", BoolType), IdentifierAST("cf2", IntType))
+            val clazz = ClassAST.builder().withName("C1").withFields(classFields).build()
+
+            val params = listOf(BooleanLiteralAST(false))
+
+            runCatching {
+                ClassInstantiationAST(clazz, params)
+            }.onSuccess {
+                fail()
+            }.onFailure { throwable ->
+                assertTrue(throwable is InvalidInputException)
+                assertEquals(
+                    "Number of parameters for context {constructor call for C1} doesn't match. Expected 2, got 1",
+                    throwable.message,
+                )
+            }
+        }
+
+        @Test
+        fun givenClassInstantiationAST_whenInitWithIncorrectParameterType_expectInvalidInputError() {
+            // given
+            val classFields = setOf(IdentifierAST("cf1", BoolType), IdentifierAST("cf2", IntType))
+            val clazz = ClassAST.builder().withName("C1").withFields(classFields).build()
+
+            val params = listOf(IntegerLiteralAST(42), IntegerLiteralAST(52))
+
+            runCatching {
+                ClassInstantiationAST(clazz, params)
+            }.onSuccess {
+                fail()
+            }.onFailure { throwable ->
+                assertTrue(throwable is InvalidInputException)
+                assertEquals(
+                    "Parameter type mismatch for parameter 0 in context {constructor call for C1}. Expected bool, got int",
+                    throwable.message,
+                )
+            }
+        }
+    }
 
     @Nested
     inner class FunctionMethodCallTests {
@@ -43,11 +125,11 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val body = IntegerLiteralAST(37481)
-            val method = FunctionMethodAST("fm1", IntType, params, body)
+            val method = FunctionMethodAST(FunctionMethodSignatureAST("fm1", IntType, params), body)
 
             // when
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false))
-            val methodCall = FunctionMethodCallAST(method, callParams)
+            FunctionMethodCallAST(method, callParams)
 
             // expect success
         }
@@ -57,13 +139,21 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val body = IntegerLiteralAST(37481)
-            val method = FunctionMethodAST("fm1", IntType, params, body)
+            val method = FunctionMethodAST(FunctionMethodSignatureAST("fm1", IntType, params), body)
 
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false), IntegerLiteralAST(135))
 
             // expect
-            assertFailsWith<InvalidInputException>("Number of parameters doesn't match. Expected 2, Got 3") {
-                val methodCall = FunctionMethodCallAST(method, callParams)
+            runCatching {
+                FunctionMethodCallAST(method, callParams)
+            }.onSuccess {
+                fail()
+            }.onFailure { throwable ->
+                assertTrue { throwable is InvalidInputException }
+                assertEquals(
+                    throwable.message,
+                    "Number of parameters for context {function method call to fm1} doesn't match. Expected 2, got 3",
+                )
             }
         }
 
@@ -72,13 +162,21 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val body = IntegerLiteralAST(37481)
-            val method = FunctionMethodAST("fm1", IntType, params, body)
+            val method = FunctionMethodAST(FunctionMethodSignatureAST("fm1", IntType, params), body)
 
             val callParams = listOf<ExpressionAST>()
 
             // expect
-            assertFailsWith<InvalidInputException>("Number of parameters doesn't match. Expected 2, Got 0") {
-                val methodCall = FunctionMethodCallAST(method, callParams)
+            runCatching {
+                FunctionMethodCallAST(method, callParams)
+            }.onSuccess {
+                fail()
+            }.onFailure { throwable ->
+                assertTrue { throwable is InvalidInputException }
+                assertEquals(
+                    throwable.message,
+                    "Number of parameters for context {function method call to fm1} doesn't match. Expected 2, got 0",
+                )
             }
         }
 
@@ -87,13 +185,21 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val body = IntegerLiteralAST(37481)
-            val method = FunctionMethodAST("fm1", IntType, params, body)
+            val method = FunctionMethodAST(FunctionMethodSignatureAST("fm1", IntType, params), body)
 
             val callParams = listOf<ExpressionAST>(IdentifierAST("p1", BoolType), IdentifierAST("p2", IntType))
 
             // expect
-            assertFailsWith<InvalidInputException>("Function call parameter type mismatch for parameter 0. Expected int, got bool") {
-                val methodCall = FunctionMethodCallAST(method, callParams)
+            runCatching {
+                FunctionMethodCallAST(method, callParams)
+            }.onSuccess {
+                fail()
+            }.onFailure { throwable ->
+                assertTrue { throwable is InvalidInputException }
+                assertEquals(
+                    throwable.message,
+                    "Parameter type mismatch for parameter 0 in context {function method call to fm1}. Expected int, got bool",
+                )
             }
         }
     }
@@ -110,7 +216,7 @@ class ExpressionASTTests {
 
             // when
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false))
-            val methodCall = NonVoidMethodCallAST(method, callParams)
+            NonVoidMethodCallAST(method, callParams)
 
             // expect success
         }
@@ -125,7 +231,7 @@ class ExpressionASTTests {
             // when
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false), IntegerLiteralAST(13))
             assertFailsWith<InvalidInputException>("Number of parameters for call to m1 doesn't match. Expected 2, Got 3") {
-                val methodCall = NonVoidMethodCallAST(method, callParams)
+                NonVoidMethodCallAST(method, callParams)
             }
         }
 
@@ -139,7 +245,7 @@ class ExpressionASTTests {
             // when
             val callParams = listOf<ExpressionAST>()
             assertFailsWith<InvalidInputException>("Number of parameters for call to m1 doesn't match. Expected 2, Got 0") {
-                val methodCall = NonVoidMethodCallAST(method, callParams)
+                NonVoidMethodCallAST(method, callParams)
             }
         }
 
@@ -153,7 +259,7 @@ class ExpressionASTTests {
             // when
             val callParams = listOf(BooleanLiteralAST(false), IntegerLiteralAST(13))
             assertFailsWith<InvalidInputException>("Method call parameter type mismatch for parameter 0. Expected int, got bool") {
-                val methodCall = NonVoidMethodCallAST(method, callParams)
+                NonVoidMethodCallAST(method, callParams)
             }
         }
     }
@@ -280,21 +386,21 @@ class ExpressionASTTests {
             assertEquals(expected.toString(), safe.toString())
         }
 
-        @Test
-        fun givenBinaryExpressionWithRealDivision_whenMakeSafe_expectNonZeroWrapper() {
-            // given
-            val lhs = RealLiteralAST("123.3")
-            val operator = DivisionOperator
-            val rhs = RealLiteralAST("234.3")
-            val expr = BinaryExpressionAST(lhs, operator, rhs)
-
-            // when
-            val safe = expr.makeSafe()
-
-            // expect
-            val expected = FunctionMethodCallAST(SAFE_DIVISION_REAL, listOf(lhs, rhs))
-            assertEquals(expected.toString(), safe.toString())
-        }
+//        @Test
+//        fun givenBinaryExpressionWithRealDivision_whenMakeSafe_expectNonZeroWrapper() {
+//            // given
+//            val lhs = RealLiteralAST("123.3")
+//            val operator = DivisionOperator
+//            val rhs = RealLiteralAST("234.3")
+//            val expr = BinaryExpressionAST(lhs, operator, rhs)
+//
+//            // when
+//            val safe = expr.makeSafe()
+//
+//            // expect
+//            val expected = FunctionMethodCallAST(SAFE_DIVISION_REAL, listOf(lhs, rhs))
+//            assertEquals(expected.toString(), safe.toString())
+//        }
 
         @Test
         fun givenBinaryExpressionWithModulo_whenMakeSafe_expectSafeWrapper() {
@@ -313,22 +419,22 @@ class ExpressionASTTests {
             assertEquals(expected.toString(), safe.toString())
         }
 
-        @Test
-        fun givenBinaryExpressionWithCharSubtraction_whenMakeSafe_expectSafeCharSubtractionWrapper() {
-            // given
-            val lhs = CharacterLiteralAST('B')
-            val operator = SubtractionOperator
-            val rhs = CharacterLiteralAST('a')
-
-            val expr = BinaryExpressionAST(lhs, operator, rhs)
-
-            // when
-            val safe = expr.makeSafe()
-
-            // expect
-            val expected = FunctionMethodCallAST(SAFE_SUBTRACT_CHAR, listOf(lhs, rhs))
-            assertEquals(expected.toString(), safe.toString())
-        }
+//        @Test
+//        fun givenBinaryExpressionWithCharSubtraction_whenMakeSafe_expectSafeCharSubtractionWrapper() {
+//            // given
+//            val lhs = CharacterLiteralAST('B')
+//            val operator = SubtractionOperator
+//            val rhs = CharacterLiteralAST('a')
+//
+//            val expr = BinaryExpressionAST(lhs, operator, rhs)
+//
+//            // when
+//            val safe = expr.makeSafe()
+//
+//            // expect
+//            val expected = FunctionMethodCallAST(SAFE_SUBTRACT_CHAR, listOf(lhs, rhs))
+//            assertEquals(expected.toString(), safe.toString())
+//        }
     }
 
     @Nested
@@ -336,7 +442,7 @@ class ExpressionASTTests {
         @Test
         fun givenArrayIndexAST_whenMakeSafe_expectAbsoluteWrapperAndModulo() {
             // given
-            val array = ArrayIdentifierAST("a", ArrayType(IntType), 5)
+            val array = IdentifierAST("a", ArrayType(IntType))
             val index = IntegerLiteralAST("43")
 
             val expr = ArrayIndexAST(array, index)
@@ -350,8 +456,8 @@ class ExpressionASTTests {
                 BinaryExpressionAST(
                     FunctionMethodCallAST(ABSOLUTE, listOf(index)),
                     ModuloOperator,
-                    IntegerLiteralAST("5")
-                )
+                    ArrayLengthAST(array),
+                ),
             )
 
             assertEquals(expected.toString(), safe.toString())

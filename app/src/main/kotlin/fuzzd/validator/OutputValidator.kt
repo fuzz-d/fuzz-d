@@ -18,7 +18,7 @@ class OutputValidator {
             JsExecutionHandler(fileDir, fileName),
             PyExecutionHandler(fileDir, fileName),
             JavaExecutionHandler(fileDir, fileName),
-            GoExecutionHandler(fileDir, fileName)
+            GoExecutionHandler(fileDir, fileName),
         )
 
         handlers.map { Thread(it) }

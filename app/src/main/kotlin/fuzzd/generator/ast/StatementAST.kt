@@ -8,7 +8,7 @@ sealed class StatementAST : ASTElement {
     class IfStatementAST(
         private val condition: ExpressionAST,
         private val ifBranch: SequenceAST,
-        private val elseBranch: SequenceAST?
+        private val elseBranch: SequenceAST?,
     ) : StatementAST() {
         init {
             if (condition.type() != Type.BoolType) {
@@ -38,7 +38,7 @@ sealed class StatementAST : ASTElement {
         private val terminationCheck: IfStatementAST,
         private val condition: ExpressionAST,
         private val body: SequenceAST,
-        private val counterUpdate: AssignmentAST
+        private val counterUpdate: AssignmentAST,
     ) : StatementAST() {
         override fun toString(): String {
             val sb = StringBuilder()
@@ -54,7 +54,7 @@ sealed class StatementAST : ASTElement {
 
     open class MultiDeclarationAST(
         private val identifiers: List<IdentifierAST>,
-        private val exprs: List<ExpressionAST>
+        private val exprs: List<ExpressionAST>,
     ) :
         StatementAST() {
         override fun toString(): String = "var ${identifiers.joinToString(", ")} := ${exprs.joinToString(", ")};"
@@ -65,7 +65,7 @@ sealed class StatementAST : ASTElement {
 
     open class MultiAssignmentAST(
         private val identifiers: List<IdentifierAST>,
-        private val exprs: List<ExpressionAST>
+        private val exprs: List<ExpressionAST>,
     ) :
         StatementAST() {
         override fun toString(): String = "${identifiers.joinToString(", ")} := ${exprs.joinToString(", ")};"
@@ -78,19 +78,24 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "print $expr;"
     }
 
-    class VoidMethodCallAST(private val method: MethodAST, private val params: List<ExpressionAST>) : StatementAST() {
+    class VoidMethodCallAST(private val method: MethodSignatureAST, private val params: List<ExpressionAST>) :
+        StatementAST() {
         init {
+            val methodName = method.name
+
             if (method.returns.isNotEmpty()) {
-                throw InvalidInputException("Generating invalid method call to non-void method ${method.name}")
+                throw InvalidInputException("Generating invalid method call to non-void method $methodName")
             }
 
-            if (params.size != method.params.size) {
-                throw InvalidInputException("Generating method call to ${method.name} with incorrect no. of parameters. Got ${params.size}, expected ${method.params.size}")
+            val methodParams = method.params
+
+            if (params.size != methodParams.size) {
+                throw InvalidInputException("Generating method call to $methodName with incorrect no. of parameters. Got ${params.size}, expected ${methodParams.size}")
             }
 
             (params.indices).forEach { i ->
                 val paramType = params[i].type()
-                val expectedType = method.params[i].type()
+                val expectedType = methodParams[i].type()
                 if (paramType != expectedType) {
                     throw InvalidInputException("Method call parameter type mismatch for parameter $i. Expected $expectedType, got $paramType")
                 }

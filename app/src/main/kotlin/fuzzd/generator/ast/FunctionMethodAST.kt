@@ -3,21 +3,27 @@ package fuzzd.generator.ast
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.utils.indent
 
-class FunctionMethodAST(
+open class FunctionMethodAST(
+    val signature: FunctionMethodSignatureAST,
+    private val body: ExpressionAST,
+) : ASTElement {
+    constructor(name: String, returnType: Type, params: List<IdentifierAST>, body: ExpressionAST) :
+        this(FunctionMethodSignatureAST(name, returnType, params), body)
+
+    fun params(): List<IdentifierAST> = signature.params
+
+    fun name(): String = signature.name
+
+    fun returnType(): Type = signature.returnType
+
+    override fun toString(): String = "$signature {\n${indent(body)}\n}"
+}
+
+class FunctionMethodSignatureAST(
     val name: String,
     val returnType: Type,
     val params: List<IdentifierAST>,
-    private val body: ExpressionAST
 ) : ASTElement {
-    override fun toString(): String {
-        val sb = StringBuilder()
-
-        sb.append("function method $name(")
-        sb.append(params.joinToString(",") { param -> "${param.name}: ${param.type()}" })
-        sb.append("): $returnType {\n")
-        sb.append(indent(body))
-        sb.append("\n}")
-
-        return sb.toString()
-    }
+    override fun toString(): String =
+        "function method $name(${params.joinToString(", ") { param -> "${param.name}: ${param.type()}" }}): $returnType"
 }

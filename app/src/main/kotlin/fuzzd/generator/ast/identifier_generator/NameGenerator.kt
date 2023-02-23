@@ -16,4 +16,10 @@ sealed class NameGenerator(private val namePrefix: String) {
     class MethodNameGenerator : NameGenerator("m")
 
     class ReturnsNameGenerator : NameGenerator("r")
+
+    class ClassNameGenerator : NameGenerator("C")
+
+    class TraitNameGenerator : NameGenerator("T")
+
+    class FieldNameGenerator : NameGenerator("f")
 }

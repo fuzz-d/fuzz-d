@@ -1,8 +1,10 @@
 package fuzzd.generator.ast
 
-import fuzzd.generator.ast.Type.ArrayType
+import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
+import fuzzd.generator.ast.Type.ClassType
+import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.RealType
@@ -15,26 +17,44 @@ import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.escape
 import fuzzd.utils.safetyMap
 
+fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, context: String) {
+    if (expected.size != actual.size) {
+        throw InvalidInputException("Number of parameters for context {$context} doesn't match. Expected ${expected.size}, got ${actual.size}")
+    }
+
+    (expected.indices).forEach { i ->
+        val expectedType = expected[i].type()
+        val actualType = actual[i].type()
+
+        if (actualType != expectedType) {
+            throw InvalidInputException("Parameter type mismatch for parameter $i in context {$context}. Expected $expectedType, got $actualType")
+        }
+    }
+}
+
 sealed class ExpressionAST : ASTElement {
 
     abstract fun type(): Type
 
     open fun makeSafe(): ExpressionAST = this
 
-    class NonVoidMethodCallAST(private val method: MethodAST, private val params: List<ExpressionAST>) :
+    class ClassInstantiationAST(private val clazz: ClassAST, private val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
-            if (params.size != method.params.size) {
-                throw InvalidInputException("Number of parameters for call to ${method.name} doesn't match. Expected ${method.params.size}, Got ${params.size}")
-            }
+            val expectedParams = clazz.fields.toList()
+            checkParams(expectedParams, params, "constructor call for ${clazz.name}")
+        }
 
-            (params.indices).forEach() { i ->
-                val paramType = params[i].type()
-                val expectedType = method.params[i].type()
-                if (paramType != expectedType) {
-                    throw InvalidInputException("Method call parameter type mismatch for parameter $i. Expected $expectedType, got $paramType")
-                }
-            }
+        override fun type(): Type = ClassType(clazz)
+
+        override fun toString(): String = "new ${clazz.name}(${params.joinToString(", ")})"
+    }
+
+    class NonVoidMethodCallAST(private val method: MethodSignatureAST, private val params: List<ExpressionAST>) :
+        ExpressionAST() {
+        init {
+            val methodParams = method.params
+            checkParams(methodParams, params, "method call to ${method.name}")
         }
 
         override fun type(): Type = MethodReturnType(method.returns.map { it.type() })
@@ -42,20 +62,14 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "${method.name}(${params.joinToString(", ")})"
     }
 
-    class FunctionMethodCallAST(private val function: FunctionMethodAST, private val params: List<ExpressionAST>) :
+    class FunctionMethodCallAST(
+        private val function: FunctionMethodSignatureAST,
+        private val params: List<ExpressionAST>,
+    ) :
         ExpressionAST() {
         init {
-            if (params.size != function.params.size) {
-                throw InvalidInputException("Number of parameters doesn't match. Expected ${function.params.size}, Got ${params.size}")
-            }
-
-            (params.indices).forEach { i ->
-                val paramType = params[i].type()
-                val expectedType = function.params[i].type()
-                if (paramType != expectedType) {
-                    throw InvalidInputException("Function call parameter type mismatch for parameter $i. Expected $expectedType, got $paramType")
-                }
-            }
+            val functionParams = function.params
+            checkParams(functionParams, params, "function method call to ${function.name}")
         }
 
         override fun type(): Type = function.returnType
@@ -66,7 +80,7 @@ sealed class ExpressionAST : ASTElement {
     class TernaryExpressionAST(
         private val condition: ExpressionAST,
         private val ifBranch: ExpressionAST,
-        private val elseBranch: ExpressionAST
+        private val elseBranch: ExpressionAST,
     ) : ExpressionAST() {
         init {
             if (condition.type() != BoolType) {
@@ -109,7 +123,7 @@ sealed class ExpressionAST : ASTElement {
     class BinaryExpressionAST(
         private val expr1: ExpressionAST,
         private val operator: BinaryOperator,
-        private val expr2: ExpressionAST
+        private val expr2: ExpressionAST,
     ) : ExpressionAST() {
         private val type1: Type = expr1.type()
         private val type2: Type = expr2.type()
@@ -128,7 +142,7 @@ sealed class ExpressionAST : ASTElement {
 
             val key = Pair(operator, type())
             return if (safetyMap.containsKey(key)) {
-                FunctionMethodCallAST(safetyMap[key]!!, listOf(safeExpr1, safeExpr2))
+                FunctionMethodCallAST(safetyMap[key]!!.signature, listOf(safeExpr1, safeExpr2))
             } else {
                 BinaryExpressionAST(safeExpr1, operator, safeExpr2)
             }
@@ -153,31 +167,40 @@ sealed class ExpressionAST : ASTElement {
     open class IdentifierAST(
         val name: String,
         private val type: Type,
-        val mutable: Boolean = true
+        val mutable: Boolean = true,
     ) : ExpressionAST() {
         override fun type(): Type = type
 
         override fun toString(): String = name
 
         override fun makeSafe(): IdentifierAST = this
+
+        override fun equals(other: Any?): Boolean =
+            other is IdentifierAST && other.name == this.name && other.type == this.type && other.mutable == this.mutable
     }
 
-    class ArrayIdentifierAST(
+    class ClassInstanceAST(
+        clazz: ClassAST,
         name: String,
-        private val type: ArrayType,
-        val length: Int
-    ) : IdentifierAST(name, type) {
-        override fun type(): ArrayType = type
+    ) : IdentifierAST(name, ClassType(clazz)) {
+        val fields = clazz.fields.map { IdentifierAST("$name.${it.name}", it.type()) }
+        val functionMethods =
+            clazz.functionMethods.map { FunctionMethodSignatureAST("$name.${it.name()}", it.returnType(), it.params()) }
+        val methods = clazz.methods.map { MethodSignatureAST("$name.${it.name()}", it.params(), it.returns()) }
     }
 
     class ArrayIndexAST(
-        val array: ArrayIdentifierAST,
-        val index: ExpressionAST
+        val array: IdentifierAST,
+        val index: ExpressionAST,
     ) : IdentifierAST(
         array.name,
-        array.type().internalType
+        (array.type() as ArrayType).internalType,
     ) {
         init {
+            if (array.type() !is ArrayType) {
+                throw InvalidInputException("Creating array index with identifier of type ${array.type()}")
+            }
+
             if (index.type() != IntType) {
                 throw InvalidInputException("Creating array index with index of type ${index.type()}")
             }
@@ -189,16 +212,28 @@ sealed class ExpressionAST : ASTElement {
             return ArrayIndexAST(
                 array,
                 BinaryExpressionAST(
-                    FunctionMethodCallAST(ABSOLUTE, listOf(safeIndex)),
+                    FunctionMethodCallAST(ABSOLUTE.signature, listOf(safeIndex)),
                     ModuloOperator,
-                    IntegerLiteralAST(array.length.toString())
-                )
+                    ArrayLengthAST(array),
+                ),
             )
         }
 
         override fun toString(): String {
             return "$array[$index]"
         }
+    }
+
+    class ArrayLengthAST(val array: IdentifierAST) : ExpressionAST() {
+        init {
+            if (array.type() !is ArrayType) {
+                throw InvalidInputException("Creating array index with identifier of type ${array.type()}")
+            }
+        }
+
+        override fun type(): Type = IntType
+
+        override fun toString(): String = "${array.name}.Length"
     }
 
     class ArrayInitAST(val length: Int, private val type: ArrayType) : ExpressionAST() {

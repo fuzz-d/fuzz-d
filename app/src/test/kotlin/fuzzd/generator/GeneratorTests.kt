@@ -4,7 +4,7 @@ import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
 import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.selection.SelectionManager
-import fuzzd.generator.symbol_table.GlobalSymbolTable
+import fuzzd.generator.symbol_table.FunctionSymbolTable
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -24,7 +24,7 @@ class GeneratorTests {
     @Test
     fun givenOnDemandIdentifiersDisabled_whenGenerateIdentifierWithNoneAvailable_expectIdentifierOnDemandException() {
         // given
-        val context = GenerationContext(GlobalSymbolTable(), onDemandIdentifiers = false)
+        val context = GenerationContext(FunctionSymbolTable(), onDemandIdentifiers = false)
 
         // expect
         assertFailsWith<IdentifierOnDemandException> {

@@ -1,13 +1,15 @@
 package fuzzd.generator
 
 import fuzzd.generator.ast.ASTElement
+import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.ExpressionAST
-import fuzzd.generator.ast.ExpressionAST.ArrayIdentifierAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
@@ -16,8 +18,10 @@ import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
+import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
+import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
@@ -29,26 +33,30 @@ import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
+import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
-import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
+import fuzzd.generator.ast.Type.ConstructorType
+import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
 import fuzzd.generator.ast.error.MethodOnDemandException
+import fuzzd.generator.ast.identifier_generator.NameGenerator.ClassNameGenerator
+import fuzzd.generator.ast.identifier_generator.NameGenerator.FieldNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.FunctionMethodNameGenerator
-import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGenerator
-import fuzzd.generator.ast.identifier_generator.NameGenerator.LoopCounterGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.MethodNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ParameterNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ReturnsNameGenerator
+import fuzzd.generator.ast.identifier_generator.NameGenerator.TraitNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.selection.ExpressionType
 import fuzzd.generator.selection.ExpressionType.BINARY
+import fuzzd.generator.selection.ExpressionType.CONSTRUCTOR
 import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
@@ -56,58 +64,70 @@ import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.StatementType
 import fuzzd.generator.selection.StatementType.ASSIGN
+import fuzzd.generator.selection.StatementType.CLASS_INSTANTIATION
 import fuzzd.generator.selection.StatementType.DECLARATION
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.METHOD_CALL
 import fuzzd.generator.selection.StatementType.PRINT
 import fuzzd.generator.selection.StatementType.WHILE
-import fuzzd.generator.symbol_table.GlobalSymbolTable
+import fuzzd.generator.symbol_table.FunctionSymbolTable
 import fuzzd.generator.symbol_table.MethodCallTable
+import fuzzd.generator.symbol_table.SymbolTable
 import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.SAFE_ADDITION_INT
-import fuzzd.utils.SAFE_ADDITION_REAL
 import fuzzd.utils.SAFE_DIVISION_INT
-import fuzzd.utils.SAFE_DIVISION_REAL
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.SAFE_MULTIPLY_INT
-import fuzzd.utils.SAFE_MULTIPLY_REAL
-import fuzzd.utils.SAFE_SUBTRACT_CHAR
 import fuzzd.utils.SAFE_SUBTRACT_INT
-import fuzzd.utils.SAFE_SUBTRACT_REAL
-import kotlin.random.Random
+import fuzzd.utils.unionAll
+
+// import fuzzd.utils.SAFE_ADDITION_REAL
+// import fuzzd.utils.SAFE_DIVISION_REAL
+// import fuzzd.utils.SAFE_MULTIPLY_REAL
+// import fuzzd.utils.SAFE_SUBTRACT_CHAR
+// import fuzzd.utils.SAFE_SUBTRACT_REAL
 
 class Generator(
-    private val selectionManager: SelectionManager
+    private val selectionManager: SelectionManager,
 ) : ASTGenerator {
-    private val random = Random.Default
+    private val classNameGenerator = ClassNameGenerator()
+    private val fieldNameGenerator = FieldNameGenerator()
     private val functionMethodNameGenerator = FunctionMethodNameGenerator()
-    private val identifierNameGenerator = IdentifierNameGenerator()
-    private val loopCounterGenerator = LoopCounterGenerator()
     private val methodNameGenerator = MethodNameGenerator()
+    private val traitNameGenerator = TraitNameGenerator()
     private val methodCallTable = MethodCallTable()
 
     /* ==================================== TOP LEVEL ==================================== */
 
     override fun generate(): TopLevelAST {
-        val context = GenerationContext(GlobalSymbolTable())
+        val context = GenerationContext(FunctionSymbolTable())
 
         // init with safety function methods
-        context.globalSymbolTable.addAllFunctionMethods(WRAPPER_FUNCTIONS)
+        context.functionSymbolTable.addFunctionMethods(WRAPPER_FUNCTIONS)
 
         val mainFunction = generateMainFunction(context)
         val ast = mutableListOf<ASTElement>()
 
-        context.globalSymbolTable.methods().forEach { method ->
-            val functionContext = GenerationContext(context.globalSymbolTable, methodContext = method)
-            method.params.forEach { param -> functionContext.symbolTable.add(param) }
-            method.returns.forEach { r -> functionContext.symbolTable.add(r) }
+        val methodBodyQueue = context.functionSymbolTable.methods().toMutableList()
+        val visitedMethods = mutableSetOf<MethodAST>()
 
+        while (methodBodyQueue.isNotEmpty()) {
+            val method = methodBodyQueue.removeFirst()
+
+            if (method in visitedMethods) continue
+            visitedMethods.add(method)
+
+            val functionContext = GenerationContext(context.functionSymbolTable, methodContext = method.signature)
             val body = generateMethodBody(functionContext, method)
             method.setBody(body)
+
+            methodBodyQueue.addAll(context.functionSymbolTable.methods() subtract methodBodyQueue.toSet() subtract visitedMethods)
         }
 
-        ast.addAll(context.globalSymbolTable.functionMethods())
-        ast.addAll(context.globalSymbolTable.methods())
+        ast.addAll(context.functionSymbolTable.functionMethods())
+        ast.addAll(context.functionSymbolTable.methods())
+        ast.addAll(context.functionSymbolTable.traits())
+        ast.addAll(context.functionSymbolTable.classes())
         ast.add(mainFunction)
 
         return TopLevelAST(ast)
@@ -120,30 +140,140 @@ class Generator(
         return MainFunctionAST(body.addStatements(prints))
     }
 
-    override fun generateFunctionMethod(context: GenerationContext, targetType: Type?): FunctionMethodAST {
+    override fun generateTrait(context: GenerationContext): TraitAST {
+        val fields = (1..selectionManager.selectNumberOfFields()).map { generateField(context) }.toSet()
+
+        val functionMethods =
+            (1..selectionManager.selectNumberOfFunctionMethods()).map { generateFunctionMethodSignature(context) }
+                .toSet()
+
+        val methods = (1..selectionManager.selectNumberOfMethods()).map { generateMethodSignature(context) }.toSet()
+
+        // TODO: extends map + extend traits
+
+        return TraitAST(traitNameGenerator.newValue(), setOf() /* TODO() */, functionMethods, methods, fields)
+    }
+
+    override fun generateClass(context: GenerationContext): ClassAST {
+        val classContext = GenerationContext(FunctionSymbolTable(context.functionSymbolTable.topLevel()))
+
+        // get traits
+        val numberOfTraits = selectionManager.selectNumberOfTraits()
+        val traits = context.functionSymbolTable.traits().toMutableList()
+        val selectedTraits = mutableSetOf<TraitAST>()
+
+        for (i in 1..numberOfTraits) {
+            if (traits.isEmpty()) break
+
+            val selected = selectionManager.randomSelection(traits)
+            traits.remove(selected)
+            selectedTraits.add(selected)
+        }
+
+        // TODO: deal with weird symbol table context shit
+        // generate fields
+        val additionalFields = (1..selectionManager.selectNumberOfFields()).map { generateField(classContext) }.toSet()
+        val requiredFields = traits.map { it.fields() }.unionAll()
+        val fields = requiredFields union additionalFields
+
+        classContext.symbolTable.addAll(fields)
+
+        // generate function methods
+        val additionalFunctionMethods =
+            (1..selectionManager.selectNumberOfFunctionMethods()).map { generateFunctionMethod(classContext) }.toSet()
+        val requiredFunctionMethods = traits.map { it.functionMethods() }.unionAll()
+            .map { signature -> generateFunctionMethod(classContext, signature) }.toSet()
+        val functionMethods = requiredFunctionMethods union additionalFunctionMethods
+
+        // generate methods
+        val additionalMethods =
+            (1..selectionManager.selectNumberOfMethods()).map { generateMethod(classContext) }.toSet()
+        val requiredMethods =
+            traits.map { it.methods() }.unionAll().map { signature -> generateMethod(signature) }.toSet()
+        val methods = requiredMethods union additionalMethods
+        methods.forEach { method ->
+            method.setBody(
+                generateMethodBody(
+                    GenerationContext(
+                        classContext.functionSymbolTable,
+                        symbolTable = SymbolTable(classContext.symbolTable),
+                        methodContext = method.signature,
+                    ),
+                    method,
+                ),
+            )
+        }
+
+        val clazz = ClassAST(classNameGenerator.newValue(), selectedTraits, functionMethods, methods, fields)
+
+        // update symbol table with on-demand methods & classes generated into local global context
+
+        context.functionSymbolTable.addFunctionMethods(classContext.functionSymbolTable.functionMethods() subtract functionMethods)
+        context.functionSymbolTable.addMethods(classContext.functionSymbolTable.methods() subtract methods)
+        context.functionSymbolTable.addClass(clazz)
+
+        return clazz
+    }
+
+    override fun generateField(context: GenerationContext) =
+        IdentifierAST(fieldNameGenerator.newValue(), selectionManager.selectType(context))
+
+    override fun generateFunctionMethod(
+        context: GenerationContext,
+        targetType: Type?,
+        literalParams: Boolean,
+    ): FunctionMethodAST {
+        val functionMethodSignature = generateFunctionMethodSignature(context, targetType, literalParams)
+        return generateFunctionMethod(context, functionMethodSignature)
+    }
+
+    private fun generateFunctionMethod(
+        context: GenerationContext,
+        signature: FunctionMethodSignatureAST,
+    ): FunctionMethodAST {
+        val functionContext = GenerationContext(context.functionSymbolTable, onDemandIdentifiers = false)
+        signature.params.forEach { param -> functionContext.symbolTable.add(param) }
+
+        val body = generateExpression(functionContext, signature.returnType).makeSafe()
+        val functionMethodAST = FunctionMethodAST(signature, body)
+
+        context.functionSymbolTable.addFunctionMethod(functionMethodAST)
+
+        return functionMethodAST
+    }
+
+    override fun generateFunctionMethodSignature(
+        context: GenerationContext,
+        targetType: Type?,
+        literalParams: Boolean,
+    ): FunctionMethodSignatureAST {
         val name = functionMethodNameGenerator.newValue()
         val numberOfParameters = selectionManager.selectNumberOfParameters()
 
         val parameterNameGenerator = ParameterNameGenerator()
         val returnType = targetType ?: generateType(context, literalOnly = true)
         val parameters = (1..numberOfParameters).map {
-            IdentifierAST(parameterNameGenerator.newValue(), returnType)
+            IdentifierAST(
+                parameterNameGenerator.newValue(),
+                generateType(context, literalOnly = literalParams),
+                mutable = false,
+            )
         }
 
-        val functionContext = GenerationContext(context.globalSymbolTable, onDemandIdentifiers = false)
-        parameters.forEach { param -> functionContext.symbolTable.add(param) }
-
-        val body = generateExpression(functionContext, returnType).makeSafe()
-        val functionMethodAST = FunctionMethodAST(name, returnType, parameters, body)
-
-        context.globalSymbolTable.addFunctionMethod(functionMethodAST)
-
-        return functionMethodAST
+        return FunctionMethodSignatureAST(name, returnType, parameters)
     }
 
     override fun generateMethod(context: GenerationContext): MethodAST {
+        val method = MethodAST(generateMethodSignature(context))
+        context.functionSymbolTable.addMethod(method)
+        return method
+    }
+
+    private fun generateMethod(signature: MethodSignatureAST): MethodAST = MethodAST(signature)
+
+    override fun generateMethodSignature(context: GenerationContext): MethodSignatureAST {
         val name = methodNameGenerator.newValue()
-        val returnType = selectionManager.selectMethodReturnType()
+        val returnType = selectionManager.selectMethodReturnType(context)
 
         val returnsNameGenerator = ReturnsNameGenerator()
         val returns = returnType.map { t -> IdentifierAST(returnsNameGenerator.newValue(), t) }
@@ -154,20 +284,21 @@ class Generator(
             IdentifierAST(
                 parameterNameGenerator.newValue(),
                 generateType(context, literalOnly = true),
-                mutable = false
+                mutable = false,
             )
         }
 
-        val method = MethodAST(name, parameters, returns)
-        context.globalSymbolTable.addMethod(method)
-        return method
+        return MethodSignatureAST(name, parameters, returns)
     }
 
     private fun generateMethodBody(context: GenerationContext, method: MethodAST): SequenceAST {
+        method.params().forEach { param -> context.symbolTable.add(param) }
+        method.returns().forEach { r -> context.symbolTable.add(r) }
+
         val body = generateSequence(context, maxStatements = 10)
 
-        val returnAssigns = method.returns.map { r ->
-            val expr = generateExpression(context, r.type()).makeSafe()
+        val returnAssigns = method.returns().map { r ->
+            val expr = generateExpression(context.disableOnDemand(), r.type()).makeSafe()
             AssignmentAST(r, expr)
         }
 
@@ -175,9 +306,9 @@ class Generator(
     }
 
     override fun generateSequence(context: GenerationContext, maxStatements: Int): SequenceAST {
-        val n = random.nextInt(1, maxStatements)
+        val n = selectionManager.selectSequenceLength(maxStatements)
 
-        val statements = (1..n).map { generateStatement(context) }.toList()
+        val statements = (1..n).map { generateStatement(context) }
 
         val allStatements = context.clearDependentStatements() + statements
 
@@ -186,22 +317,27 @@ class Generator(
 
     /* ==================================== STATEMENTS ==================================== */
 
-    override fun generateStatement(context: GenerationContext): StatementAST =
-        try {
-            generateStatementFromType(selectionManager.selectStatementType(context), context)
-        } catch (e: MethodOnDemandException) {
-            generateStatementFromType(selectionManager.selectStatementType(context, methodCalls = false), context)
-        }
+    override fun generateStatement(context: GenerationContext): StatementAST = try {
+        generateStatementFromType(selectionManager.selectStatementType(context), context)
+    } catch (e: MethodOnDemandException) {
+        generateStatementFromType(
+            selectionManager.selectStatementType(context, methodCalls = false),
+            context,
+        )
+    }
 
-    private fun generateStatementFromType(type: StatementType, context: GenerationContext): StatementAST =
-        when (type) {
-            ASSIGN -> generateAssignmentStatement(context)
-            DECLARATION -> generateDeclarationStatement(context)
-            IF -> generateIfStatement(context)
-            METHOD_CALL -> generateMethodCall(context)
-            PRINT -> generatePrintStatement(context)
-            WHILE -> generateWhileStatement(context)
-        }
+    private fun generateStatementFromType(
+        type: StatementType,
+        context: GenerationContext,
+    ): StatementAST = when (type) {
+        ASSIGN -> generateAssignmentStatement(context)
+        CLASS_INSTANTIATION -> generateClassInstantiation(context)
+        DECLARATION -> generateDeclarationStatement(context)
+        IF -> generateIfStatement(context)
+        METHOD_CALL -> generateMethodCall(context)
+        PRINT -> generatePrintStatement(context)
+        WHILE -> generateWhileStatement(context)
+    }
 
     override fun generateIfStatement(context: GenerationContext): IfStatementAST {
         val condition = generateExpression(context, BoolType).makeSafe()
@@ -213,7 +349,7 @@ class Generator(
     }
 
     override fun generateWhileStatement(context: GenerationContext): WhileLoopAST {
-        val counterIdentifierName = loopCounterGenerator.newValue()
+        val counterIdentifierName = context.loopCounterGenerator.newValue()
         val counterIdentifier = IdentifierAST(counterIdentifierName, IntType)
         val counterInitialisation = DeclarationAST(counterIdentifier, IntegerLiteralAST(0))
 
@@ -227,21 +363,27 @@ class Generator(
                 counterIdentifier,
                 GreaterThanEqualOperator,
                 IntegerLiteralAST(
-                    DAFNY_MAX_LOOP_COUNTER
-                )
+                    DAFNY_MAX_LOOP_COUNTER,
+                ),
             ),
             SequenceAST(listOf(BreakAST)),
-            null
+            null,
         )
 
         val whileBody = generateSequence(context.increaseStatementDepth())
 
         val counterUpdate = AssignmentAST(
             counterIdentifier,
-            BinaryExpressionAST(counterIdentifier, AdditionOperator, IntegerLiteralAST(1))
+            BinaryExpressionAST(counterIdentifier, AdditionOperator, IntegerLiteralAST(1)),
         )
 
-        return WhileLoopAST(counterInitialisation, counterTerminationCheck, condition, whileBody, counterUpdate)
+        return WhileLoopAST(
+            counterInitialisation,
+            counterTerminationCheck,
+            condition,
+            whileBody,
+            counterUpdate,
+        )
     }
 
     override fun generatePrintStatement(context: GenerationContext): PrintAST {
@@ -258,18 +400,19 @@ class Generator(
     private fun generateDeclarationStatementForType(
         context: GenerationContext,
         targetType: Type,
-        isLiteral: Boolean
+        baseExpression: Boolean,
     ): DeclarationAST {
-        val expr =
-            if (isLiteral) generateLiteralForType(context, targetType) else generateExpression(context, targetType)
-
-        val identifierName = identifierNameGenerator.newValue()
-        val identifier = if (targetType is ArrayType) {
-            val length = if (expr is ArrayIdentifierAST) expr.length else (expr as ArrayInitAST).length
-            ArrayIdentifierAST(identifierName, targetType, length)
+        val expr = if (baseExpression) {
+            generateBaseExpressionForType(context, targetType)
         } else {
-            IdentifierAST(identifierName, targetType)
+            generateExpression(
+                context,
+                targetType,
+            )
         }
+
+        val identifierName = context.identifierNameGenerator.newValue()
+        val identifier = IdentifierAST(identifierName, targetType)
 
         context.symbolTable.add(identifier)
 
@@ -295,12 +438,48 @@ class Generator(
         return AssignmentAST(safeIdentifier, safeExpr)
     }
 
+    override fun generateClassInstantiation(context: GenerationContext): DeclarationAST {
+        // on demand create class if one doesn't exist
+        if (!context.functionSymbolTable.hasClasses() || selectionManager.generateNewClass()) {
+            generateClass(context)
+        }
+
+        val selectedClass = selectionManager.randomSelection(context.functionSymbolTable.classes().toList())
+        val requiredFields = selectedClass.fields
+
+        val params = requiredFields.map { field ->
+            generateExpression(
+                context.increaseExpressionDepth(),
+                field.type(),
+            ).makeSafe()
+        }
+        val ident = ClassInstanceAST(selectedClass, context.identifierNameGenerator.newValue())
+
+        context.symbolTable.add(ident)
+
+        return DeclarationAST(ident, ClassInstantiationAST(selectedClass, params))
+    }
+
+//    private fun callableClassConstructors(context: GenerationContext): List<ClassAST> =
+//        context.globalSymbolTable.classes().filter { cl ->
+//            cl.fields.all { f ->
+//                !(f.type() is ConstructorType && !context.symbolTable.hasType(f.type()))
+//            }
+//        }
+
     @Throws(MethodOnDemandException::class)
     override fun generateMethodCall(context: GenerationContext): StatementAST {
         // get callable methods
-        val methods = context.globalSymbolTable.methods().filter { method ->
-            context.methodContext == null || methodCallTable.canCall(context.methodContext, method)
-        }
+        val methods = (
+            context.functionSymbolTable.methods().map { it.signature } +
+                context.symbolTable.classInstances().map { it.methods }.unionAll()
+            )
+            .filter { method ->
+                context.methodContext == null || methodCallTable.canCall(
+                    context.methodContext,
+                    method,
+                )
+            }
 
         // no support for on demand method generation within methods
         if (methods.isEmpty() && context.methodContext != null) {
@@ -308,10 +487,11 @@ class Generator(
         }
 
         // generate new method if a callable method doesn't exist
-        val method = if (methods.isEmpty() || selectionManager.generateNewMethod(context)) {
-            generateMethod(context)
+        val method: MethodSignatureAST
+        if (methods.isEmpty() || selectionManager.generateNewMethod(context)) {
+            method = generateMethod(context).signature
         } else {
-            selectionManager.randomSelection(methods)
+            method = selectionManager.randomSelection(methods)
         }
 
         val params = method.params.map { param -> generateExpression(context, param.type()).makeSafe() }
@@ -321,12 +501,14 @@ class Generator(
             methodCallTable.addCall(method, context.methodContext)
         }
 
-        return if (method.returns.isEmpty()) {
+        val returns = method.returns
+
+        return if (returns.isEmpty()) {
             // void method type
             VoidMethodCallAST(method, params)
         } else {
             // non-void method type
-            val idents = method.returns.map { r -> IdentifierAST(identifierNameGenerator.newValue(), r.type()) }
+            val idents = returns.map { r -> IdentifierAST(context.identifierNameGenerator.newValue(), r.type()) }
             idents.forEach { ident -> context.symbolTable.add(ident) }
             MultiDeclarationAST(idents, listOf(NonVoidMethodCallAST(method, params)))
         }
@@ -336,12 +518,16 @@ class Generator(
 
     override fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST {
         return try {
-            generateExpressionFromType(selectionManager.selectExpressionType(targetType, context), context, targetType)
+            generateExpressionFromType(
+                selectionManager.selectExpressionType(targetType, context),
+                context,
+                targetType,
+            )
         } catch (e: IdentifierOnDemandException) {
             generateExpressionFromType(
                 selectionManager.selectExpressionType(targetType, context, identifier = false),
                 context,
-                targetType
+                targetType,
             )
         }
     }
@@ -349,23 +535,26 @@ class Generator(
     private fun generateExpressionFromType(
         exprType: ExpressionType,
         context: GenerationContext,
-        targetType: Type
-    ): ExpressionAST =
-        when (exprType) {
-            UNARY -> generateUnaryExpression(context, targetType)
-            BINARY -> generateBinaryExpression(context, targetType)
-            FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
-            IDENTIFIER -> generateIdentifier(context, targetType)
-            LITERAL -> generateLiteralForType(context, targetType)
-        }
+        targetType: Type,
+    ): ExpressionAST = when (exprType) {
+        CONSTRUCTOR -> generateArrayInitialisation(context, targetType as ArrayType)
+        UNARY -> generateUnaryExpression(context, targetType)
+        BINARY -> generateBinaryExpression(context, targetType)
+        FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
+        IDENTIFIER -> generateIdentifier(context, targetType)
+        LITERAL -> generateLiteralForType(context, targetType as LiteralType)
+    }
 
-    override fun generateFunctionMethodCall(context: GenerationContext, targetType: Type): FunctionMethodCallAST {
-        if (!context.globalSymbolTable.hasFunctionMethodType(targetType)) {
-            generateFunctionMethod(context, targetType)
+    override fun generateFunctionMethodCall(
+        context: GenerationContext,
+        targetType: Type,
+    ): FunctionMethodCallAST {
+        val callable = callableFunctionMethods(context, targetType)
+        val functionMethod = if (callable.isEmpty()) {
+            generateFunctionMethod(context, targetType).signature
+        } else {
+            selectionManager.randomSelection(callable)
         }
-
-        val selection = context.globalSymbolTable.withFunctionMethodType(targetType)
-        val functionMethod = selectionManager.randomSelection(selection)
 
         val arguments = functionMethod.params.map { param ->
             generateExpression(context.increaseExpressionDepth(), param.type()).makeSafe()
@@ -374,11 +563,30 @@ class Generator(
         return FunctionMethodCallAST(functionMethod, arguments)
     }
 
+    private fun callableFunctionMethods(
+        context: GenerationContext,
+        targetType: Type,
+    ): List<FunctionMethodSignatureAST> =
+        functionMethodsWithType(context, targetType)
+            .filter { fm ->
+                !fm.params
+                    .map { p -> p.type() }
+                    .any { t -> t is ConstructorType && !context.symbolTable.hasType(t) }
+            }
+
+    private fun functionMethodsWithType(
+        context: GenerationContext,
+        targetType: Type,
+    ): List<FunctionMethodSignatureAST> =
+        context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+            context.symbolTable.classInstances().map { it.functionMethods }.unionAll()
+                .filter { it.returnType == targetType }
+
     @Throws(IdentifierOnDemandException::class)
     override fun generateIdentifier(
         context: GenerationContext,
         targetType: Type,
-        mutableConstraint: Boolean
+        mutableConstraint: Boolean,
     ): IdentifierAST {
         val withType = context.symbolTable.withType(targetType).filter {
             !mutableConstraint || it.mutable
@@ -391,24 +599,32 @@ class Generator(
             context.addDependentStatement(decl)
         }
 
-        return selectionManager.randomSelection(context.symbolTable.withType(targetType).filter { it.mutable })
+        return selectionManager.randomSelection(
+            context.symbolTable.withType(targetType).filter { !mutableConstraint || it.mutable },
+        )
     }
 
     override fun generateArrayIndex(context: GenerationContext, targetType: Type): ArrayIndexAST {
-        val identifier = generateIdentifier(context, ArrayType(targetType)) as ArrayIdentifierAST
+        val identifier = generateIdentifier(context, ArrayType(targetType))
         val index = IntegerLiteralAST(generateDecimalLiteralValue(false), false)
 
         return ArrayIndexAST(identifier, index)
     }
 
-    override fun generateUnaryExpression(context: GenerationContext, targetType: Type): UnaryExpressionAST {
+    override fun generateUnaryExpression(
+        context: GenerationContext,
+        targetType: Type,
+    ): UnaryExpressionAST {
         val expr = generateExpression(context, targetType)
         val operator = selectionManager.selectUnaryOperator(targetType)
 
         return UnaryExpressionAST(expr, operator)
     }
 
-    override fun generateBinaryExpression(context: GenerationContext, targetType: Type): BinaryExpressionAST {
+    override fun generateBinaryExpression(
+        context: GenerationContext,
+        targetType: Type,
+    ): BinaryExpressionAST {
         val nextDepthContext = context.increaseExpressionDepth()
         val (operator, inputType) = selectionManager.selectBinaryOperator(targetType)
         val expr1 = generateExpression(nextDepthContext, inputType)
@@ -417,22 +633,27 @@ class Generator(
         return BinaryExpressionAST(expr1, operator, expr2)
     }
 
-    override fun generateLiteralForType(context: GenerationContext, targetType: LiteralType): LiteralAST =
-        when (targetType) {
-            BoolType -> generateBooleanLiteral(context)
-            CharType -> generateCharLiteral(context)
-            IntType -> generateIntegerLiteral(context)
-            RealType -> generateRealLiteral(context)
-            // should not be possible to reach here
-            else -> throw UnsupportedOperationException("Trying to generate literal for non-literal type $targetType")
-        }
+    override fun generateBaseExpressionForType(
+        context: GenerationContext,
+        targetType: Type,
+    ): ExpressionAST = when (targetType) {
+        is LiteralType -> generateLiteralForType(context, targetType)
+        is ArrayType -> generateArrayInitialisation(context, targetType)
+        // should not be possible to reach here
+        else -> throw UnsupportedOperationException("Trying to generate base for non-base type $targetType")
+    }
 
-    private fun generateLiteralForType(context: GenerationContext, targetType: Type): ExpressionAST =
-        when (targetType) {
-            is LiteralType -> generateLiteralForType(context, targetType)
-            is ArrayType -> generateArrayInitialisation(context, targetType)
-            else -> throw UnsupportedOperationException("Trying to generate literal for unsupported type")
-        }
+    private fun generateLiteralForType(
+        context: GenerationContext,
+        targetType: LiteralType,
+    ): LiteralAST = when (targetType) {
+        BoolType -> generateBooleanLiteral(context)
+        CharType -> generateCharLiteral(context)
+        IntType -> generateIntegerLiteral(context)
+        RealType -> generateRealLiteral(context)
+        // should not be possible to reach here
+        else -> throw UnsupportedOperationException("Trying to generate literal for non-literal type $targetType")
+    }
 
     override fun generateIntegerLiteral(context: GenerationContext): IntegerLiteralAST {
         val isHex = selectionManager.randomWeightedSelection(listOf(true to 0.7, false to 0.3))
@@ -440,11 +661,13 @@ class Generator(
         return IntegerLiteralAST(value, isHex)
     }
 
-    override fun generateArrayInitialisation(context: GenerationContext, targetType: ArrayType): ArrayInitAST =
-        ArrayInitAST(selectionManager.selectArrayLength(), targetType)
+    override fun generateArrayInitialisation(
+        context: GenerationContext,
+        targetType: ArrayType,
+    ): ArrayInitAST = ArrayInitAST(selectionManager.selectArrayLength(), targetType)
 
     override fun generateBooleanLiteral(context: GenerationContext): BooleanLiteralAST =
-        BooleanLiteralAST(random.nextBoolean())
+        BooleanLiteralAST(selectionManager.selectBoolean())
 
     override fun generateRealLiteral(context: GenerationContext): RealLiteralAST {
         val beforePoint = generateDecimalLiteralValue(negative = true)
@@ -460,15 +683,21 @@ class Generator(
 
     override fun generateType(context: GenerationContext, literalOnly: Boolean): Type =
         if (!context.onDemandIdentifiers) {
-            selectionManager.randomSelection(context.symbolTable.types().filter { it == IntType || it == BoolType })
+            selectionManager.randomSelection(listOf(IntType, BoolType))
         } else {
-            selectionManager.selectType(literalOnly = literalOnly)
+            selectionManager.selectType(context, literalOnly = literalOnly)
         }
 
     private fun generateDecimalLiteralValue(negative: Boolean = true): String {
         var value = selectionManager.selectDecimalLiteral()
 
-        if (negative && selectionManager.randomWeightedSelection(listOf(true to 0.2, false to 0.8))) {
+        if (negative && selectionManager.randomWeightedSelection(
+                listOf(
+                    true to 0.2,
+                    false to 0.8,
+                ),
+            )
+        ) {
             value *= -1
         }
 
@@ -479,15 +708,10 @@ class Generator(
         private val WRAPPER_FUNCTIONS = listOf(
             ABSOLUTE,
             SAFE_ADDITION_INT,
-            SAFE_ADDITION_REAL,
+            SAFE_SUBTRACT_INT,
             SAFE_DIVISION_INT,
-            SAFE_DIVISION_REAL,
             SAFE_MODULO_INT,
             SAFE_MULTIPLY_INT,
-            SAFE_MULTIPLY_REAL,
-            SAFE_SUBTRACT_REAL,
-            SAFE_SUBTRACT_CHAR,
-            SAFE_SUBTRACT_INT
         )
         private const val DAFNY_MAX_LOOP_COUNTER = 100
     }
