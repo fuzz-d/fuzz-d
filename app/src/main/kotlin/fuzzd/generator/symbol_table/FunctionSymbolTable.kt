@@ -23,7 +23,7 @@ class FunctionSymbolTable(private val parent: FunctionSymbolTable? = null) {
     }
 
     fun withFunctionMethodType(type: Type): List<FunctionMethodAST> =
-        functionMethods.filter { it.returnType() == type }
+        functionMethods.filter { it.returnType() == type } + (parent?.withFunctionMethodType(type) ?: listOf())
 
     fun functionMethods(): Set<FunctionMethodAST> = functionMethods union (parent?.functionMethods() ?: listOf())
 
