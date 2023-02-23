@@ -4,11 +4,11 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.LoopCounterGenerator
-import fuzzd.generator.symbol_table.GlobalSymbolTable
+import fuzzd.generator.symbol_table.FunctionSymbolTable
 import fuzzd.generator.symbol_table.SymbolTable
 
 data class GenerationContext(
-    val globalSymbolTable: GlobalSymbolTable,
+    val functionSymbolTable: FunctionSymbolTable,
     val statementDepth: Int = 1,
     val expressionDepth: Int = 1,
     val symbolTable: SymbolTable = SymbolTable(),
@@ -30,7 +30,7 @@ data class GenerationContext(
 
     fun increaseExpressionDepth(): GenerationContext =
         GenerationContext(
-            globalSymbolTable,
+            functionSymbolTable,
             statementDepth,
             expressionDepth + 1,
             symbolTable,
@@ -43,7 +43,7 @@ data class GenerationContext(
 
     fun increaseStatementDepth(): GenerationContext =
         GenerationContext(
-            globalSymbolTable,
+            functionSymbolTable,
             statementDepth + 1,
             expressionDepth,
             SymbolTable(symbolTable),
@@ -55,7 +55,7 @@ data class GenerationContext(
 
     fun disableOnDemand(): GenerationContext =
         GenerationContext(
-            globalSymbolTable,
+            functionSymbolTable,
             statementDepth,
             expressionDepth,
             symbolTable,

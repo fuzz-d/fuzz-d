@@ -70,7 +70,7 @@ import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.METHOD_CALL
 import fuzzd.generator.selection.StatementType.PRINT
 import fuzzd.generator.selection.StatementType.WHILE
-import fuzzd.generator.symbol_table.GlobalSymbolTable
+import fuzzd.generator.symbol_table.FunctionSymbolTable
 import fuzzd.generator.symbol_table.MethodCallTable
 import fuzzd.generator.symbol_table.SymbolTable
 import fuzzd.utils.ABSOLUTE
@@ -79,12 +79,13 @@ import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.SAFE_MULTIPLY_INT
 import fuzzd.utils.SAFE_SUBTRACT_INT
+import fuzzd.utils.unionAll
+
 // import fuzzd.utils.SAFE_ADDITION_REAL
 // import fuzzd.utils.SAFE_DIVISION_REAL
 // import fuzzd.utils.SAFE_MULTIPLY_REAL
 // import fuzzd.utils.SAFE_SUBTRACT_CHAR
 // import fuzzd.utils.SAFE_SUBTRACT_REAL
-import fuzzd.utils.unionAll
 
 class Generator(
     private val selectionManager: SelectionManager,
@@ -99,15 +100,15 @@ class Generator(
     /* ==================================== TOP LEVEL ==================================== */
 
     override fun generate(): TopLevelAST {
-        val context = GenerationContext(GlobalSymbolTable())
+        val context = GenerationContext(FunctionSymbolTable())
 
         // init with safety function methods
-        context.globalSymbolTable.addAllFunctionMethods(WRAPPER_FUNCTIONS)
+        context.functionSymbolTable.addFunctionMethods(WRAPPER_FUNCTIONS)
 
         val mainFunction = generateMainFunction(context)
         val ast = mutableListOf<ASTElement>()
 
-        val methodBodyQueue = context.globalSymbolTable.methods().toMutableList()
+        val methodBodyQueue = context.functionSymbolTable.methods().toMutableList()
         val visitedMethods = mutableSetOf<MethodAST>()
 
         while (methodBodyQueue.isNotEmpty()) {
@@ -116,17 +117,17 @@ class Generator(
             if (method in visitedMethods) continue
             visitedMethods.add(method)
 
-            val functionContext = GenerationContext(context.globalSymbolTable, methodContext = method)
+            val functionContext = GenerationContext(context.functionSymbolTable, methodContext = method)
             val body = generateMethodBody(functionContext, method)
             method.setBody(body)
 
-            methodBodyQueue.addAll(context.globalSymbolTable.methods() subtract methodBodyQueue.toSet() subtract visitedMethods)
+            methodBodyQueue.addAll(context.functionSymbolTable.methods() subtract methodBodyQueue.toSet() subtract visitedMethods)
         }
 
-        ast.addAll(context.globalSymbolTable.functionMethods())
-        ast.addAll(context.globalSymbolTable.methods())
-        ast.addAll(context.globalSymbolTable.traits())
-        ast.addAll(context.globalSymbolTable.classes())
+        ast.addAll(context.functionSymbolTable.functionMethods())
+        ast.addAll(context.functionSymbolTable.methods())
+        ast.addAll(context.functionSymbolTable.traits())
+        ast.addAll(context.functionSymbolTable.classes())
         ast.add(mainFunction)
 
         return TopLevelAST(ast)
@@ -154,11 +155,13 @@ class Generator(
     }
 
     override fun generateClass(context: GenerationContext): ClassAST {
-        val classContext = GenerationContext(context.globalSymbolTable.clone())
+        println("==================================== GENERATING CLASS ======================================")
+        val classContext = GenerationContext(FunctionSymbolTable(context.functionSymbolTable.topLevel()))
+        println("==================================== CLASS CONTEXT CLONED ======================================")
 
         // get traits
         val numberOfTraits = selectionManager.selectNumberOfTraits()
-        val traits = context.globalSymbolTable.traits().toMutableList()
+        val traits = context.functionSymbolTable.traits().toMutableList()
         val selectedTraits = mutableSetOf<TraitAST>()
 
         for (i in 1..numberOfTraits) {
@@ -194,7 +197,7 @@ class Generator(
             method.setBody(
                 generateMethodBody(
                     GenerationContext(
-                        classContext.globalSymbolTable,
+                        classContext.functionSymbolTable,
                         symbolTable = SymbolTable(classContext.symbolTable),
                         methodContext = method,
                     ),
@@ -206,27 +209,14 @@ class Generator(
         val clazz = ClassAST(classNameGenerator.newValue(), selectedTraits, functionMethods, methods, fields)
 
         // update symbol table with on-demand methods & classes generated into local global context
-        context.globalSymbolTable.addAllMethods(
-            classContext.globalSymbolTable.methods()
-                subtract context.globalSymbolTable.methods().toSet()
-                subtract methods,
-        )
 
-        context.globalSymbolTable.addAllFunctionMethods(
-            classContext.globalSymbolTable.functionMethods()
-                subtract context.globalSymbolTable.functionMethods().toSet()
-                subtract functionMethods,
-        )
+        context.functionSymbolTable.addFunctionMethods(classContext.functionSymbolTable.functionMethods() subtract functionMethods)
+        context.functionSymbolTable.addMethods(classContext.functionSymbolTable.methods() subtract methods)
+        context.functionSymbolTable.addClass(clazz)
 
-        context.globalSymbolTable.addAllClasses(
-            classContext.globalSymbolTable.classes() subtract context.globalSymbolTable.classes().toSet(),
-        )
-        context.globalSymbolTable.addAllTraits(
-            classContext.globalSymbolTable.traits() subtract context.globalSymbolTable.traits().toSet(),
-        )
-
-        context.globalSymbolTable.addClass(clazz)
-
+        println("================================ CLASS GENERATION FINISHED ===================================")
+        println(context.functionSymbolTable.functionMethods().joinToString(", ") { it.name() })
+        println("==============================================================================================")
         return clazz
     }
 
@@ -246,13 +236,13 @@ class Generator(
         context: GenerationContext,
         signature: FunctionMethodSignatureAST,
     ): FunctionMethodAST {
-        val functionContext = GenerationContext(context.globalSymbolTable, onDemandIdentifiers = false)
+        val functionContext = GenerationContext(context.functionSymbolTable, onDemandIdentifiers = false)
         signature.params.forEach { param -> functionContext.symbolTable.add(param) }
 
         val body = generateExpression(functionContext, signature.returnType).makeSafe()
         val functionMethodAST = FunctionMethodAST(signature, body)
 
-        context.globalSymbolTable.addFunctionMethod(functionMethodAST)
+        context.functionSymbolTable.addFunctionMethod(functionMethodAST)
 
         return functionMethodAST
     }
@@ -451,11 +441,11 @@ class Generator(
 
     override fun generateClassInstantiation(context: GenerationContext): DeclarationAST {
         // on demand create class if one doesn't exist
-        if (!context.globalSymbolTable.hasClasses() || selectionManager.generateNewClass()) {
+        if (!context.functionSymbolTable.hasClasses() || selectionManager.generateNewClass()) {
             generateClass(context)
         }
 
-        val selectedClass = selectionManager.randomSelection(context.globalSymbolTable.classes())
+        val selectedClass = selectionManager.randomSelection(context.functionSymbolTable.classes().toList())
         val requiredFields = selectedClass.fields
 
         val params = requiredFields.map { field ->
@@ -481,7 +471,7 @@ class Generator(
     @Throws(MethodOnDemandException::class)
     override fun generateMethodCall(context: GenerationContext): StatementAST {
         // get callable methods
-        val methods = context.globalSymbolTable.methods().filter { method ->
+        val methods = context.functionSymbolTable.methods().filter { method ->
             context.methodContext == null || methodCallTable.canCall(context.methodContext, method)
         }
 
@@ -494,7 +484,7 @@ class Generator(
         val method: MethodAST
         if (methods.isEmpty() || selectionManager.generateNewMethod(context)) {
             method = generateMethod(context)
-            context.globalSymbolTable.addMethod(method)
+            context.functionSymbolTable.addMethod(method)
         } else {
             method = selectionManager.randomSelection(methods)
         }
@@ -569,7 +559,7 @@ class Generator(
     }
 
     private fun callableFunctionMethods(context: GenerationContext, targetType: Type): List<FunctionMethodAST> =
-        context.globalSymbolTable.withFunctionMethodType(targetType)
+        context.functionSymbolTable.withFunctionMethodType(targetType)
             .filter { fm ->
                 !fm.params()
                     .map { p -> p.type() }

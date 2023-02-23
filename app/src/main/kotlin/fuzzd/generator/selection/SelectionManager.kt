@@ -2,7 +2,6 @@ package fuzzd.generator.selection
 
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
-import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
@@ -47,10 +46,10 @@ class SelectionManager(
     }
 
     private fun selectClassType(context: GenerationContext): ClassType =
-        ClassType(randomSelection(context.globalSymbolTable.classes()))
+        ClassType(randomSelection(context.functionSymbolTable.classes().toList()))
 
     private fun selectTraitType(context: GenerationContext): TraitType =
-        TraitType(randomSelection(context.globalSymbolTable.traits()))
+        TraitType(randomSelection(context.functionSymbolTable.traits().toList()))
 
     private fun selectArrayType(context: GenerationContext): ArrayType = selectArrayTypeWithDepth(context, 1)
 
@@ -138,7 +137,7 @@ class SelectionManager(
 
     fun generateNewMethod(context: GenerationContext): Boolean {
         val trueWeighting =
-            0.2 / maxOf(context.statementDepth, context.expressionDepth, context.globalSymbolTable.methods().size)
+            0.2 / maxOf(context.statementDepth, context.expressionDepth, context.functionSymbolTable.methods().size)
 
         return context.methodContext == null &&
             randomWeightedSelection(listOf(true to trueWeighting, false to 1 - trueWeighting))
