@@ -124,8 +124,7 @@ class ExpressionASTTests {
         fun givenFunctionMethod_whenMethodCallWithCorrectParams_expectSuccessfulInit() {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
-            val body = IntegerLiteralAST(37481)
-            val method = FunctionMethodAST(FunctionMethodSignatureAST("fm1", IntType, params), body)
+            val method = FunctionMethodSignatureAST("fm1", IntType, params)
 
             // when
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false))
@@ -138,8 +137,7 @@ class ExpressionASTTests {
         fun givenFunctionMethod_whenMethodCallWithTooManyParams_expectError() {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
-            val body = IntegerLiteralAST(37481)
-            val method = FunctionMethodAST(FunctionMethodSignatureAST("fm1", IntType, params), body)
+            val method = FunctionMethodSignatureAST("fm1", IntType, params)
 
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false), IntegerLiteralAST(135))
 
@@ -161,8 +159,7 @@ class ExpressionASTTests {
         fun givenFunctionMethod_whenMethodCallWithTooFewParams_expectError() {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
-            val body = IntegerLiteralAST(37481)
-            val method = FunctionMethodAST(FunctionMethodSignatureAST("fm1", IntType, params), body)
+            val method = FunctionMethodSignatureAST("fm1", IntType, params)
 
             val callParams = listOf<ExpressionAST>()
 
@@ -184,8 +181,7 @@ class ExpressionASTTests {
         fun givenFunctionMethod_whenMethodCallWithIncorrectParamTypes_expectError() {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
-            val body = IntegerLiteralAST(37481)
-            val method = FunctionMethodAST(FunctionMethodSignatureAST("fm1", IntType, params), body)
+            val method = FunctionMethodSignatureAST("fm1", IntType, params)
 
             val callParams = listOf<ExpressionAST>(IdentifierAST("p1", BoolType), IdentifierAST("p2", IntType))
 
@@ -212,7 +208,7 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val returns = listOf(IdentifierAST("r1", IntType), IdentifierAST("r2", IntType))
-            val method = MethodAST("m1", params, returns)
+            val method = MethodSignatureAST("m1", params, returns)
 
             // when
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false))
@@ -226,7 +222,7 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val returns = listOf(IdentifierAST("r1", IntType), IdentifierAST("r2", IntType))
-            val method = MethodAST("m1", params, returns)
+            val method = MethodSignatureAST("m1", params, returns)
 
             // when
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false), IntegerLiteralAST(13))
@@ -240,7 +236,7 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val returns = listOf(IdentifierAST("r1", IntType), IdentifierAST("r2", IntType))
-            val method = MethodAST("m1", params, returns)
+            val method = MethodSignatureAST("m1", params, returns)
 
             // when
             val callParams = listOf<ExpressionAST>()
@@ -254,7 +250,7 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val returns = listOf(IdentifierAST("r1", IntType), IdentifierAST("r2", IntType))
-            val method = MethodAST("m1", params, returns)
+            val method = MethodSignatureAST("m1", params, returns)
 
             // when
             val callParams = listOf(BooleanLiteralAST(false), IntegerLiteralAST(13))
@@ -382,7 +378,7 @@ class ExpressionASTTests {
             val safe = expr.makeSafe()
 
             // expect
-            val expected = FunctionMethodCallAST(SAFE_DIVISION_INT, listOf(lhs, rhs))
+            val expected = FunctionMethodCallAST(SAFE_DIVISION_INT.signature, listOf(lhs, rhs))
             assertEquals(expected.toString(), safe.toString())
         }
 
@@ -414,7 +410,7 @@ class ExpressionASTTests {
             val safe = expr.makeSafe()
 
             // expect
-            val expected = FunctionMethodCallAST(SAFE_MODULO_INT, listOf(lhs, rhs))
+            val expected = FunctionMethodCallAST(SAFE_MODULO_INT.signature, listOf(lhs, rhs))
 
             assertEquals(expected.toString(), safe.toString())
         }
@@ -454,7 +450,7 @@ class ExpressionASTTests {
             val expected = ArrayIndexAST(
                 array,
                 BinaryExpressionAST(
-                    FunctionMethodCallAST(ABSOLUTE, listOf(index)),
+                    FunctionMethodCallAST(ABSOLUTE.signature, listOf(index)),
                     ModuloOperator,
                     ArrayLengthAST(array),
                 ),
