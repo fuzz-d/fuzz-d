@@ -8,6 +8,7 @@ import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
@@ -449,7 +450,7 @@ class Generator(
                 field.type(),
             ).makeSafe()
         }
-        val ident = IdentifierAST(context.identifierNameGenerator.newValue(), ClassType(selectedClass))
+        val ident = ClassInstanceAST(selectedClass, context.identifierNameGenerator.newValue())
 
         context.symbolTable.add(ident)
 
