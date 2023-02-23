@@ -1,10 +1,10 @@
 package fuzzd.generator.ast
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
-import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
+import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.RealType
@@ -186,22 +186,18 @@ sealed class ExpressionAST : ASTElement {
         val methods = clazz.methods.map { MethodSignatureAST("$name.${it.name()}", it.params(), it.returns()) }
     }
 
-    class ArrayIdentifierAST(
-        name: String,
-        private val type: ArrayType,
-        val length: Int,
-    ) : IdentifierAST(name, type) {
-        override fun type(): ArrayType = type
-    }
-
     class ArrayIndexAST(
-        val array: ArrayIdentifierAST,
+        val array: IdentifierAST,
         val index: ExpressionAST,
     ) : IdentifierAST(
         array.name,
-        array.type().internalType,
+        (array.type() as ArrayType).internalType,
     ) {
         init {
+            if (array.type() !is ArrayType) {
+                throw InvalidInputException("Creating array index with identifier of type ${array.type()}")
+            }
+
             if (index.type() != IntType) {
                 throw InvalidInputException("Creating array index with index of type ${index.type()}")
             }
@@ -215,7 +211,7 @@ sealed class ExpressionAST : ASTElement {
                 BinaryExpressionAST(
                     FunctionMethodCallAST(ABSOLUTE, listOf(safeIndex)),
                     ModuloOperator,
-                    IntegerLiteralAST(array.length.toString()),
+                    ArrayLengthAST(array),
                 ),
             )
         }
@@ -223,6 +219,18 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String {
             return "$array[$index]"
         }
+    }
+
+    class ArrayLengthAST(val array: IdentifierAST) : ExpressionAST() {
+        init {
+            if (array.type() !is ArrayType) {
+                throw InvalidInputException("Creating array index with identifier of type ${array.type()}")
+            }
+        }
+
+        override fun type(): Type = IntType
+
+        override fun toString(): String = "${array.name}.Length"
     }
 
     class ArrayInitAST(val length: Int, private val type: ArrayType) : ExpressionAST() {

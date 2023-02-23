@@ -3,9 +3,7 @@ package fuzzd.generator.ast.operators
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
-import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.IntType
-import fuzzd.generator.ast.Type.RealType
 
 /**
  * Supported operators with associated precedences taken from documentation
@@ -42,7 +40,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     object DisjunctionOperator : BooleanBinaryOperator(3, "||")
 
     sealed class ComparisonBinaryOperator(symbol: String) : BinaryOperator(4, symbol) {
-        private val supportedInputTypes = listOf(IntType, CharType, RealType)
+        private val supportedInputTypes = listOf(IntType/*, CharType, RealType*/)
 
         override fun supportedInputTypes(): List<Type> = supportedInputTypes
 
@@ -64,7 +62,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     sealed class MathematicalBinaryOperator(
         precedence: Int,
         symbol: String,
-        private val supportedInputTypes: List<Type> = listOf(IntType, RealType)
+        private val supportedInputTypes: List<Type> = listOf(IntType/*, RealType*/),
     ) : BinaryOperator(precedence, symbol) {
         override fun supportedInputTypes(): List<Type> = supportedInputTypes
 
@@ -72,11 +70,11 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
             t1 == t2 && t1 in supportedInputTypes
     }
 
-    object AdditionOperator : MathematicalBinaryOperator(1, "+", listOf(CharType, IntType, RealType))
-    object SubtractionOperator : MathematicalBinaryOperator(1, "-", listOf(CharType, IntType, RealType))
+    object AdditionOperator : MathematicalBinaryOperator(1, "+"/*, listOf(IntType, CharType, RealType)*/)
+    object SubtractionOperator : MathematicalBinaryOperator(1, "-"/*, listOf(IntType, CharType, RealType)*/)
     object MultiplicationOperator : MathematicalBinaryOperator(2, "*")
     object DivisionOperator : MathematicalBinaryOperator(2, "/")
-    object ModuloOperator : MathematicalBinaryOperator(2, "%", listOf(IntType))
+    object ModuloOperator : MathematicalBinaryOperator(2, "%"/*, listOf(IntType)*/)
 
     companion object {
         fun isBinaryType(type: Type): Boolean {

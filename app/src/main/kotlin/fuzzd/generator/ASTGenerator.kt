@@ -10,7 +10,6 @@ import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
-import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
@@ -28,8 +27,7 @@ import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
-import fuzzd.generator.ast.Type.ArrayType
-import fuzzd.generator.ast.Type.LiteralType
+import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.context.GenerationContext
 
 interface ASTGenerator {
@@ -44,11 +42,16 @@ interface ASTGenerator {
 
     fun generateField(context: GenerationContext): IdentifierAST
 
-    fun generateFunctionMethod(context: GenerationContext, targetType: Type? = null): FunctionMethodAST
+    fun generateFunctionMethod(
+        context: GenerationContext,
+        targetType: Type? = null,
+        literalParams: Boolean = false,
+    ): FunctionMethodAST
 
     fun generateFunctionMethodSignature(
         context: GenerationContext,
         targetType: Type? = null,
+        literalParams: Boolean = false,
     ): FunctionMethodSignatureAST
 
     fun generateMethod(context: GenerationContext): MethodAST
@@ -95,7 +98,7 @@ interface ASTGenerator {
 
     fun generateArrayIndex(context: GenerationContext, targetType: Type): ArrayIndexAST
 
-    fun generateLiteralForType(context: GenerationContext, targetType: LiteralType): LiteralAST
+    fun generateBaseExpressionForType(context: GenerationContext, targetType: Type): ExpressionAST
 
     fun generateIntegerLiteral(context: GenerationContext): IntegerLiteralAST
 

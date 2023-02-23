@@ -1,10 +1,10 @@
 package fuzzd.generator.selection
 
 import fuzzd.generator.ast.Type
-import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
+import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.RealType
@@ -18,6 +18,7 @@ import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.selection.ExpressionType.BINARY
+import fuzzd.generator.selection.ExpressionType.CONSTRUCTOR
 import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
@@ -66,8 +67,9 @@ class SelectionManager(
         return ArrayType(innerType)
     }
 
+    @Suppress("UNUSED_PARAMETER")
     private fun selectLiteralType(context: GenerationContext): LiteralType =
-        randomWeightedSelection(listOf(IntType to 0.5, BoolType to 0.5))
+        randomSelection(LITERAL_TYPES)
 
     fun selectMethodReturnType(context: GenerationContext): List<Type> {
         val numberOfReturns = random.nextInt(MAX_RETURNS)
@@ -91,7 +93,7 @@ class SelectionManager(
                     Pair(subclass, inputType)
                 }
 
-            IntType, RealType, CharType -> {
+            IntType/*, RealType, CharType*/ -> {
                 val subclassInstances = BinaryOperator.MathematicalBinaryOperator::class.sealedSubclasses
                     .mapNotNull { it.objectInstance }
                     .filter { targetType in it.supportedInputTypes() }
@@ -151,13 +153,19 @@ class SelectionManager(
         val remainingProbability = (1 - binaryProbability - unaryProbability - functionMethodCallProbability)
         val identifierProbability = if (identifier) 2 * remainingProbability / 3 else 0.0
         val literalProbability =
-            if (targetType is ArrayType && context.expressionDepth > 1) {
-                0.0
-            } else {
+            if (isLiteralType(targetType)) {
                 if (identifier) remainingProbability / 3 else remainingProbability
+            } else {
+                0.0
             }
+        val constructorProbability = if (!isLiteralType(targetType) && context.expressionDepth == 1) {
+            if (identifier) remainingProbability / 3 else remainingProbability
+        } else {
+            0.0
+        }
 
         val selection = listOf(
+            CONSTRUCTOR to constructorProbability,
             LITERAL to literalProbability,
             IDENTIFIER to identifierProbability,
             FUNCTION_METHOD_CALL to functionMethodCallProbability,
@@ -165,10 +173,7 @@ class SelectionManager(
             BINARY to binaryProbability,
         )
 
-        val selected = randomWeightedSelection(normaliseWeights(selection))
-//        println(targetType)
-//        println(selected)
-        return selected
+        return randomWeightedSelection(normaliseWeights(selection))
     }
 
     fun <T> normaliseWeights(items: List<Pair<T, Double>>): List<Pair<T, Double>> {
@@ -230,5 +235,8 @@ class SelectionManager(
         private const val MAX_FUNCTION_METHODS = 10
         private const val MAX_METHODS = 3
         private const val MAX_TRAITS = 3
+
+        private val LITERAL_TYPES = listOf(IntType, BoolType)
+        private fun isLiteralType(type: Type) = type in LITERAL_TYPES
     }
 }

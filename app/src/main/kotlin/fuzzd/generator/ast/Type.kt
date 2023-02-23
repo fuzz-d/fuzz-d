@@ -1,6 +1,7 @@
 package fuzzd.generator.ast
 
 sealed class Type {
+
     class ClassType(val clazz: ClassAST) : Type() {
         override fun equals(other: Any?): Boolean = other is ClassType && other.clazz == this.clazz
 
@@ -17,17 +18,19 @@ sealed class Type {
         override fun toString(): String = trait.name
     }
 
-    class ArrayType(val internalType: Type) : Type() {
-        override fun equals(other: Any?): Boolean {
-            return other != null && other is ArrayType &&
-                other.internalType == internalType
-        }
+    sealed class ConstructorType : Type() {
+        class ArrayType(val internalType: Type) : ConstructorType() {
+            override fun equals(other: Any?): Boolean {
+                return other != null && other is ArrayType &&
+                    other.internalType == internalType
+            }
 
-        override fun hashCode(): Int {
-            return internalType.hashCode()
-        }
+            override fun hashCode(): Int {
+                return internalType.hashCode()
+            }
 
-        override fun toString(): String = "array<$internalType>"
+            override fun toString(): String = "array<$internalType>"
+        }
     }
 
     class MethodReturnType(val types: List<Type>) : Type()

@@ -1,7 +1,7 @@
 package fuzzd.generator.ast
 
-import fuzzd.generator.ast.ExpressionAST.ArrayIdentifierAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
+import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
@@ -13,8 +13,8 @@ import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
-import fuzzd.generator.ast.Type.ArrayType
 import fuzzd.generator.ast.Type.BoolType
+import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
@@ -26,9 +26,9 @@ import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.SAFE_DIVISION_INT
-import fuzzd.utils.SAFE_DIVISION_REAL
+//import fuzzd.utils.SAFE_DIVISION_REAL
 import fuzzd.utils.SAFE_MODULO_INT
-import fuzzd.utils.SAFE_SUBTRACT_CHAR
+//import fuzzd.utils.SAFE_SUBTRACT_CHAR
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Nested
@@ -444,7 +444,7 @@ class ExpressionASTTests {
         @Test
         fun givenArrayIndexAST_whenMakeSafe_expectAbsoluteWrapperAndModulo() {
             // given
-            val array = ArrayIdentifierAST("a", ArrayType(IntType), 5)
+            val array = IdentifierAST("a", ArrayType(IntType))
             val index = IntegerLiteralAST("43")
 
             val expr = ArrayIndexAST(array, index)
@@ -458,7 +458,7 @@ class ExpressionASTTests {
                 BinaryExpressionAST(
                     FunctionMethodCallAST(ABSOLUTE, listOf(index)),
                     ModuloOperator,
-                    IntegerLiteralAST("5"),
+                    ArrayLengthAST(array),
                 ),
             )
 
