@@ -37,7 +37,6 @@ import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
-import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
@@ -118,7 +117,7 @@ class Generator(
             if (method in visitedMethods) continue
             visitedMethods.add(method)
 
-            val functionContext = GenerationContext(context.functionSymbolTable, methodContext = method)
+            val functionContext = GenerationContext(context.functionSymbolTable, methodContext = method.signature)
             val body = generateMethodBody(functionContext, method)
             method.setBody(body)
 
@@ -198,7 +197,7 @@ class Generator(
                     GenerationContext(
                         classContext.functionSymbolTable,
                         symbolTable = SymbolTable(classContext.symbolTable),
-                        methodContext = method,
+                        methodContext = method.signature,
                     ),
                     method,
                 ),
@@ -264,7 +263,11 @@ class Generator(
         return FunctionMethodSignatureAST(name, returnType, parameters)
     }
 
-    override fun generateMethod(context: GenerationContext): MethodAST = MethodAST(generateMethodSignature(context))
+    override fun generateMethod(context: GenerationContext): MethodAST {
+        val method = MethodAST(generateMethodSignature(context))
+        context.functionSymbolTable.addMethod(method)
+        return method
+    }
 
     private fun generateMethod(signature: MethodSignatureAST): MethodAST = MethodAST(signature)
 
@@ -467,32 +470,38 @@ class Generator(
     @Throws(MethodOnDemandException::class)
     override fun generateMethodCall(context: GenerationContext): StatementAST {
         // get callable methods
-        val methods = context.functionSymbolTable.methods().filter { method ->
-            context.methodContext == null || methodCallTable.canCall(context.methodContext, method)
-        }
+        val methods = (
+            context.functionSymbolTable.methods().map { it.signature } +
+                context.symbolTable.classInstances().map { it.methods }.unionAll()
+            )
+            .filter { method ->
+                context.methodContext == null || methodCallTable.canCall(
+                    context.methodContext,
+                    method,
+                )
+            }
 
         // no support for on demand method generation within methods
         if (methods.isEmpty() && context.methodContext != null) {
-            throw MethodOnDemandException("Callable method unavailable for context ${context.methodContext.name()}")
+            throw MethodOnDemandException("Callable method unavailable for context ${context.methodContext.name}")
         }
 
         // generate new method if a callable method doesn't exist
-        val method: MethodAST
+        val method: MethodSignatureAST
         if (methods.isEmpty() || selectionManager.generateNewMethod(context)) {
-            method = generateMethod(context)
-            context.functionSymbolTable.addMethod(method)
+            method = generateMethod(context).signature
         } else {
             method = selectionManager.randomSelection(methods)
         }
 
-        val params = method.params().map { param -> generateExpression(context, param.type()).makeSafe() }
+        val params = method.params.map { param -> generateExpression(context, param.type()).makeSafe() }
 
         // add call for method context
         if (context.methodContext != null) {
             methodCallTable.addCall(method, context.methodContext)
         }
 
-        val returns = method.returns()
+        val returns = method.returns
 
         return if (returns.isEmpty()) {
             // void method type
@@ -542,25 +551,36 @@ class Generator(
     ): FunctionMethodCallAST {
         val callable = callableFunctionMethods(context, targetType)
         val functionMethod = if (callable.isEmpty()) {
-            generateFunctionMethod(context, targetType)
+            generateFunctionMethod(context, targetType).signature
         } else {
             selectionManager.randomSelection(callable)
         }
 
-        val arguments = functionMethod.params().map { param ->
+        val arguments = functionMethod.params.map { param ->
             generateExpression(context.increaseExpressionDepth(), param.type()).makeSafe()
         }
 
         return FunctionMethodCallAST(functionMethod, arguments)
     }
 
-    private fun callableFunctionMethods(context: GenerationContext, targetType: Type): List<FunctionMethodAST> =
-        context.functionSymbolTable.withFunctionMethodType(targetType)
+    private fun callableFunctionMethods(
+        context: GenerationContext,
+        targetType: Type,
+    ): List<FunctionMethodSignatureAST> =
+        functionMethodsWithType(context, targetType)
             .filter { fm ->
-                !fm.params()
+                !fm.params
                     .map { p -> p.type() }
                     .any { t -> t is ConstructorType && !context.symbolTable.hasType(t) }
             }
+
+    private fun functionMethodsWithType(
+        context: GenerationContext,
+        targetType: Type,
+    ): List<FunctionMethodSignatureAST> =
+        context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+            context.symbolTable.classInstances().map { it.functionMethods }.unionAll()
+                .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
     override fun generateIdentifier(

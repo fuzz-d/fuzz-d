@@ -4,7 +4,6 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
-import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.Type
@@ -13,7 +12,6 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
-import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator
@@ -81,12 +79,16 @@ val SAFE_MODULO_INT = FunctionMethodAST(
     TernaryExpressionAST(
         BinaryExpressionAST(INT_IDENTIFIER_2, EqualsOperator, IntegerLiteralAST("0")),
         INT_IDENTIFIER_1,
-        BinaryExpressionAST(FunctionMethodCallAST(ABSOLUTE, listOf(INT_IDENTIFIER_1)), ModuloOperator, INT_IDENTIFIER_2),
+        BinaryExpressionAST(
+            FunctionMethodCallAST(ABSOLUTE.signature, listOf(INT_IDENTIFIER_1)),
+            ModuloOperator,
+            INT_IDENTIFIER_2,
+        ),
     ),
 )
 
 // if ((y < 0.001) && (y > -0.001)) || (x / y > 100_000) then x else x / y
-//val SAFE_DIVISION_REAL = FunctionMethodAST(
+// val SAFE_DIVISION_REAL = FunctionMethodAST(
 //    "safeDivisionReal",
 //    RealType,
 //    listOf(REAL_IDENTIFIER_1, REAL_IDENTIFIER_2),
@@ -107,10 +109,10 @@ val SAFE_MODULO_INT = FunctionMethodAST(
 //        REAL_IDENTIFIER_1,
 //        BinaryExpressionAST(REAL_IDENTIFIER_1, DivisionOperator, REAL_IDENTIFIER_2),
 //    ),
-//)
+// )
 
 // -------------- SUBTRACTION SAFETY ------------------
-//val SAFE_SUBTRACT_CHAR = FunctionMethodAST(
+// val SAFE_SUBTRACT_CHAR = FunctionMethodAST(
 //    "safeSubtractChar",
 //    CharType,
 //    listOf(CHAR_IDENTIFIER_1, CHAR_IDENTIFIER_2),
@@ -119,7 +121,7 @@ val SAFE_MODULO_INT = FunctionMethodAST(
 //        BinaryExpressionAST(CHAR_IDENTIFIER_2, SubtractionOperator, CHAR_IDENTIFIER_1),
 //        BinaryExpressionAST(CHAR_IDENTIFIER_1, SubtractionOperator, CHAR_IDENTIFIER_2),
 //    ),
-//)
+// )
 
 val SAFE_SUBTRACT_INT = FunctionMethodAST(
     "safeSubtractInt",
@@ -152,7 +154,7 @@ val SAFE_SUBTRACT_INT = FunctionMethodAST(
     ),
 )
 
-//val SAFE_SUBTRACT_REAL = FunctionMethodAST(
+// val SAFE_SUBTRACT_REAL = FunctionMethodAST(
 //    "safeSubtractReal",
 //    RealType,
 //    listOf(REAL_IDENTIFIER_1, REAL_IDENTIFIER_2),
@@ -173,7 +175,7 @@ val SAFE_SUBTRACT_INT = FunctionMethodAST(
 //        BinaryExpressionAST(INT_IDENTIFIER_1, AdditionOperator, INT_IDENTIFIER_2),
 //        BinaryExpressionAST(INT_IDENTIFIER_1, SubtractionOperator, INT_IDENTIFIER_2),
 //    ),
-//)
+// )
 
 // ----------------------- ADDITION SAFETY --------------------------
 val SAFE_ADDITION_INT = FunctionMethodAST(
@@ -199,7 +201,7 @@ val SAFE_ADDITION_INT = FunctionMethodAST(
     ),
 )
 
-//val SAFE_ADDITION_REAL = FunctionMethodAST(
+// val SAFE_ADDITION_REAL = FunctionMethodAST(
 //    "safeAdditionReal",
 //    RealType,
 //    listOf(REAL_IDENTIFIER_1, REAL_IDENTIFIER_2),
@@ -220,7 +222,7 @@ val SAFE_ADDITION_INT = FunctionMethodAST(
 //        BinaryExpressionAST(REAL_IDENTIFIER_1, SubtractionOperator, REAL_IDENTIFIER_2),
 //        BinaryExpressionAST(REAL_IDENTIFIER_1, AdditionOperator, REAL_IDENTIFIER_2),
 //    ),
-//)
+// )
 
 // ----------------------- MULTIPLICATION SAFETY ---------------------------
 val SAFE_MULTIPLY_INT = FunctionMethodAST(
@@ -246,7 +248,7 @@ val SAFE_MULTIPLY_INT = FunctionMethodAST(
     ),
 )
 
-//val SAFE_MULTIPLY_REAL = FunctionMethodAST(
+// val SAFE_MULTIPLY_REAL = FunctionMethodAST(
 //    "safeMultiplyReal",
 //    RealType,
 //    listOf(REAL_IDENTIFIER_1, REAL_IDENTIFIER_2),
@@ -267,7 +269,7 @@ val SAFE_MULTIPLY_INT = FunctionMethodAST(
 //        BinaryExpressionAST(REAL_IDENTIFIER_1, DivisionOperator, REAL_IDENTIFIER_2),
 //        BinaryExpressionAST(REAL_IDENTIFIER_1, MultiplicationOperator, REAL_IDENTIFIER_2),
 //    ),
-//)
+// )
 
 val safetyMap = mapOf<Pair<BinaryOperator, Type>, FunctionMethodAST>(
     Pair(AdditionOperator, IntType) to SAFE_ADDITION_INT,

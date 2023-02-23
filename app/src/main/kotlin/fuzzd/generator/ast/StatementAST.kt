@@ -1,7 +1,6 @@
 package fuzzd.generator.ast
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
-import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.utils.indent
 
@@ -79,16 +78,16 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "print $expr;"
     }
 
-    class VoidMethodCallAST(private val method: MethodAST, private val params: List<ExpressionAST>) :
+    class VoidMethodCallAST(private val method: MethodSignatureAST, private val params: List<ExpressionAST>) :
         StatementAST() {
         init {
-            val methodName = method.name()
+            val methodName = method.name
 
-            if (method.returns().isNotEmpty()) {
+            if (method.returns.isNotEmpty()) {
                 throw InvalidInputException("Generating invalid method call to non-void method $methodName")
             }
 
-            val methodParams = method.params()
+            val methodParams = method.params
 
             if (params.size != methodParams.size) {
                 throw InvalidInputException("Generating method call to $methodName with incorrect no. of parameters. Got ${params.size}, expected ${methodParams.size}")
@@ -103,7 +102,7 @@ sealed class StatementAST : ASTElement {
             }
         }
 
-        override fun toString(): String = "${method.name()}(${params.joinToString(", ")});"
+        override fun toString(): String = "${method.name}(${params.joinToString(", ")});"
     }
 
     object BreakAST : StatementAST() {

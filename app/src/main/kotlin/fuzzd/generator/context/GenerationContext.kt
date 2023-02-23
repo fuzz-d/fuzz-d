@@ -1,6 +1,6 @@
 package fuzzd.generator.context
 
-import fuzzd.generator.ast.MethodAST
+import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.LoopCounterGenerator
@@ -14,7 +14,7 @@ data class GenerationContext(
     val symbolTable: SymbolTable = SymbolTable(),
     val identifierNameGenerator: IdentifierNameGenerator = IdentifierNameGenerator(),
     val loopCounterGenerator: LoopCounterGenerator = LoopCounterGenerator(),
-    val methodContext: MethodAST? = null, // track if we are inside a method
+    val methodContext: MethodSignatureAST? = null, // track if we are inside a method
     val onDemandIdentifiers: Boolean = true,
     private val dependentStatements: MutableList<StatementAST.DeclarationAST> = mutableListOf(),
 ) {

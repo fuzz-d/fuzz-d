@@ -50,28 +50,31 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "new ${clazz.name}(${params.joinToString(", ")})"
     }
 
-    class NonVoidMethodCallAST(private val method: MethodAST, private val params: List<ExpressionAST>) :
+    class NonVoidMethodCallAST(private val method: MethodSignatureAST, private val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
-            val methodParams = method.params()
-            checkParams(methodParams, params, "method call to ${method.name()}")
+            val methodParams = method.params
+            checkParams(methodParams, params, "method call to ${method.name}")
         }
 
-        override fun type(): Type = MethodReturnType(method.returns().map { it.type() })
+        override fun type(): Type = MethodReturnType(method.returns.map { it.type() })
 
-        override fun toString(): String = "${method.name()}(${params.joinToString(", ")})"
+        override fun toString(): String = "${method.name}(${params.joinToString(", ")})"
     }
 
-    class FunctionMethodCallAST(private val function: FunctionMethodAST, private val params: List<ExpressionAST>) :
+    class FunctionMethodCallAST(
+        private val function: FunctionMethodSignatureAST,
+        private val params: List<ExpressionAST>,
+    ) :
         ExpressionAST() {
         init {
-            val functionParams = function.params()
-            checkParams(functionParams, params, "function method call to ${function.name()}")
+            val functionParams = function.params
+            checkParams(functionParams, params, "function method call to ${function.name}")
         }
 
-        override fun type(): Type = function.returnType()
+        override fun type(): Type = function.returnType
 
-        override fun toString(): String = "${function.name()}(${params.joinToString(", ")})"
+        override fun toString(): String = "${function.name}(${params.joinToString(", ")})"
     }
 
     class TernaryExpressionAST(
@@ -139,7 +142,7 @@ sealed class ExpressionAST : ASTElement {
 
             val key = Pair(operator, type())
             return if (safetyMap.containsKey(key)) {
-                FunctionMethodCallAST(safetyMap[key]!!, listOf(safeExpr1, safeExpr2))
+                FunctionMethodCallAST(safetyMap[key]!!.signature, listOf(safeExpr1, safeExpr2))
             } else {
                 BinaryExpressionAST(safeExpr1, operator, safeExpr2)
             }
@@ -209,7 +212,7 @@ sealed class ExpressionAST : ASTElement {
             return ArrayIndexAST(
                 array,
                 BinaryExpressionAST(
-                    FunctionMethodCallAST(ABSOLUTE, listOf(safeIndex)),
+                    FunctionMethodCallAST(ABSOLUTE.signature, listOf(safeIndex)),
                     ModuloOperator,
                     ArrayLengthAST(array),
                 ),
