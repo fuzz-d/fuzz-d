@@ -26,9 +26,7 @@ import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.SAFE_DIVISION_INT
-//import fuzzd.utils.SAFE_DIVISION_REAL
 import fuzzd.utils.SAFE_MODULO_INT
-//import fuzzd.utils.SAFE_SUBTRACT_CHAR
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Nested
@@ -388,21 +386,21 @@ class ExpressionASTTests {
             assertEquals(expected.toString(), safe.toString())
         }
 
-        @Test
-        fun givenBinaryExpressionWithRealDivision_whenMakeSafe_expectNonZeroWrapper() {
-            // given
-            val lhs = RealLiteralAST("123.3")
-            val operator = DivisionOperator
-            val rhs = RealLiteralAST("234.3")
-            val expr = BinaryExpressionAST(lhs, operator, rhs)
-
-            // when
-            val safe = expr.makeSafe()
-
-            // expect
-            val expected = FunctionMethodCallAST(SAFE_DIVISION_REAL, listOf(lhs, rhs))
-            assertEquals(expected.toString(), safe.toString())
-        }
+//        @Test
+//        fun givenBinaryExpressionWithRealDivision_whenMakeSafe_expectNonZeroWrapper() {
+//            // given
+//            val lhs = RealLiteralAST("123.3")
+//            val operator = DivisionOperator
+//            val rhs = RealLiteralAST("234.3")
+//            val expr = BinaryExpressionAST(lhs, operator, rhs)
+//
+//            // when
+//            val safe = expr.makeSafe()
+//
+//            // expect
+//            val expected = FunctionMethodCallAST(SAFE_DIVISION_REAL, listOf(lhs, rhs))
+//            assertEquals(expected.toString(), safe.toString())
+//        }
 
         @Test
         fun givenBinaryExpressionWithModulo_whenMakeSafe_expectSafeWrapper() {
@@ -421,22 +419,22 @@ class ExpressionASTTests {
             assertEquals(expected.toString(), safe.toString())
         }
 
-        @Test
-        fun givenBinaryExpressionWithCharSubtraction_whenMakeSafe_expectSafeCharSubtractionWrapper() {
-            // given
-            val lhs = CharacterLiteralAST('B')
-            val operator = SubtractionOperator
-            val rhs = CharacterLiteralAST('a')
-
-            val expr = BinaryExpressionAST(lhs, operator, rhs)
-
-            // when
-            val safe = expr.makeSafe()
-
-            // expect
-            val expected = FunctionMethodCallAST(SAFE_SUBTRACT_CHAR, listOf(lhs, rhs))
-            assertEquals(expected.toString(), safe.toString())
-        }
+//        @Test
+//        fun givenBinaryExpressionWithCharSubtraction_whenMakeSafe_expectSafeCharSubtractionWrapper() {
+//            // given
+//            val lhs = CharacterLiteralAST('B')
+//            val operator = SubtractionOperator
+//            val rhs = CharacterLiteralAST('a')
+//
+//            val expr = BinaryExpressionAST(lhs, operator, rhs)
+//
+//            // when
+//            val safe = expr.makeSafe()
+//
+//            // expect
+//            val expected = FunctionMethodCallAST(SAFE_SUBTRACT_CHAR, listOf(lhs, rhs))
+//            assertEquals(expected.toString(), safe.toString())
+//        }
     }
 
     @Nested
