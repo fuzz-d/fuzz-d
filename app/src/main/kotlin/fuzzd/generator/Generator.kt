@@ -155,9 +155,7 @@ class Generator(
     }
 
     override fun generateClass(context: GenerationContext): ClassAST {
-        println("==================================== GENERATING CLASS ======================================")
         val classContext = GenerationContext(FunctionSymbolTable(context.functionSymbolTable.topLevel()))
-        println("==================================== CLASS CONTEXT CLONED ======================================")
 
         // get traits
         val numberOfTraits = selectionManager.selectNumberOfTraits()
@@ -214,9 +212,6 @@ class Generator(
         context.functionSymbolTable.addMethods(classContext.functionSymbolTable.methods() subtract methods)
         context.functionSymbolTable.addClass(clazz)
 
-        println("================================ CLASS GENERATION FINISHED ===================================")
-        println(context.functionSymbolTable.functionMethods().joinToString(", ") { it.name() })
-        println("==============================================================================================")
         return clazz
     }
 

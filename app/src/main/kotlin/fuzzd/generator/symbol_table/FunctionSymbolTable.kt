@@ -19,7 +19,6 @@ class FunctionSymbolTable(private val parent: FunctionSymbolTable? = null) {
         allFunctionMethods.forEach(this::addFunctionMethod)
 
     fun addFunctionMethod(functionMethod: FunctionMethodAST) {
-        println("Adding Function Method ${functionMethod.name()}")
         functionMethods.add(functionMethod)
     }
 
