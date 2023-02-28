@@ -33,12 +33,12 @@ class TraitAST(
         sb.appendLine(" {")
 
         fields.forEach { field ->
-            sb.appendLine(indent("var ${field.name} : ${field.type()};"))
+            sb.appendLine(indent("var ${field.name} : ${field.type()}"))
         }
 
-        functionMethods.forEach { fm -> sb.appendLine(indent("$fm;")) }
+        functionMethods.forEach { fm -> sb.appendLine(indent(fm)) }
 
-        methods.forEach { m -> sb.appendLine(indent("$m;")) }
+        methods.forEach { m -> sb.appendLine(indent(m)) }
 
         sb.appendLine("}")
 

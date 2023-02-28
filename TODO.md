@@ -1,30 +1,31 @@
 ## TODO
     
-- [ ] Test case reduction workflow
-- [x] instrumenting Dafny
-- [ ] proper checksum
-- [ ] avoid array constructors as parameters
-- [ ] reduce number of declarations + increase number of assigns
-- [ ] OOP integration
-    - Class method + field calls
+- Test case reduction workflow
+- instrumenting Dafny
+- proper checksum
+- avoid array constructors as parameters
+- reduce number of declarations + increase number of assigns
+- solve stack overflow errors - inner class generation limits.
+- OOP integration
+    - ~~Class method + field calls~~
     - ~~Class Instantiation AST expression~~
     - Trait & class extension tracking
-    - Trait generation with extends
+    - ~~Trait generation with extends~~
     - ~~Class & Trait AST definitions~~
     - ~~Class & Trait Generation~~
-- [ ] further unit testing
-- [ ] parameter support in functions & function methods for data structures
-- [ ] Sequences, sets, multisets, maps
-- [ ] Multi-dimensional arrays
-- [ ] parallel assignment to arrays via ```forall```
-- [ ] continue + break support in loops
-- [ ] Inner scopes using outer scope variable names (interesting case with arrays :) )
-- [x] Updating values in array on assignment
-- [x] Tracking values over if statements (control flow)
-- [x] Expression safety for integer/real/character overflow
-- [x] Assignment for non-array identifiers (should be a lot easier :) )
-- [x] Logging
-- [x] investigate other core types e.g. nat?
-- [x] Basic while loops
-- [x] ~~function methods~~
-- [x] ~~functions - avoid recursion -- track method calls structure -- ensure returns have value~~
+- further unit testing
+- parameter support in functions & function methods for data structures
+- Sequences, sets, multisets, maps
+- Multi-dimensional arrays
+- parallel assignment to arrays via ```forall```
+- continue + break support in loops
+- Inner scopes using outer scope variable names (interesting case with arrays :) )
+- Updating values in array on assignment
+- Tracking values over if statements (control flow)
+- Expression safety for integer/real/character overflow
+- ~~Assignment for non-array identifiers (should be a lot easier :) )~~
+- ~~Logging~~
+- ~~investigate other core types e.g. nat?~~
+- ~~Basic while loops~~
+- ~~function methods~~
+- ~~functions - avoid recursion -- track method calls structure -- ensure returns have value~~

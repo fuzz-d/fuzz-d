@@ -151,7 +151,11 @@ class Generator(
 
         // TODO: extends map + extend traits
 
-        return TraitAST(traitNameGenerator.newValue(), setOf() /* TODO() */, functionMethods, methods, fields)
+        val trait = TraitAST(traitNameGenerator.newValue(), setOf() /* TODO() */, functionMethods, methods, fields)
+
+        context.functionSymbolTable.addTrait(trait)
+
+        return trait
     }
 
     override fun generateClass(context: GenerationContext): ClassAST {
@@ -163,25 +167,25 @@ class Generator(
         val selectedTraits = mutableSetOf<TraitAST>()
 
         for (i in 1..numberOfTraits) {
-            if (traits.isEmpty()) break
+            if (traits.isEmpty()) {
+                traits.add(generateTrait(context))
+            }
 
             val selected = selectionManager.randomSelection(traits)
             traits.remove(selected)
             selectedTraits.add(selected)
         }
 
-        // TODO: deal with weird symbol table context shit
         // generate fields
         val additionalFields = (1..selectionManager.selectNumberOfFields()).map { generateField(classContext) }.toSet()
-        val requiredFields = traits.map { it.fields() }.unionAll()
-        val fields = requiredFields union additionalFields
+        val requiredFields = selectedTraits.map { it.fields() }.unionAll()
 
-        classContext.symbolTable.addAll(fields)
+        classContext.symbolTable.addAll(additionalFields union requiredFields)
 
         // generate function methods
         val additionalFunctionMethods =
             (1..selectionManager.selectNumberOfFunctionMethods()).map { generateFunctionMethod(classContext) }.toSet()
-        val requiredFunctionMethods = traits.map { it.functionMethods() }.unionAll()
+        val requiredFunctionMethods = selectedTraits.map { it.functionMethods() }.unionAll()
             .map { signature -> generateFunctionMethod(classContext, signature) }.toSet()
         val functionMethods = requiredFunctionMethods union additionalFunctionMethods
 
@@ -189,7 +193,7 @@ class Generator(
         val additionalMethods =
             (1..selectionManager.selectNumberOfMethods()).map { generateMethod(classContext) }.toSet()
         val requiredMethods =
-            traits.map { it.methods() }.unionAll().map { signature -> generateMethod(signature) }.toSet()
+            selectedTraits.map { it.methods() }.unionAll().map { signature -> generateMethod(signature) }.toSet()
         val methods = requiredMethods union additionalMethods
         methods.forEach { method ->
             method.setBody(
@@ -204,7 +208,7 @@ class Generator(
             )
         }
 
-        val clazz = ClassAST(classNameGenerator.newValue(), selectedTraits, functionMethods, methods, fields)
+        val clazz = ClassAST(classNameGenerator.newValue(), selectedTraits, functionMethods, methods, additionalFields, requiredFields)
 
         // update symbol table with on-demand methods & classes generated into local global context
 
@@ -440,12 +444,12 @@ class Generator(
 
     override fun generateClassInstantiation(context: GenerationContext): DeclarationAST {
         // on demand create class if one doesn't exist
-        if (!context.functionSymbolTable.hasClasses() || selectionManager.generateNewClass()) {
+        if (!context.functionSymbolTable.hasClasses() || selectionManager.generateNewClass(context)) {
             generateClass(context)
         }
 
         val selectedClass = selectionManager.randomSelection(context.functionSymbolTable.classes().toList())
-        val requiredFields = selectedClass.fields
+        val requiredFields = selectedClass.constructorFields
 
         val params = requiredFields.map { field ->
             generateExpression(

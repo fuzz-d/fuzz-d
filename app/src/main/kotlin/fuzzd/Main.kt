@@ -53,5 +53,9 @@ fun main(args: Array<String>) {
     } else {
         Random.Default.nextLong()
     }
+
     Main("../output").fuzz(seed)
+//    val generator = Generator(SelectionManager(Random(seed)))
+//    val ast = generator.generate()
+//    print(ast)
 }

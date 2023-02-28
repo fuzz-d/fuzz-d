@@ -6,15 +6,15 @@ import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.error.InvalidInputException
+import fuzzd.generator.expectFailure
 import org.junit.jupiter.api.Test
-import kotlin.test.assertFailsWith
 
 class ClassASTTests {
 
     @Test
     fun givenClassASTWithExtends_whenInitWithMissingFields_expectInvalidInputException() {
-        assertFailsWith<InvalidInputException> {
-            ClassAST.builder().withName("C1").withExtends(TRAITS).withFields(setOf(FIELD_1)).build()
+        expectFailure<InvalidInputException>("Missing fields for class declaration C1: f2") {
+            ClassAST.builder().withName("C1").withExtends(TRAITS).withInheritedFields(setOf(FIELD_1)).build()
         }
     }
 
@@ -24,8 +24,8 @@ class ClassASTTests {
         val functionMethod = FunctionMethodAST(FUNCTION_METHOD_SIG_1, FUNCTION_METHOD_BODY)
 
         // expect
-        assertFailsWith<InvalidInputException> {
-            ClassAST.builder().withName("C1").withExtends(TRAITS).withFields(FIELDS)
+        expectFailure<InvalidInputException>("Missing function methods for class declaration C1: fm2") {
+            ClassAST.builder().withName("C1").withExtends(TRAITS).withInheritedFields(FIELDS)
                 .withFunctionMethods(setOf(functionMethod)).build()
         }
     }
@@ -38,8 +38,8 @@ class ClassASTTests {
         method.setBody(METHOD_BODY)
 
         // expect
-        assertFailsWith<InvalidInputException> {
-            ClassAST.builder().withName("C1").withExtends(TRAITS).withFields(FIELDS)
+        expectFailure<InvalidInputException>("Missing methods for class declaration C1: m2") {
+            ClassAST.builder().withName("C1").withExtends(TRAITS).withInheritedFields(FIELDS)
                 .withFunctionMethods(functionMethods).withMethods(setOf(method)).build()
         }
     }
@@ -51,7 +51,7 @@ class ClassASTTests {
         val methods = METHOD_SIGS.map { sig -> val m = MethodAST(sig); m.setBody(METHOD_BODY); m }.toSet()
 
         // expect nothing
-        ClassAST.builder().withName("C1").withExtends(TRAITS).withFields(FIELDS).withFunctionMethods(functionMethods)
+        ClassAST.builder().withName("C1").withExtends(TRAITS).withInheritedFields(FIELDS).withFunctionMethods(functionMethods)
             .withMethods(methods).toString()
     }
 
@@ -63,8 +63,28 @@ class ClassASTTests {
         method.setBody(METHOD_BODY)
 
         // expect nothing
-        ClassAST.builder().withName("C1").withExtends(setOf(TRAIT_1)).withFields(FIELDS)
-            .withFunctionMethods(setOf(functionMethod)).withMethods(setOf(method)).build()
+        ClassAST.builder().withName("C1")
+            .withExtends(setOf(TRAIT_1))
+            .withFields(setOf(FIELD_2))
+            .withInheritedFields(setOf(FIELD_1))
+            .withFunctionMethods(setOf(functionMethod))
+            .withMethods(setOf(method))
+            .build()
+    }
+
+    @Test
+    fun givenClassASTWithExtends_whenInitWithAdditionalInheritedFields_expectInvalidInputException() {
+        // given
+        val functionMethod = FunctionMethodAST(FUNCTION_METHOD_SIG_1, FUNCTION_METHOD_BODY)
+        val method = MethodAST(METHOD_SIG_1)
+        method.setBody(METHOD_BODY)
+
+        // expect nothing
+        // TODO: Should fail since f2 not inherited.
+        expectFailure<InvalidInputException>("Too many trait fields for class declaration C1: f2") {
+            ClassAST.builder().withName("C1").withExtends(setOf(TRAIT_1)).withInheritedFields(FIELDS)
+                .withFunctionMethods(setOf(functionMethod)).withMethods(setOf(method)).build()
+        }
     }
 
     @Test
@@ -75,7 +95,7 @@ class ClassASTTests {
         method.setBody(METHOD_BODY)
 
         // expect nothing
-        ClassAST.builder().withName("C1").withExtends(setOf(TRAIT_1)).withFields(setOf(FIELD_1))
+        ClassAST.builder().withName("C1").withExtends(setOf(TRAIT_1)).withInheritedFields(setOf(FIELD_1))
             .withFunctionMethods(functionMethods).withMethods(setOf(method)).build()
     }
 
@@ -86,7 +106,7 @@ class ClassASTTests {
         val methods = METHOD_SIGS.map { sig -> val m = MethodAST(sig); m.setBody(METHOD_BODY); m }.toSet()
 
         // expect nothing
-        ClassAST.builder().withName("C1").withExtends(setOf(TRAIT_1)).withFields(setOf(FIELD_1))
+        ClassAST.builder().withName("C1").withExtends(setOf(TRAIT_1)).withInheritedFields(setOf(FIELD_1))
             .withFunctionMethods(setOf(functionMethod)).withMethods(methods).build()
     }
 

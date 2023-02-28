@@ -12,15 +12,43 @@ class ClassAST(
     val functionMethods: Set<FunctionMethodAST>,
     val methods: Set<MethodAST>,
     val fields: Set<IdentifierAST>,
+    inheritedFields: Set<IdentifierAST>,
 ) : ASTElement {
+    val constructorFields: Set<IdentifierAST>
     private val constructor: ConstructorAST
 
     init {
         // need to check that we implement all trait members
         val requiredFields = extends.map { it.fields() }.unionAll()
-        val missingFields = requiredFields subtract fields
+
+        // check we aren't missing any fields required by traits
+        val missingFields = requiredFields subtract inheritedFields
         if (missingFields.isNotEmpty()) {
             throw InvalidInputException("Missing fields for class declaration $name: ${missingFields.joinToString(", ")}")
+        }
+
+        // check we aren't passing in any class-defined fields as required
+        val extraRequiredFields = inheritedFields subtract requiredFields
+        if (extraRequiredFields.isNotEmpty()) {
+            throw InvalidInputException(
+                "Too many trait fields for class declaration $name: ${
+                    extraRequiredFields.joinToString(
+                        ", ",
+                    )
+                }",
+            )
+        }
+
+        // check required fields not passed in with class-defined fields
+        val classDefTraitFields = requiredFields intersect fields
+        if (classDefTraitFields.isNotEmpty()) {
+            throw InvalidInputException(
+                "Passed in trait field as class field for class declaration $name: ${
+                    classDefTraitFields.joinToString(
+                        ", ",
+                    )
+                }",
+            )
         }
 
         val requiredFunctionMethods = extends.map { it.functionMethods() }.unionAll()
@@ -37,7 +65,8 @@ class ClassAST(
             throw InvalidInputException("Missing methods for class declaration $name: ${missingMethods.joinToString(", ") { it.name }}")
         }
 
-        this.constructor = ConstructorAST(fields)
+        this.constructorFields = fields union inheritedFields
+        this.constructor = ConstructorAST(constructorFields)
     }
 
     override fun toString(): String {
@@ -45,7 +74,7 @@ class ClassAST(
 
         sb.append("class $name")
         if (extends.isNotEmpty()) {
-            sb.append("extends ${extends.joinToString(", ") { it.name }}")
+            sb.append(" extends ${extends.joinToString(", ") { it.name }}")
         }
         sb.appendLine(" {")
 
@@ -69,9 +98,10 @@ class ClassAST(
             private val extends = mutableSetOf<TraitAST>()
             private val fields = mutableSetOf<IdentifierAST>()
             private val functionMethods = mutableSetOf<FunctionMethodAST>()
+            private val inheritedFields = mutableSetOf<IdentifierAST>()
             private val methods = mutableSetOf<MethodAST>()
 
-            fun build() = ClassAST(name, extends, functionMethods, methods, fields)
+            fun build() = ClassAST(name, extends, functionMethods, methods, fields, inheritedFields)
 
             fun withExtends(extends: Set<TraitAST>): ClassASTBuilder {
                 this.extends.addAll(extends)
@@ -95,6 +125,11 @@ class ClassAST(
 
             fun withName(name: String): ClassASTBuilder {
                 this.name = name
+                return this
+            }
+
+            fun withInheritedFields(inheritedFields: Set<IdentifierAST>): ClassASTBuilder {
+                this.inheritedFields.addAll(inheritedFields)
                 return this
             }
         }

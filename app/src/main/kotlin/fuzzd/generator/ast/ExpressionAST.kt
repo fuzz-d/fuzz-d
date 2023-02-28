@@ -41,7 +41,7 @@ sealed class ExpressionAST : ASTElement {
     class ClassInstantiationAST(private val clazz: ClassAST, private val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
-            val expectedParams = clazz.fields.toList()
+            val expectedParams = clazz.constructorFields.toList()
             checkParams(expectedParams, params, "constructor call for ${clazz.name}")
         }
 

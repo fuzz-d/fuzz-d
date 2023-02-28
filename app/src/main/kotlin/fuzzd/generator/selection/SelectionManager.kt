@@ -143,7 +143,7 @@ class SelectionManager(
             randomWeightedSelection(listOf(true to trueWeighting, false to 1 - trueWeighting))
     }
 
-    fun generateNewClass(): Boolean = random.nextFloat() < 0.1
+    fun generateNewClass(context: GenerationContext): Boolean = random.nextFloat() < (0.1 / context.functionSymbolTable.classes().size)
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability = if (isBinaryType(targetType)) 0.3 / context.expressionDepth else 0.0
