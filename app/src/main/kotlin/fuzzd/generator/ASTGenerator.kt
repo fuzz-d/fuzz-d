@@ -78,6 +78,8 @@ interface ASTGenerator {
 
     fun generateMethodCall(context: GenerationContext): StatementAST
 
+    fun generateChecksum(context: GenerationContext): List<PrintAST>
+
     /* ========================================== EXPRESSIONS ========================================== */
 
     fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST

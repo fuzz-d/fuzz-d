@@ -2,10 +2,10 @@
     
 - Test case reduction workflow
 - instrumenting Dafny
-- proper checksum
-- avoid array constructors as parameters
+- ~~proper checksum~~
+- ~~avoid array constructors as parameters~~
 - reduce number of declarations + increase number of assigns
-- solve stack overflow errors - inner class generation limits.
+- ~~solve stack overflow errors - inner class generation limits~~
 - OOP integration
     - ~~Class method + field calls~~
     - ~~Class Instantiation AST expression~~
@@ -13,6 +13,7 @@
     - ~~Trait generation with extends~~
     - ~~Class & Trait AST definitions~~
     - ~~Class & Trait Generation~~
+- ensure we can't generate statements that reduce to `while (false)`
 - further unit testing
 - parameter support in functions & function methods for data structures
 - Sequences, sets, multisets, maps
@@ -20,9 +21,9 @@
 - parallel assignment to arrays via ```forall```
 - continue + break support in loops
 - Inner scopes using outer scope variable names (interesting case with arrays :) )
-- Updating values in array on assignment
+- ~~Updating values in array on assignment~~
 - Tracking values over if statements (control flow)
-- Expression safety for integer/real/character overflow
+- ~~Expression safety for integer/real/character overflow~~
 - ~~Assignment for non-array identifiers (should be a lot easier :) )~~
 - ~~Logging~~
 - ~~investigate other core types e.g. nat?~~

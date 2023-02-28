@@ -136,8 +136,13 @@ class Generator(
     override fun generateMainFunction(context: GenerationContext): MainFunctionAST {
         val body = generateSequence(context)
         val printContext = context.disableOnDemand()
-        val prints = (1..20).map { generatePrintStatement(printContext) }
+        val prints = generateChecksum(context)
         return MainFunctionAST(body.addStatements(prints))
+    }
+
+    override fun generateChecksum(context: GenerationContext): List<PrintAST> {
+        val fields = context.symbolTable.withType(IntType) + context.symbolTable.withType(BoolType)
+        return fields.map { field -> PrintAST(field.makeSafe())}
     }
 
     override fun generateTrait(context: GenerationContext): TraitAST {
@@ -208,7 +213,14 @@ class Generator(
             )
         }
 
-        val clazz = ClassAST(classNameGenerator.newValue(), selectedTraits, functionMethods, methods, additionalFields, requiredFields)
+        val clazz = ClassAST(
+            classNameGenerator.newValue(),
+            selectedTraits,
+            functionMethods,
+            methods,
+            additionalFields,
+            requiredFields,
+        )
 
         // update symbol table with on-demand methods & classes generated into local global context
 
