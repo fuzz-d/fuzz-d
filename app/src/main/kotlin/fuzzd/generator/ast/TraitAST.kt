@@ -10,7 +10,7 @@ class TraitAST(
     private val functionMethods: Set<FunctionMethodSignatureAST>,
     private val methods: Set<MethodSignatureAST>,
     private val fields: Set<IdentifierAST>,
-) : ASTElement {
+) : TopLevelAST() {
     fun extends(): Set<TraitAST> =
         extends union (extends.map { it.extends() }).unionAll()
 

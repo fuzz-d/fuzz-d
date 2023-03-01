@@ -1,7 +1,7 @@
 package fuzzd.generator
 
-import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
+import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
@@ -99,14 +99,14 @@ class Generator(
 
     /* ==================================== TOP LEVEL ==================================== */
 
-    override fun generate(): TopLevelAST {
+    override fun generate(): DafnyAST {
         val context = GenerationContext(FunctionSymbolTable())
 
         // init with safety function methods
         context.functionSymbolTable.addFunctionMethods(WRAPPER_FUNCTIONS)
 
         val mainFunction = generateMainFunction(context)
-        val ast = mutableListOf<ASTElement>()
+        val ast = mutableListOf<TopLevelAST>()
 
         val methodBodyQueue = context.functionSymbolTable.methods().toMutableList()
         val visitedMethods = mutableSetOf<MethodAST>()
@@ -130,7 +130,7 @@ class Generator(
         ast.addAll(context.functionSymbolTable.classes())
         ast.add(mainFunction)
 
-        return TopLevelAST(ast)
+        return DafnyAST(ast)
     }
 
     override fun generateMainFunction(context: GenerationContext): MainFunctionAST {
@@ -142,7 +142,7 @@ class Generator(
 
     override fun generateChecksum(context: GenerationContext): List<PrintAST> {
         val fields = context.symbolTable.withType(IntType) + context.symbolTable.withType(BoolType)
-        return fields.map { field -> PrintAST(field.makeSafe())}
+        return fields.map { field -> PrintAST(field.makeSafe()) }
     }
 
     override fun generateTrait(context: GenerationContext): TraitAST {

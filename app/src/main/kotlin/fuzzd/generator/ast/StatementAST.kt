@@ -6,9 +6,9 @@ import fuzzd.utils.indent
 
 sealed class StatementAST : ASTElement {
     class IfStatementAST(
-        private val condition: ExpressionAST,
-        private val ifBranch: SequenceAST,
-        private val elseBranch: SequenceAST?,
+        val condition: ExpressionAST,
+        val ifBranch: SequenceAST,
+        val elseBranch: SequenceAST?,
     ) : StatementAST() {
         init {
             if (condition.type() != Type.BoolType) {
@@ -34,11 +34,11 @@ sealed class StatementAST : ASTElement {
     }
 
     class WhileLoopAST(
-        private val counterInitialisation: DeclarationAST,
-        private val terminationCheck: IfStatementAST,
-        private val condition: ExpressionAST,
-        private val body: SequenceAST,
-        private val counterUpdate: AssignmentAST,
+        val counterInitialisation: DeclarationAST,
+        val terminationCheck: IfStatementAST,
+        val condition: ExpressionAST,
+        val body: SequenceAST,
+        val counterUpdate: AssignmentAST,
     ) : StatementAST() {
         init {
             if (condition.type() != Type.BoolType) {
@@ -59,8 +59,8 @@ sealed class StatementAST : ASTElement {
     }
 
     open class MultiDeclarationAST(
-        private val identifiers: List<IdentifierAST>,
-        private val exprs: List<ExpressionAST>,
+        val identifiers: List<IdentifierAST>,
+        val exprs: List<ExpressionAST>,
     ) :
         StatementAST() {
         override fun toString(): String = "var ${identifiers.joinToString(", ")} := ${exprs.joinToString(", ")};"
@@ -70,8 +70,8 @@ sealed class StatementAST : ASTElement {
         MultiDeclarationAST(listOf(identifier), listOf(expr))
 
     open class MultiAssignmentAST(
-        private val identifiers: List<IdentifierAST>,
-        private val exprs: List<ExpressionAST>,
+        val identifiers: List<IdentifierAST>,
+        val exprs: List<ExpressionAST>,
     ) :
         StatementAST() {
         override fun toString(): String = "${identifiers.joinToString(", ")} := ${exprs.joinToString(", ")};"
@@ -80,12 +80,11 @@ sealed class StatementAST : ASTElement {
     class AssignmentAST(identifier: IdentifierAST, expr: ExpressionAST) :
         MultiAssignmentAST(listOf(identifier), listOf(expr))
 
-    class PrintAST(private val expr: ExpressionAST) : StatementAST() {
+    class PrintAST(val expr: ExpressionAST) : StatementAST() {
         override fun toString(): String = "print $expr;"
     }
 
-    class VoidMethodCallAST(private val method: MethodSignatureAST, private val params: List<ExpressionAST>) :
-        StatementAST() {
+    class VoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) : StatementAST() {
         init {
             val methodName = method.name
 

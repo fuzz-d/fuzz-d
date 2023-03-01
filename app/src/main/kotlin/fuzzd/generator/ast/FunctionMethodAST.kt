@@ -5,8 +5,8 @@ import fuzzd.utils.indent
 
 open class FunctionMethodAST(
     val signature: FunctionMethodSignatureAST,
-    private val body: ExpressionAST,
-) : ASTElement {
+    val body: ExpressionAST,
+) : TopLevelAST() {
     constructor(name: String, returnType: Type, params: List<IdentifierAST>, body: ExpressionAST) :
         this(FunctionMethodSignatureAST(name, returnType, params), body)
 

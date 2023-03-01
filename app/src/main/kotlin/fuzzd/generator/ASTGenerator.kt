@@ -24,7 +24,7 @@ import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
-import fuzzd.generator.ast.TopLevelAST
+import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
@@ -32,7 +32,7 @@ import fuzzd.generator.context.GenerationContext
 
 interface ASTGenerator {
     /* ========================================== TOP LEVEL ========================================== */
-    fun generate(): TopLevelAST
+    fun generate(): DafnyAST
 
     fun generateMainFunction(context: GenerationContext): MainFunctionAST
 

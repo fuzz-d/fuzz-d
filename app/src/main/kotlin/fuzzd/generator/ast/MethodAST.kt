@@ -4,7 +4,7 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 
 class MethodAST(
     val signature: MethodSignatureAST,
-) : ASTElement {
+) : TopLevelAST() {
     constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>) :
         this(MethodSignatureAST(name, params, returns))
 
@@ -15,6 +15,8 @@ class MethodAST(
     fun params() = signature.params
 
     fun returns() = signature.returns
+
+    fun body() = body
 
     fun setBody(body: SequenceAST) {
         this.body = body
