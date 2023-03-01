@@ -40,6 +40,12 @@ sealed class StatementAST : ASTElement {
         private val body: SequenceAST,
         private val counterUpdate: AssignmentAST,
     ) : StatementAST() {
+        init {
+            if (condition.type() != Type.BoolType) {
+                throw InvalidInputException("If statement condition not bool type")
+            }
+        }
+
         override fun toString(): String {
             val sb = StringBuilder()
             sb.appendLine(counterInitialisation)
