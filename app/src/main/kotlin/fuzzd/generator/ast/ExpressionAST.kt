@@ -38,7 +38,7 @@ sealed class ExpressionAST : ASTElement {
 
     open fun makeSafe(): ExpressionAST = this
 
-    class ClassInstantiationAST(private val clazz: ClassAST, private val params: List<ExpressionAST>) :
+    class ClassInstantiationAST(val clazz: ClassAST, val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
             val expectedParams = clazz.constructorFields.toList()
@@ -50,7 +50,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "new ${clazz.name}(${params.joinToString(", ")})"
     }
 
-    class NonVoidMethodCallAST(private val method: MethodSignatureAST, private val params: List<ExpressionAST>) :
+    class NonVoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
             val methodParams = method.params
@@ -63,8 +63,8 @@ sealed class ExpressionAST : ASTElement {
     }
 
     class FunctionMethodCallAST(
-        private val function: FunctionMethodSignatureAST,
-        private val params: List<ExpressionAST>,
+        val function: FunctionMethodSignatureAST,
+        val params: List<ExpressionAST>,
     ) :
         ExpressionAST() {
         init {
@@ -78,9 +78,9 @@ sealed class ExpressionAST : ASTElement {
     }
 
     class TernaryExpressionAST(
-        private val condition: ExpressionAST,
-        private val ifBranch: ExpressionAST,
-        private val elseBranch: ExpressionAST,
+        val condition: ExpressionAST,
+        val ifBranch: ExpressionAST,
+        val elseBranch: ExpressionAST,
     ) : ExpressionAST() {
         init {
             if (condition.type() != BoolType) {
@@ -100,7 +100,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "if ($condition) then $ifBranch else $elseBranch"
     }
 
-    class UnaryExpressionAST(private val expr: ExpressionAST, private val operator: UnaryOperator) : ExpressionAST() {
+    class UnaryExpressionAST(val expr: ExpressionAST, val operator: UnaryOperator) : ExpressionAST() {
         init {
             if (!operator.supportsInput(expr.type())) {
                 throw InvalidInputException("Operator $operator does not support input type ${expr.type()}")

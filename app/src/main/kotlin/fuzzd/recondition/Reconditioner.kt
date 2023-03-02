@@ -112,17 +112,56 @@ class Reconditioner : ASTReconditioner {
     override fun reconditionPrintAST(printAST: PrintAST) = PrintAST(reconditionExpression(printAST.expr))
 
     override fun reconditionExpression(expression: ExpressionAST): ExpressionAST = when (expression) {
-        is BinaryExpressionAST -> TODO()
-        is UnaryExpressionAST -> TODO()
-        is TernaryExpressionAST -> TODO()
+        is BinaryExpressionAST -> reconditionBinaryExpression(expression)
+        is UnaryExpressionAST -> reconditionUnaryExpression(expression)
+        is TernaryExpressionAST -> reconditionTernaryExpression(expression)
         is IdentifierAST -> reconditionIdentifier(expression)
-        is LiteralAST -> TODO()
-        is ClassInstantiationAST -> TODO()
-        is ArrayInitAST -> TODO()
-        is ArrayLengthAST -> TODO()
-        is NonVoidMethodCallAST -> TODO()
-        is FunctionMethodCallAST -> TODO()
+        is LiteralAST -> expression // don't need to do anything
+        is ClassInstantiationAST -> reconditionClassInstantiation(expression)
+        is ArrayInitAST -> reconditionArrayInitialisation(expression)
+        is ArrayLengthAST -> reconditionArrayLengthAST(expression)
+        is NonVoidMethodCallAST -> reconditionNonVoidMethodCallAST(expression)
+        is FunctionMethodCallAST -> reconditionFunctionMethodCall(expression)
     }
 
+    // TODO: put in safety function method calls where necessary
+    override fun reconditionBinaryExpression(expression: BinaryExpressionAST): ExpressionAST = TODO()
+
+    override fun reconditionUnaryExpression(expression: UnaryExpressionAST): ExpressionAST =
+        UnaryExpressionAST(
+            reconditionExpression(expression.expr),
+            expression.operator
+        )
+
+    override fun reconditionFunctionMethodCall(functionMethodCall: FunctionMethodCallAST): ExpressionAST =
+        FunctionMethodCallAST(
+            functionMethodCall.function,
+            functionMethodCall.params.map(this::reconditionExpression)
+        )
+
     override fun reconditionIdentifier(identifierAST: IdentifierAST): IdentifierAST = TODO()
+    override fun reconditionTernaryExpression(ternaryExpression: TernaryExpressionAST): ExpressionAST =
+        TernaryExpressionAST(
+            reconditionExpression(ternaryExpression.condition),
+            reconditionExpression(ternaryExpression.ifBranch),
+            reconditionExpression(ternaryExpression.elseBranch)
+        )
+
+    override fun reconditionClassInstantiation(classInstantiation: ClassInstantiationAST): ExpressionAST =
+        ClassInstantiationAST(
+            classInstantiation.clazz,
+            classInstantiation.params.map(this::reconditionExpression)
+        )
+
+    override fun reconditionArrayInitialisation(arrayInit: ArrayInitAST): ExpressionAST = arrayInit
+
+    override fun reconditionArrayLengthAST(arrayLengthAST: ArrayLengthAST): ExpressionAST {
+        TODO("Not yet implemented")
+    }
+
+    override fun reconditionNonVoidMethodCallAST(nonVoidMethodCall: NonVoidMethodCallAST): ExpressionAST =
+        NonVoidMethodCallAST(
+            nonVoidMethodCall.method,
+            nonVoidMethodCall.params.map(this::reconditionExpression)
+        )
 }
