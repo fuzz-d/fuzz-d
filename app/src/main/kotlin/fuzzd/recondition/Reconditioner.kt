@@ -3,6 +3,7 @@ package fuzzd.recondition
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
@@ -27,6 +28,15 @@ import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
+import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.BooleanBinaryOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.MathematicalBinaryOperator
+import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
+import fuzzd.generator.ast.operators.BinaryOperator.MultiplicationOperator
+import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
+import fuzzd.utils.SAFE_ADDITION_INT
+import fuzzd.utils.safetyMap
 
 class Reconditioner : ASTReconditioner {
     override fun recondition(dafnyAST: DafnyAST): DafnyAST =
@@ -124,8 +134,21 @@ class Reconditioner : ASTReconditioner {
         is FunctionMethodCallAST -> reconditionFunctionMethodCall(expression)
     }
 
-    // TODO: put in safety function method calls where necessary
-    override fun reconditionBinaryExpression(expression: BinaryExpressionAST): ExpressionAST = TODO()
+    override fun reconditionBinaryExpression(expression: BinaryExpressionAST): ExpressionAST {
+        val rexpr1 = reconditionExpression(expression.expr1)
+        val rexpr2 = reconditionExpression(expression.expr2)
+
+        return when (expression.operator) {
+            is MathematicalBinaryOperator -> FunctionMethodCallAST(
+                safetyMap[Pair(
+                    expression.operator,
+                    expression.type()
+                )]!!.signature, listOf(rexpr1, rexpr2)
+            )
+
+            else -> BinaryExpressionAST(rexpr1, expression.operator, rexpr2)
+        }
+    }
 
     override fun reconditionUnaryExpression(expression: UnaryExpressionAST): ExpressionAST =
         UnaryExpressionAST(
@@ -139,7 +162,15 @@ class Reconditioner : ASTReconditioner {
             functionMethodCall.params.map(this::reconditionExpression)
         )
 
-    override fun reconditionIdentifier(identifierAST: IdentifierAST): IdentifierAST = TODO()
+    override fun reconditionIdentifier(identifierAST: IdentifierAST): IdentifierAST = when (identifierAST) {
+        is ArrayIndexAST -> ArrayIndexAST(
+            identifierAST.array,
+            BinaryExpressionAST(identifierAST.index, ModuloOperator, ArrayLengthAST(identifierAST.array))
+        )
+
+        else -> identifierAST
+    }
+
     override fun reconditionTernaryExpression(ternaryExpression: TernaryExpressionAST): ExpressionAST =
         TernaryExpressionAST(
             reconditionExpression(ternaryExpression.condition),

@@ -121,9 +121,9 @@ sealed class ExpressionAST : ASTElement {
     }
 
     class BinaryExpressionAST(
-        private val expr1: ExpressionAST,
-        private val operator: BinaryOperator,
-        private val expr2: ExpressionAST,
+        val expr1: ExpressionAST,
+        val operator: BinaryOperator,
+        val expr2: ExpressionAST,
     ) : ExpressionAST() {
         private val type1: Type = expr1.type()
         private val type2: Type = expr2.type()
