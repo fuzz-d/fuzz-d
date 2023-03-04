@@ -12,7 +12,7 @@ class ClassAST(
     val functionMethods: Set<FunctionMethodAST>,
     val methods: Set<MethodAST>,
     val fields: Set<IdentifierAST>,
-    inheritedFields: Set<IdentifierAST>,
+    val inheritedFields: Set<IdentifierAST>,
 ) : TopLevelAST() {
     val constructorFields: Set<IdentifierAST>
     private val constructor: ConstructorAST

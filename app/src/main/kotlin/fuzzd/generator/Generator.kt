@@ -73,12 +73,6 @@ import fuzzd.generator.selection.StatementType.WHILE
 import fuzzd.generator.symbol_table.FunctionSymbolTable
 import fuzzd.generator.symbol_table.MethodCallTable
 import fuzzd.generator.symbol_table.SymbolTable
-import fuzzd.utils.ABSOLUTE
-import fuzzd.utils.SAFE_ADDITION_INT
-import fuzzd.utils.SAFE_DIVISION_INT
-import fuzzd.utils.SAFE_MODULO_INT
-import fuzzd.utils.SAFE_MULTIPLY_INT
-import fuzzd.utils.SAFE_SUBTRACT_INT
 import fuzzd.utils.unionAll
 
 // import fuzzd.utils.SAFE_ADDITION_REAL
@@ -101,9 +95,6 @@ class Generator(
 
     override fun generate(): DafnyAST {
         val context = GenerationContext(FunctionSymbolTable())
-
-        // init with safety function methods
-        context.functionSymbolTable.addFunctionMethods(WRAPPER_FUNCTIONS)
 
         val mainFunction = generateMainFunction(context)
         val ast = mutableListOf<TopLevelAST>()
@@ -142,7 +133,7 @@ class Generator(
 
     override fun generateChecksum(context: GenerationContext): List<PrintAST> {
         val fields = context.symbolTable.withType(IntType) + context.symbolTable.withType(BoolType)
-        return fields.map { field -> PrintAST(field.makeSafe()) }
+        return fields.map { field -> PrintAST(field) }
     }
 
     override fun generateTrait(context: GenerationContext): TraitAST {
@@ -250,7 +241,7 @@ class Generator(
         val functionContext = GenerationContext(context.functionSymbolTable, onDemandIdentifiers = false)
         signature.params.forEach { param -> functionContext.symbolTable.add(param) }
 
-        val body = generateExpression(functionContext, signature.returnType).makeSafe()
+        val body = generateExpression(functionContext, signature.returnType)
         val functionMethodAST = FunctionMethodAST(signature, body)
 
         context.functionSymbolTable.addFunctionMethod(functionMethodAST)
@@ -314,7 +305,7 @@ class Generator(
         val body = generateSequence(context, maxStatements = 10)
 
         val returnAssigns = method.returns().map { r ->
-            val expr = generateExpression(context.disableOnDemand(), r.type()).makeSafe()
+            val expr = generateExpression(context.disableOnDemand(), r.type())
             AssignmentAST(r, expr)
         }
 
@@ -356,7 +347,7 @@ class Generator(
     }
 
     override fun generateIfStatement(context: GenerationContext): IfStatementAST {
-        val condition = generateExpression(context, BoolType).makeSafe()
+        val condition = generateExpression(context, BoolType)
 
         val ifBranch = generateSequence(context.increaseStatementDepth())
         val elseBranch = generateSequence(context.increaseStatementDepth())
@@ -371,7 +362,7 @@ class Generator(
 
         var condition: ExpressionAST
         do {
-            condition = generateExpression(context, BoolType).makeSafe()
+            condition = generateExpression(context, BoolType)
         } while (condition == BooleanLiteralAST(false)) // we don't want while(false) explicitly
 
         val counterTerminationCheck = IfStatementAST(
@@ -404,7 +395,7 @@ class Generator(
 
     override fun generatePrintStatement(context: GenerationContext): PrintAST {
         val targetType = generateType(context, literalOnly = true)
-        val safeExpr = generateExpression(context, targetType).makeSafe()
+        val safeExpr = generateExpression(context, targetType)
         return PrintAST(safeExpr)
     }
 
@@ -432,8 +423,8 @@ class Generator(
 
         context.symbolTable.add(identifier)
 
-        val safeIdentifier = identifier.makeSafe()
-        val safeExpr = expr.makeSafe()
+        val safeIdentifier = identifier
+        val safeExpr = expr
         return DeclarationAST(safeIdentifier, safeExpr)
     }
 
@@ -449,8 +440,8 @@ class Generator(
 
         val expr = generateExpression(context, targetType)
 
-        val safeIdentifier = identifier.makeSafe()
-        val safeExpr = expr.makeSafe()
+        val safeIdentifier = identifier
+        val safeExpr = expr
         return AssignmentAST(safeIdentifier, safeExpr)
     }
 
@@ -467,7 +458,7 @@ class Generator(
             generateExpression(
                 context.increaseExpressionDepth(),
                 field.type(),
-            ).makeSafe()
+            )
         }
         val ident = ClassInstanceAST(selectedClass, context.identifierNameGenerator.newValue())
 
@@ -510,7 +501,7 @@ class Generator(
             method = selectionManager.randomSelection(methods)
         }
 
-        val params = method.params.map { param -> generateExpression(context, param.type()).makeSafe() }
+        val params = method.params.map { param -> generateExpression(context, param.type()) }
 
         // add call for method context
         if (context.methodContext != null) {
@@ -573,7 +564,7 @@ class Generator(
         }
 
         val arguments = functionMethod.params.map { param ->
-            generateExpression(context.increaseExpressionDepth(), param.type()).makeSafe()
+            generateExpression(context.increaseExpressionDepth(), param.type())
         }
 
         return FunctionMethodCallAST(functionMethod, arguments)
@@ -721,14 +712,6 @@ class Generator(
     }
 
     companion object {
-        private val WRAPPER_FUNCTIONS = listOf(
-            ABSOLUTE,
-            SAFE_ADDITION_INT,
-            SAFE_SUBTRACT_INT,
-            SAFE_DIVISION_INT,
-            SAFE_MODULO_INT,
-            SAFE_MULTIPLY_INT,
-        )
         private const val DAFNY_MAX_LOOP_COUNTER = 100
     }
 }

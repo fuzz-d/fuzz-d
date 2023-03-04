@@ -4,6 +4,8 @@ import fuzzd.generator.Generator
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.logging.Logger
 import fuzzd.logging.OutputWriter
+import fuzzd.recondition.Reconditioner
+import fuzzd.utils.WRAPPER_FUNCTIONS
 import fuzzd.validator.OutputValidator
 import java.util.UUID
 import kotlin.random.Random
@@ -23,9 +25,13 @@ class Main(private val path: String) {
         try {
             val ast = generator.generate()
 
+            val reconditioner = Reconditioner()
+            val reconditionedAST = reconditioner.recondition(ast)
+
             // output program
             val writer = OutputWriter(path, directory, "$DAFNY_MAIN.$DAFNY_TYPE")
-            writer.write { ast }
+            WRAPPER_FUNCTIONS.forEach { wrapper -> writer.write { "$wrapper\n" } }
+            writer.write { reconditionedAST }
             writer.close()
 
             // differential testing; log results

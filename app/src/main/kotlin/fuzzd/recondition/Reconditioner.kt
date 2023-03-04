@@ -28,14 +28,8 @@ import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
-import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
-import fuzzd.generator.ast.operators.BinaryOperator.BooleanBinaryOperator
-import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MathematicalBinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
-import fuzzd.generator.ast.operators.BinaryOperator.MultiplicationOperator
-import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
-import fuzzd.utils.SAFE_ADDITION_INT
 import fuzzd.utils.safetyMap
 
 class Reconditioner : ASTReconditioner {
@@ -61,7 +55,7 @@ class Reconditioner : ASTReconditioner {
             reconditionedFunctionMethods,
             reconditionedMethods,
             classAST.fields,
-            classAST.constructorFields,
+            classAST.inheritedFields,
         )
     }
 
@@ -140,10 +134,13 @@ class Reconditioner : ASTReconditioner {
 
         return when (expression.operator) {
             is MathematicalBinaryOperator -> FunctionMethodCallAST(
-                safetyMap[Pair(
-                    expression.operator,
-                    expression.type()
-                )]!!.signature, listOf(rexpr1, rexpr2)
+                safetyMap[
+                    Pair(
+                        expression.operator,
+                        expression.type(),
+                    ),
+                ]!!.signature,
+                listOf(rexpr1, rexpr2),
             )
 
             else -> BinaryExpressionAST(rexpr1, expression.operator, rexpr2)
@@ -153,19 +150,19 @@ class Reconditioner : ASTReconditioner {
     override fun reconditionUnaryExpression(expression: UnaryExpressionAST): ExpressionAST =
         UnaryExpressionAST(
             reconditionExpression(expression.expr),
-            expression.operator
+            expression.operator,
         )
 
     override fun reconditionFunctionMethodCall(functionMethodCall: FunctionMethodCallAST): ExpressionAST =
         FunctionMethodCallAST(
             functionMethodCall.function,
-            functionMethodCall.params.map(this::reconditionExpression)
+            functionMethodCall.params.map(this::reconditionExpression),
         )
 
     override fun reconditionIdentifier(identifierAST: IdentifierAST): IdentifierAST = when (identifierAST) {
         is ArrayIndexAST -> ArrayIndexAST(
             identifierAST.array,
-            BinaryExpressionAST(identifierAST.index, ModuloOperator, ArrayLengthAST(identifierAST.array))
+            BinaryExpressionAST(identifierAST.index, ModuloOperator, ArrayLengthAST(identifierAST.array)),
         )
 
         else -> identifierAST
@@ -175,24 +172,23 @@ class Reconditioner : ASTReconditioner {
         TernaryExpressionAST(
             reconditionExpression(ternaryExpression.condition),
             reconditionExpression(ternaryExpression.ifBranch),
-            reconditionExpression(ternaryExpression.elseBranch)
+            reconditionExpression(ternaryExpression.elseBranch),
         )
 
     override fun reconditionClassInstantiation(classInstantiation: ClassInstantiationAST): ExpressionAST =
         ClassInstantiationAST(
             classInstantiation.clazz,
-            classInstantiation.params.map(this::reconditionExpression)
+            classInstantiation.params.map(this::reconditionExpression),
         )
 
     override fun reconditionArrayInitialisation(arrayInit: ArrayInitAST): ExpressionAST = arrayInit
 
-    override fun reconditionArrayLengthAST(arrayLengthAST: ArrayLengthAST): ExpressionAST {
-        TODO("Not yet implemented")
-    }
+    override fun reconditionArrayLengthAST(arrayLengthAST: ArrayLengthAST): ExpressionAST =
+        ArrayLengthAST(reconditionIdentifier(arrayLengthAST.array))
 
     override fun reconditionNonVoidMethodCallAST(nonVoidMethodCall: NonVoidMethodCallAST): ExpressionAST =
         NonVoidMethodCallAST(
             nonVoidMethodCall.method,
-            nonVoidMethodCall.params.map(this::reconditionExpression)
+            nonVoidMethodCall.params.map(this::reconditionExpression),
         )
 }

@@ -283,3 +283,12 @@ val safetyMap = mapOf<Pair<BinaryOperator, Type>, FunctionMethodAST>(
     Pair(SubtractionOperator, IntType) to SAFE_SUBTRACT_INT,
 //    Pair(SubtractionOperator, RealType) to SAFE_SUBTRACT_REAL,
 )
+
+val WRAPPER_FUNCTIONS = listOf(
+    ABSOLUTE,
+    SAFE_ADDITION_INT,
+    SAFE_SUBTRACT_INT,
+    SAFE_DIVISION_INT,
+    SAFE_MODULO_INT,
+    SAFE_MULTIPLY_INT,
+)
