@@ -1,0 +1,3 @@
+[submodule "antlr"]
+	path = app/src/main/antlr
+	url = git@github.com:fuzz-d/dafny-antlr.git
