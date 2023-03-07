@@ -145,24 +145,21 @@ class Generator(
 
         val methods = (1..selectionManager.selectNumberOfMethods()).map { generateMethodSignature(context) }.toSet()
 
-        // TODO: extends map + extend traits
+        val numberOfInherits = selectionManager.selectNumberOfTraitInherits()
+        val selectedTraits = selectTraits(context, numberOfInherits)
 
-        val trait = TraitAST(traitNameGenerator.newValue(), setOf() /* TODO() */, functionMethods, methods, fields)
+        val trait = TraitAST(traitNameGenerator.newValue(), selectedTraits, functionMethods, methods, fields)
 
         context.functionSymbolTable.addTrait(trait)
 
         return trait
     }
 
-    override fun generateClass(context: GenerationContext): ClassAST {
-        val classContext = GenerationContext(FunctionSymbolTable(context.functionSymbolTable.topLevel()))
-
-        // get traits
-        val numberOfTraits = selectionManager.selectNumberOfTraits()
+    private fun selectTraits(context: GenerationContext, n: Int): Set<TraitAST> {
         val traits = context.functionSymbolTable.traits().toMutableList()
         val selectedTraits = mutableSetOf<TraitAST>()
 
-        for (i in 1..numberOfTraits) {
+        for (i in 1..n) {
             if (traits.isEmpty()) {
                 traits.add(generateTrait(context))
             }
@@ -171,6 +168,16 @@ class Generator(
             traits.remove(selected)
             selectedTraits.add(selected)
         }
+
+        return selectedTraits
+    }
+
+    override fun generateClass(context: GenerationContext): ClassAST {
+        val classContext = GenerationContext(FunctionSymbolTable(context.functionSymbolTable.topLevel()))
+
+        // get traits
+        val numberOfTraits = selectionManager.selectNumberOfTraits()
+        val selectedTraits = selectTraits(context, numberOfTraits)
 
         // generate fields
         val additionalFields = (1..selectionManager.selectNumberOfFields()).map { generateField(classContext) }.toSet()

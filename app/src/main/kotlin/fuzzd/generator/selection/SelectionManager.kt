@@ -216,6 +216,8 @@ class SelectionManager(
 
     fun selectNumberOfTraits() = random.nextInt(0, MAX_TRAITS)
 
+    fun selectNumberOfTraitInherits() = random.nextInt(0, MAX_TRAIT_INHERITS)
+
     fun selectDecimalLiteral(): Int = random.nextInt(0, MAX_INT_VALUE)
 
     fun selectCharacter(): Char = random.nextInt(20, MAX_CHAR_VALUE).toChar()
@@ -234,6 +236,7 @@ class SelectionManager(
         private const val MAX_FUNCTION_METHODS = 10
         private const val MAX_METHODS = 3
         private const val MAX_TRAITS = 3
+        private const val MAX_TRAIT_INHERITS = 2
 
         private val LITERAL_TYPES = listOf(IntType, BoolType)
         private fun isLiteralType(type: Type) = type in LITERAL_TYPES

@@ -37,6 +37,8 @@ class Main(private val path: String) {
             // differential testing; log results
             val validationResult = validator.validateFile(writer.dirPath, DAFNY_MAIN)
             logger.log { validationResult }
+
+            println("Output written to directory: $directory")
         } catch (e: Exception) {
             // do nothing
             logger.log { "Generation threw error" }

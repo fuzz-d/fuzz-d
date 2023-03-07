@@ -2,14 +2,15 @@
     
 - Test case reduction workflow
 - instrumenting Dafny
-- ~~proper checksum~~
+- checksum within control flow?
+- avoid reading uninitialised method return values
 - ~~avoid array constructors as parameters~~
 - reduce number of declarations + increase number of assigns
 - ~~solve stack overflow errors - inner class generation limits~~
-- OOP integration
+- ~~OOP integration~~
     - ~~Class method + field calls~~
     - ~~Class Instantiation AST expression~~
-    - Trait & class extension tracking
+    - ~~Trait & class extension tracking~~
     - ~~Trait generation with extends~~
     - ~~Class & Trait AST definitions~~
     - ~~Class & Trait Generation~~
