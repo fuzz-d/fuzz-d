@@ -12,7 +12,7 @@ plugins {
 
     // Apply the application plugin to add support for building a CLI application in Java.
     id 'application'
-
+    id 'antlr'
     id 'jacoco'
 }
 
@@ -28,7 +28,6 @@ repositories {
 def KOTLIN_VERSION = "1.8.10"
 
 dependencies {
-
     // Align versions of all Kotlin components
     implementation platform('org.jetbrains.kotlin:kotlin-bom')
 
@@ -36,6 +35,8 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-reflect:${KOTLIN_VERSION}"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${KOTLIN_VERSION}"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
+
+    antlr "org.antlr:antlr4:4.12.0"
 
     testImplementation "org.jetbrains.kotlin:kotlin-test:${KOTLIN_VERSION}"
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
@@ -46,6 +47,18 @@ dependencies {
 application {
     // Define the main class for the application.
     mainClass = 'fuzzd.MainKt'
+}
+
+generateGrammarSource {
+    arguments += ['-no-listener', '-visitor']
+}
+
+compileKotlin {
+    dependsOn generateGrammarSource
+}
+
+compileTestKotlin {
+    dependsOn generateTestGrammarSource
 }
 
 test {
