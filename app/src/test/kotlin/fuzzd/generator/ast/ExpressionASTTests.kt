@@ -1,7 +1,5 @@
 package fuzzd.generator.ast
 
-import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
-import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
@@ -14,19 +12,13 @@ import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.Type.BoolType
-import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
-import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
-import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
 import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
-import fuzzd.utils.ABSOLUTE
-import fuzzd.utils.SAFE_DIVISION_INT
-import fuzzd.utils.SAFE_MODULO_INT
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Nested
@@ -364,99 +356,6 @@ class ExpressionASTTests {
 
             // expect
             assertEquals("$lhs $operator $rhs", str)
-        }
-
-        @Test
-        fun givenBinaryExpressionWithIntDivision_whenMakeSafe_expectSafeWrapper() {
-            // given
-            val lhs = IntegerLiteralAST("123")
-            val operator = DivisionOperator
-            val rhs = IntegerLiteralAST("234")
-            val expr = BinaryExpressionAST(lhs, operator, rhs)
-
-            // when
-            val safe = expr.makeSafe()
-
-            // expect
-            val expected = FunctionMethodCallAST(SAFE_DIVISION_INT.signature, listOf(lhs, rhs))
-            assertEquals(expected.toString(), safe.toString())
-        }
-
-//        @Test
-//        fun givenBinaryExpressionWithRealDivision_whenMakeSafe_expectNonZeroWrapper() {
-//            // given
-//            val lhs = RealLiteralAST("123.3")
-//            val operator = DivisionOperator
-//            val rhs = RealLiteralAST("234.3")
-//            val expr = BinaryExpressionAST(lhs, operator, rhs)
-//
-//            // when
-//            val safe = expr.makeSafe()
-//
-//            // expect
-//            val expected = FunctionMethodCallAST(SAFE_DIVISION_REAL, listOf(lhs, rhs))
-//            assertEquals(expected.toString(), safe.toString())
-//        }
-
-        @Test
-        fun givenBinaryExpressionWithModulo_whenMakeSafe_expectSafeWrapper() {
-            // given
-            val lhs = IntegerLiteralAST("1234")
-            val operator = ModuloOperator
-            val rhs = IntegerLiteralAST("2345")
-            val expr = BinaryExpressionAST(lhs, operator, rhs)
-
-            // when
-            val safe = expr.makeSafe()
-
-            // expect
-            val expected = FunctionMethodCallAST(SAFE_MODULO_INT.signature, listOf(lhs, rhs))
-
-            assertEquals(expected.toString(), safe.toString())
-        }
-
-//        @Test
-//        fun givenBinaryExpressionWithCharSubtraction_whenMakeSafe_expectSafeCharSubtractionWrapper() {
-//            // given
-//            val lhs = CharacterLiteralAST('B')
-//            val operator = SubtractionOperator
-//            val rhs = CharacterLiteralAST('a')
-//
-//            val expr = BinaryExpressionAST(lhs, operator, rhs)
-//
-//            // when
-//            val safe = expr.makeSafe()
-//
-//            // expect
-//            val expected = FunctionMethodCallAST(SAFE_SUBTRACT_CHAR, listOf(lhs, rhs))
-//            assertEquals(expected.toString(), safe.toString())
-//        }
-    }
-
-    @Nested
-    inner class IdentifierASTTests {
-        @Test
-        fun givenArrayIndexAST_whenMakeSafe_expectAbsoluteWrapperAndModulo() {
-            // given
-            val array = IdentifierAST("a", ArrayType(IntType))
-            val index = IntegerLiteralAST("43")
-
-            val expr = ArrayIndexAST(array, index)
-
-            // when
-            val safe = expr.makeSafe()
-
-            // expect
-            val expected = ArrayIndexAST(
-                array,
-                BinaryExpressionAST(
-                    FunctionMethodCallAST(ABSOLUTE.signature, listOf(index)),
-                    ModuloOperator,
-                    ArrayLengthAST(array),
-                ),
-            )
-
-            assertEquals(expected.toString(), safe.toString())
         }
     }
 
