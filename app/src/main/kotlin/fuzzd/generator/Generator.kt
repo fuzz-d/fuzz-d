@@ -70,8 +70,8 @@ import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.METHOD_CALL
 import fuzzd.generator.selection.StatementType.PRINT
 import fuzzd.generator.selection.StatementType.WHILE
+import fuzzd.generator.symbol_table.DependencyTable
 import fuzzd.generator.symbol_table.FunctionSymbolTable
-import fuzzd.generator.symbol_table.MethodCallTable
 import fuzzd.generator.symbol_table.SymbolTable
 import fuzzd.utils.unionAll
 
@@ -89,7 +89,7 @@ class Generator(
     private val functionMethodNameGenerator = FunctionMethodNameGenerator()
     private val methodNameGenerator = MethodNameGenerator()
     private val traitNameGenerator = TraitNameGenerator()
-    private val methodCallTable = MethodCallTable()
+    private val methodCallTable = DependencyTable<MethodSignatureAST>()
 
     /* ==================================== TOP LEVEL ==================================== */
 
@@ -482,7 +482,7 @@ class Generator(
                 context.symbolTable.classInstances().map { it.methods }.unionAll()
             )
             .filter { method ->
-                context.methodContext == null || methodCallTable.canCall(
+                context.methodContext == null || methodCallTable.canUseDependency(
                     context.methodContext,
                     method,
                 )
@@ -505,7 +505,7 @@ class Generator(
 
         // add call for method context
         if (context.methodContext != null) {
-            methodCallTable.addCall(method, context.methodContext)
+            methodCallTable.addDependency(method, context.methodContext)
         }
 
         val returns = method.returns
