@@ -168,6 +168,7 @@ sealed class ExpressionAST : ASTElement {
         val name: String,
         private val type: Type,
         val mutable: Boolean = true,
+        private var initialised: Boolean = false,
     ) : ExpressionAST() {
         override fun type(): Type = type
 
@@ -175,8 +176,21 @@ sealed class ExpressionAST : ASTElement {
 
         override fun makeSafe(): IdentifierAST = this
 
+        fun initialise() {
+            initialised = true
+        }
+
+        fun initialised(): Boolean = initialised
+
         override fun equals(other: Any?): Boolean =
             other is IdentifierAST && other.name == this.name && other.type == this.type && other.mutable == this.mutable
+
+        override fun hashCode(): Int {
+            var result = name.hashCode()
+            result = 31 * result + type.hashCode()
+            result = 31 * result + mutable.hashCode()
+            return result
+        }
     }
 
     class ClassInstanceAST(

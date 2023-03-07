@@ -230,7 +230,7 @@ class Generator(
     }
 
     override fun generateField(context: GenerationContext) =
-        IdentifierAST(fieldNameGenerator.newValue(), selectionManager.selectType(context))
+        IdentifierAST(fieldNameGenerator.newValue(), selectionManager.selectType(context), initialised = true)
 
     override fun generateFunctionMethod(
         context: GenerationContext,
@@ -271,6 +271,7 @@ class Generator(
                 parameterNameGenerator.newValue(),
                 generateType(context, literalOnly = literalParams),
                 mutable = false,
+                initialised = true,
             )
         }
 
@@ -290,7 +291,7 @@ class Generator(
         val returnType = selectionManager.selectMethodReturnType(context)
 
         val returnsNameGenerator = ReturnsNameGenerator()
-        val returns = returnType.map { t -> IdentifierAST(returnsNameGenerator.newValue(), t) }
+        val returns = returnType.map { t -> IdentifierAST(returnsNameGenerator.newValue(), t, initialised = false) }
 
         val numberOfParameters = selectionManager.selectNumberOfParameters()
         val parameterNameGenerator = ParameterNameGenerator()
@@ -299,6 +300,7 @@ class Generator(
                 parameterNameGenerator.newValue(),
                 generateType(context, literalOnly = true),
                 mutable = false,
+                initialised = true,
             )
         }
 
@@ -426,19 +428,17 @@ class Generator(
         }
 
         val identifierName = context.identifierNameGenerator.newValue()
-        val identifier = IdentifierAST(identifierName, targetType)
+        val identifier = IdentifierAST(identifierName, targetType, initialised = true)
 
         context.symbolTable.add(identifier)
 
-        val safeIdentifier = identifier
-        val safeExpr = expr
-        return DeclarationAST(safeIdentifier, safeExpr)
+        return DeclarationAST(identifier, expr)
     }
 
     override fun generateAssignmentStatement(context: GenerationContext): AssignmentAST {
         val targetType = generateType(context, literalOnly = true)
         val identifier = if (selectionManager.randomWeightedSelection(listOf(true to 0.8, false to 0.2))) {
-            generateIdentifier(context, targetType, mutableConstraint = true)
+            generateIdentifier(context, targetType, mutableConstraint = true, initialisedConstraint = false)
         } else {
             generateArrayIndex(context, targetType)
         }
@@ -447,9 +447,9 @@ class Generator(
 
         val expr = generateExpression(context, targetType)
 
-        val safeIdentifier = identifier
-        val safeExpr = expr
-        return AssignmentAST(safeIdentifier, safeExpr)
+        identifier.initialise()
+
+        return AssignmentAST(identifier, expr)
     }
 
     override fun generateClassInstantiation(context: GenerationContext): DeclarationAST {
@@ -555,7 +555,7 @@ class Generator(
         UNARY -> generateUnaryExpression(context, targetType)
         BINARY -> generateBinaryExpression(context, targetType)
         FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
-        IDENTIFIER -> generateIdentifier(context, targetType)
+        IDENTIFIER -> generateIdentifier(context, targetType, initialisedConstraint = true)
         LITERAL -> generateLiteralForType(context, targetType as LiteralType)
     }
 
@@ -601,9 +601,10 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
         mutableConstraint: Boolean,
+        initialisedConstraint: Boolean,
     ): IdentifierAST {
         val withType = context.symbolTable.withType(targetType).filter {
-            !mutableConstraint || it.mutable
+            (!mutableConstraint || it.mutable) && (!initialisedConstraint || it.initialised())
         }
 
         if (withType.isEmpty()) {
@@ -614,12 +615,13 @@ class Generator(
         }
 
         return selectionManager.randomSelection(
-            context.symbolTable.withType(targetType).filter { !mutableConstraint || it.mutable },
+            context.symbolTable.withType(targetType)
+                .filter { (!mutableConstraint || it.mutable) && (!initialisedConstraint || it.initialised()) },
         )
     }
 
     override fun generateArrayIndex(context: GenerationContext, targetType: Type): ArrayIndexAST {
-        val identifier = generateIdentifier(context, ArrayType(targetType))
+        val identifier = generateIdentifier(context, ArrayType(targetType), initialisedConstraint = true)
         val index = IntegerLiteralAST(generateDecimalLiteralValue(false), false)
 
         return ArrayIndexAST(identifier, index)

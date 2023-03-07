@@ -3,7 +3,7 @@
 - Test case reduction workflow
 - instrumenting Dafny
 - checksum within control flow?
-- avoid reading uninitialised method return values
+- ~~avoid reading uninitialised method return values~~
 - ~~avoid array constructors as parameters~~
 - reduce number of declarations + increase number of assigns
 - ~~solve stack overflow errors - inner class generation limits~~

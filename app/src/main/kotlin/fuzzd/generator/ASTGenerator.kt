@@ -1,6 +1,7 @@
 package fuzzd.generator
 
 import fuzzd.generator.ast.ClassAST
+import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
@@ -24,7 +25,6 @@ import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
-import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
@@ -90,6 +90,7 @@ interface ASTGenerator {
         context: GenerationContext,
         targetType: Type,
         mutableConstraint: Boolean = false,
+        initialisedConstraint: Boolean = true,
     ): IdentifierAST
 
     fun generateUnaryExpression(context: GenerationContext, targetType: Type): UnaryExpressionAST

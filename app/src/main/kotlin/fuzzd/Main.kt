@@ -20,6 +20,8 @@ class Main(private val path: String) {
         val logger = Logger(path, directory)
 
         logger.log { "Fuzzing with seed: $seed" }
+        println("Fuzzing with seed: $seed")
+        println("Output being written to directory: $directory")
 
         // generate program
         try {
@@ -37,8 +39,6 @@ class Main(private val path: String) {
             // differential testing; log results
             val validationResult = validator.validateFile(writer.dirPath, DAFNY_MAIN)
             logger.log { validationResult }
-
-            println("Output written to directory: $directory")
         } catch (e: Exception) {
             // do nothing
             logger.log { "Generation threw error" }
