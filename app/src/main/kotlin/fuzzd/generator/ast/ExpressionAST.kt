@@ -11,11 +11,8 @@ import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.error.InvalidFormatException
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
-import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
 import fuzzd.generator.ast.operators.UnaryOperator
-import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.escape
-import fuzzd.utils.safetyMap
 
 fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, context: String) {
     if (expected.size != actual.size) {
@@ -35,8 +32,6 @@ fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, cont
 sealed class ExpressionAST : ASTElement {
 
     abstract fun type(): Type
-
-    open fun makeSafe(): ExpressionAST = this
 
     class ClassInstantiationAST(val clazz: ClassAST, val params: List<ExpressionAST>) :
         ExpressionAST() {
@@ -94,9 +89,6 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): Type = ifBranch.type()
 
-        override fun makeSafe(): ExpressionAST =
-            TernaryExpressionAST(condition.makeSafe(), ifBranch.makeSafe(), elseBranch.makeSafe())
-
         override fun toString(): String = "if ($condition) then $ifBranch else $elseBranch"
     }
 
@@ -108,8 +100,6 @@ sealed class ExpressionAST : ASTElement {
         }
 
         override fun type(): Type = expr.type()
-
-        override fun makeSafe(): UnaryExpressionAST = UnaryExpressionAST(expr.makeSafe(), operator)
 
         override fun toString(): String {
             val sb = StringBuilder()
@@ -136,32 +126,20 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): Type = operator.outputType(type1, type2)
 
-        override fun makeSafe(): ExpressionAST {
-            val safeExpr1 = expr1.makeSafe()
-            val safeExpr2 = expr2.makeSafe()
-
-            val key = Pair(operator, type())
-            return if (safetyMap.containsKey(key)) {
-                FunctionMethodCallAST(safetyMap[key]!!.signature, listOf(safeExpr1, safeExpr2))
-            } else {
-                BinaryExpressionAST(safeExpr1, operator, safeExpr2)
-            }
-        }
-
         override fun toString(): String {
-            // we need to add parentheses around expressions when
-            // they're boolean binary expressions and have the same precedence
-            // otherwise we can choose to / not to wrap
-            val wrapExpr1 = expr1 is BinaryExpressionAST && type() == BoolType
-            val wrapExpr2 = expr2 is BinaryExpressionAST && type() == BoolType
-
             val sb = StringBuilder()
-            sb.append(if (wrapExpr1) "($expr1)" else "$expr1")
+            sb.append(if (shouldWrap(expr1)) "($expr1)" else "$expr1")
             sb.append(" $operator ")
-            sb.append(if (wrapExpr2) "($expr2)" else "$expr2")
+            sb.append(if (shouldWrap(expr2)) "($expr2)" else "$expr2")
 
             return sb.toString()
         }
+
+        // we need to add parentheses around expressions when
+        // they're boolean binary expressions and have the same precedence
+        // otherwise we can choose to / not to wrap
+        private fun shouldWrap(expr: ExpressionAST) =
+            expr is TernaryExpressionAST || (expr is BinaryExpressionAST && type() == BoolType)
     }
 
     open class IdentifierAST(
@@ -173,8 +151,6 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): Type = type
 
         override fun toString(): String = name
-
-        override fun makeSafe(): IdentifierAST = this
 
         fun initialise() {
             initialised = true
@@ -218,19 +194,6 @@ sealed class ExpressionAST : ASTElement {
             if (index.type() != IntType) {
                 throw InvalidInputException("Creating array index with index of type ${index.type()}")
             }
-        }
-
-        override fun makeSafe(): ArrayIndexAST {
-            val safeIndex = index.makeSafe()
-
-            return ArrayIndexAST(
-                array,
-                BinaryExpressionAST(
-                    FunctionMethodCallAST(ABSOLUTE.signature, listOf(safeIndex)),
-                    ModuloOperator,
-                    ArrayLengthAST(array),
-                ),
-            )
         }
 
         override fun toString(): String {

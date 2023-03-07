@@ -12,6 +12,7 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
+import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
@@ -96,6 +97,8 @@ interface ASTGenerator {
     fun generateUnaryExpression(context: GenerationContext, targetType: Type): UnaryExpressionAST
 
     fun generateBinaryExpression(context: GenerationContext, targetType: Type): BinaryExpressionAST
+
+    fun generateTernaryExpression(context: GenerationContext, targetType: Type): TernaryExpressionAST
 
     fun generateArrayInitialisation(context: GenerationContext, targetType: ArrayType): ArrayInitAST
 

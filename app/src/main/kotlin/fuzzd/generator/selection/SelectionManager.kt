@@ -21,6 +21,7 @@ import fuzzd.generator.selection.ExpressionType.CONSTRUCTOR
 import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
+import fuzzd.generator.selection.ExpressionType.TERNARY
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.CLASS_INSTANTIATION
@@ -143,13 +144,17 @@ class SelectionManager(
             randomWeightedSelection(listOf(true to trueWeighting, false to 1 - trueWeighting))
     }
 
-    fun generateNewClass(context: GenerationContext): Boolean = random.nextFloat() < (0.1 / context.functionSymbolTable.classes().size)
+    fun generateNewClass(context: GenerationContext): Boolean =
+        random.nextFloat() < (0.1 / context.functionSymbolTable.classes().size)
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
-        val binaryProbability = if (isBinaryType(targetType)) 0.3 / context.expressionDepth else 0.0
+        val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
         val functionMethodCallProbability = if (targetType !is ArrayType) 0.15 / context.expressionDepth else 0.0
-        val remainingProbability = (1 - binaryProbability - unaryProbability - functionMethodCallProbability)
+        val ternaryProbability = 0.10 / context.expressionDepth
+
+        val remainingProbability =
+            (1 - binaryProbability - unaryProbability - functionMethodCallProbability - ternaryProbability)
         val identifierProbability = if (identifier) 2 * remainingProbability / 3 else 0.0
         val literalProbability =
             if (isLiteralType(targetType)) {
@@ -166,6 +171,7 @@ class SelectionManager(
         val selection = listOf(
             CONSTRUCTOR to constructorProbability,
             LITERAL to literalProbability,
+            TERNARY to ternaryProbability,
             IDENTIFIER to identifierProbability,
             FUNCTION_METHOD_CALL to functionMethodCallProbability,
             UNARY to unaryProbability,

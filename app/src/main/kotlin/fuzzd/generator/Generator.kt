@@ -16,6 +16,7 @@ import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
+import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
@@ -60,6 +61,7 @@ import fuzzd.generator.selection.ExpressionType.CONSTRUCTOR
 import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
+import fuzzd.generator.selection.ExpressionType.TERNARY
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.StatementType
@@ -554,6 +556,7 @@ class Generator(
         CONSTRUCTOR -> generateArrayInitialisation(context, targetType as ArrayType)
         UNARY -> generateUnaryExpression(context, targetType)
         BINARY -> generateBinaryExpression(context, targetType)
+        TERNARY -> generateTernaryExpression(context, targetType)
         FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
         IDENTIFIER -> generateIdentifier(context, targetType, initialisedConstraint = true)
         LITERAL -> generateLiteralForType(context, targetType as LiteralType)
@@ -647,6 +650,14 @@ class Generator(
         val expr2 = generateExpression(nextDepthContext, inputType)
 
         return BinaryExpressionAST(expr1, operator, expr2)
+    }
+
+    override fun generateTernaryExpression(context: GenerationContext, targetType: Type): TernaryExpressionAST {
+        val condition = generateExpression(context, BoolType)
+        val ifExpr = generateExpression(context, targetType)
+        val elseExpr = generateExpression(context, targetType)
+
+        return TernaryExpressionAST(condition, ifExpr, elseExpr)
     }
 
     override fun generateBaseExpressionForType(
