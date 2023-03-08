@@ -1,6 +1,6 @@
 package fuzzd.generator.ast
 
-sealed class Type {
+sealed class Type : ASTElement {
 
     class ClassType(val clazz: ClassAST) : Type() {
         override fun equals(other: Any?): Boolean = other is ClassType && other.clazz == this.clazz
@@ -22,7 +22,7 @@ sealed class Type {
         class ArrayType(val internalType: Type) : ConstructorType() {
             override fun equals(other: Any?): Boolean {
                 return other != null && other is ArrayType &&
-                    other.internalType == internalType
+                        other.internalType == internalType
             }
 
             override fun hashCode(): Int {
@@ -33,7 +33,9 @@ sealed class Type {
         }
     }
 
-    class MethodReturnType(val types: List<Type>) : Type()
+    class MethodReturnType(val types: List<Type>) : Type() {
+        override fun toString(): String = "(${types.joinToString(", ")})"
+    }
 
     abstract class LiteralType : Type()
 

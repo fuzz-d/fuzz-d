@@ -29,7 +29,7 @@ class MethodSignatureAST(
     val name: String,
     val params: List<IdentifierAST>,
     val returns: List<IdentifierAST>,
-) {
+) : ASTElement {
     override fun toString(): String {
         val sb = StringBuilder()
         sb.append("method $name(${params.joinToString(", ") { p -> "$p: ${p.type()}" }}) ")
