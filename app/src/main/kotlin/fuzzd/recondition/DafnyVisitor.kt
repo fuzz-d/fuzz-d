@@ -1,23 +1,30 @@
 package fuzzd.recondition
 
 import dafnyBaseVisitor
+import dafnyParser.AssignmentContext
+import dafnyParser.BreakStatementContext
 import dafnyParser.ClassDeclContext
 import dafnyParser.ClassMemberDeclContext
+import dafnyParser.ContinueStatementContext
+import dafnyParser.DeclarationContext
 import dafnyParser.ExpressionContext
 import dafnyParser.FieldDeclContext
 import dafnyParser.FunctionDeclContext
 import dafnyParser.FunctionSignatureDeclContext
 import dafnyParser.IdentifierContext
 import dafnyParser.IdentifierTypeContext
+import dafnyParser.IfStatementContext
 import dafnyParser.MethodDeclContext
 import dafnyParser.MethodSignatureDeclContext
 import dafnyParser.ParametersContext
+import dafnyParser.PrintContext
 import dafnyParser.ProgramContext
 import dafnyParser.StatementContext
 import dafnyParser.TopDeclContext
 import dafnyParser.TopDeclMemberContext
 import dafnyParser.TraitDeclContext
 import dafnyParser.TypeContext
+import dafnyParser.WhileStatementContext
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
@@ -29,13 +36,19 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssignmentAST
+import fuzzd.generator.ast.StatementAST.BreakAST
+import fuzzd.generator.ast.StatementAST.DeclarationAST
+import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
 import fuzzd.utils.unionAll
 
 class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
-    val traits = mutableMapOf<String, TraitAST>() // get trait object by name
+    private val traits = mutableMapOf<String, TraitAST>() // get trait object by name
 
     override fun visitProgram(ctx: ProgramContext): DafnyAST =
         DafnyAST(
@@ -147,9 +160,21 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitIdentifierType(ctx: IdentifierTypeContext): IdentifierAST =
         IdentifierAST(visitIdentifierName(ctx.identifier()), visitType(ctx.type()))
 
-    override fun visitStatement(ctx: StatementContext): StatementAST = TODO()
+    override fun visitStatement(ctx: StatementContext): StatementAST = super.visitStatement(ctx) as StatementAST
 
-    override fun visitExpression(ctx: ExpressionContext): ExpressionAST = TODO()
+    override fun visitBreakStatement(ctx: BreakStatementContext): BreakAST = BreakAST
+
+    override fun visitDeclaration(ctx: DeclarationContext): DeclarationAST = TODO()
+
+    override fun visitAssignment(ctx: AssignmentContext): AssignmentAST = TODO()
+
+    override fun visitPrint(ctx: PrintContext): PrintAST = TODO()
+
+    override fun visitIfStatement(ctx: IfStatementContext): IfStatementAST = TODO()
+
+    override fun visitWhileStatement(ctx: WhileStatementContext): WhileLoopAST = TODO()
+
+    override fun visitExpression(ctx: ExpressionContext): ExpressionAST = super.visitExpression(ctx) as ExpressionAST
 
     override fun visitType(ctx: TypeContext): Type = TODO()
 
