@@ -2,7 +2,6 @@ package fuzzd.generator.ast
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.error.InvalidInputException
-import fuzzd.utils.indent
 
 sealed class StatementAST : ASTElement {
     class IfStatementAST(
@@ -33,29 +32,24 @@ sealed class StatementAST : ASTElement {
         }
     }
 
-    class WhileLoopAST(
-        val counterInitialisation: DeclarationAST,
-        val terminationCheck: IfStatementAST,
-        val condition: ExpressionAST,
-        val body: SequenceAST,
-        val counterUpdate: AssignmentAST,
-    ) : StatementAST() {
+    open class WhileLoopAST(val condition: ExpressionAST, val body: SequenceAST) : StatementAST() {
         init {
             if (condition.type() != Type.BoolType) {
                 throw InvalidInputException("If statement condition not bool type")
             }
         }
 
-        override fun toString(): String {
-            val sb = StringBuilder()
-            sb.appendLine(counterInitialisation)
-            sb.appendLine("while ($condition) {")
-            sb.appendLine(indent(terminationCheck))
-            sb.appendLine(indent(counterUpdate))
-            sb.appendLine(body)
-            sb.appendLine("}")
-            return sb.toString()
-        }
+        override fun toString(): String = "while ($condition) {\n$body}\n}\n"
+    }
+
+    class CounterLimitedWhileLoopAST(
+        val counterInitialisation: DeclarationAST,
+        terminationCheck: IfStatementAST,
+        counterUpdate: AssignmentAST,
+        condition: ExpressionAST,
+        body: SequenceAST,
+    ) : WhileLoopAST(condition, SequenceAST(listOf(terminationCheck, counterUpdate) + body.statements)) {
+        override fun toString(): String = "$counterInitialisation\n${super.toString()}"
     }
 
     open class MultiDeclarationAST(

@@ -24,7 +24,6 @@ import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
-import java.security.DrbgParameters.Instantiation
 
 interface ASTReconditioner {
     /* ========================================== TOP LEVEL ============================================ */

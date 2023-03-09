@@ -101,11 +101,8 @@ class Reconditioner : ASTReconditioner {
         )
 
     override fun reconditionWhileLoopAST(whileLoopAST: WhileLoopAST) = WhileLoopAST(
-        whileLoopAST.counterInitialisation,
-        whileLoopAST.terminationCheck,
         reconditionExpression(whileLoopAST.condition),
         reconditionSequence(whileLoopAST.body),
-        whileLoopAST.counterUpdate,
     )
 
     override fun reconditionVoidMethodCall(voidMethodCallAST: VoidMethodCallAST) = VoidMethodCallAST(

@@ -27,6 +27,7 @@ import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
+import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
@@ -388,20 +389,14 @@ class Generator(
             null,
         )
 
-        val whileBody = generateSequence(context.increaseStatementDepth())
-
         val counterUpdate = AssignmentAST(
             counterIdentifier,
             BinaryExpressionAST(counterIdentifier, AdditionOperator, IntegerLiteralAST(1)),
         )
 
-        return WhileLoopAST(
-            counterInitialisation,
-            counterTerminationCheck,
-            condition,
-            whileBody,
-            counterUpdate,
-        )
+        val whileBody = generateSequence(context.increaseStatementDepth())
+
+        return CounterLimitedWhileLoopAST(counterInitialisation, counterTerminationCheck, counterUpdate, condition, whileBody)
     }
 
     override fun generatePrintStatement(context: GenerationContext): PrintAST {
