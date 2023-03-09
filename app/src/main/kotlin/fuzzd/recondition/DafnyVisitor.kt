@@ -1,35 +1,57 @@
 package fuzzd.recondition
 
 import dafnyBaseVisitor
+import dafnyParser.ArrayConstructorContext
+import dafnyParser.ArrayTypeContext
 import dafnyParser.AssignmentContext
+import dafnyParser.AssignmentLhsContext
+import dafnyParser.BinaryOperatorContext
+import dafnyParser.BoolLiteralContext
 import dafnyParser.BreakStatementContext
+import dafnyParser.CharLiteralContext
 import dafnyParser.ClassDeclContext
-import dafnyParser.ClassMemberDeclContext
-import dafnyParser.ContinueStatementContext
+import dafnyParser.DeclAssignRhsContext
 import dafnyParser.DeclarationContext
+import dafnyParser.DeclarationLhsContext
 import dafnyParser.ExpressionContext
+import dafnyParser.ExpressionLhsContext
 import dafnyParser.FieldDeclContext
+import dafnyParser.FunctionCallContext
 import dafnyParser.FunctionDeclContext
 import dafnyParser.FunctionSignatureDeclContext
 import dafnyParser.IdentifierContext
 import dafnyParser.IdentifierTypeContext
 import dafnyParser.IfStatementContext
+import dafnyParser.IntLiteralContext
+import dafnyParser.LiteralContext
 import dafnyParser.MethodDeclContext
 import dafnyParser.MethodSignatureDeclContext
 import dafnyParser.ParametersContext
 import dafnyParser.PrintContext
 import dafnyParser.ProgramContext
+import dafnyParser.RealLiteralContext
+import dafnyParser.SequenceContext
 import dafnyParser.StatementContext
 import dafnyParser.TopDeclContext
 import dafnyParser.TopDeclMemberContext
 import dafnyParser.TraitDeclContext
 import dafnyParser.TypeContext
+import dafnyParser.UnaryExpressionContext
+import dafnyParser.UnaryOperatorContext
 import dafnyParser.WhileStatementContext
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
+import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
+import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
+import fuzzd.generator.ast.ExpressionAST.LiteralAST
+import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
+import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MethodAST
@@ -45,14 +67,39 @@ import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
+import fuzzd.generator.ast.Type.BoolType
+import fuzzd.generator.ast.Type.CharType
+import fuzzd.generator.ast.Type.ConstructorType.ArrayType
+import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.operators.BinaryOperator
+import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator
+import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
+import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanOperator
+import fuzzd.generator.ast.operators.BinaryOperator.IffOperator
+import fuzzd.generator.ast.operators.BinaryOperator.ImplicationOperator
+import fuzzd.generator.ast.operators.BinaryOperator.LessThanEqualOperator
+import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
+import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
+import fuzzd.generator.ast.operators.BinaryOperator.MultiplicationOperator
+import fuzzd.generator.ast.operators.BinaryOperator.ReverseImplicationOperator
+import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
+import fuzzd.generator.ast.operators.UnaryOperator
+import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
+import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.utils.unionAll
 
 class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     private val traits = mutableMapOf<String, TraitAST>() // get trait object by name
 
+    /* ============================================ TOP LEVEL ============================================ */
     override fun visitProgram(ctx: ProgramContext): DafnyAST =
         DafnyAST(
-            (ctx.topDecl()?.map { topDeclCtx -> visitTopDecl(topDeclCtx) }) ?: listOf()
+            (ctx.topDecl()?.map { topDeclCtx -> visitTopDecl(topDeclCtx) }) ?: listOf(),
         )
 
     override fun visitTopDecl(ctx: TopDeclContext): TopLevelAST = super.visitTopDecl(ctx) as TopLevelAST
@@ -137,13 +184,16 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitMethodDecl(ctx: MethodDeclContext): ASTElement {
         val signature = visitMethodSignatureDecl(ctx.methodSignatureDecl())
-        val body = SequenceAST(ctx.statement().map(this::visitStatement))
+        val body = visitSequence(ctx.sequence())
 
         val method = MethodAST(signature)
         method.setBody(body)
 
         return method
     }
+
+    override fun visitSequence(ctx: SequenceContext): SequenceAST =
+        SequenceAST(ctx.statement().map(this::visitStatement))
 
     override fun visitMethodSignatureDecl(ctx: MethodSignatureDeclContext): MethodSignatureAST {
         val name = visitIdentifierName(ctx.identifier())
@@ -160,23 +210,140 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitIdentifierType(ctx: IdentifierTypeContext): IdentifierAST =
         IdentifierAST(visitIdentifierName(ctx.identifier()), visitType(ctx.type()))
 
+    /* ============================================ STATEMENTS ========================================= */
+
     override fun visitStatement(ctx: StatementContext): StatementAST = super.visitStatement(ctx) as StatementAST
 
     override fun visitBreakStatement(ctx: BreakStatementContext): BreakAST = BreakAST
 
-    override fun visitDeclaration(ctx: DeclarationContext): DeclarationAST = TODO()
+    override fun visitDeclaration(ctx: DeclarationContext): DeclarationAST {
+        val lhs = visitDeclarationLhs(ctx.declarationLhs())
+        val rhs = visitDeclAssignRhs(ctx.declAssignRhs())
 
-    override fun visitAssignment(ctx: AssignmentContext): AssignmentAST = TODO()
+        return DeclarationAST(IdentifierAST(lhs.name, rhs.type(), initialised = true), rhs)
+    }
 
-    override fun visitPrint(ctx: PrintContext): PrintAST = TODO()
+    override fun visitDeclarationLhs(ctx: DeclarationLhsContext): IdentifierAST /* IdentifierAST ??? */ = TODO()
 
-    override fun visitIfStatement(ctx: IfStatementContext): IfStatementAST = TODO()
+    override fun visitDeclAssignRhs(ctx: DeclAssignRhsContext): ExpressionAST =
+        super.visitDeclAssignRhs(ctx) as ExpressionAST
 
-    override fun visitWhileStatement(ctx: WhileStatementContext): WhileLoopAST = TODO()
+    override fun visitAssignment(ctx: AssignmentContext): AssignmentAST {
+        val lhs = visitAssignmentLhs(ctx.assignmentLhs())
+        val rhs = visitDeclAssignRhs(ctx.declAssignRhs())
 
-    override fun visitExpression(ctx: ExpressionContext): ExpressionAST = super.visitExpression(ctx) as ExpressionAST
+        return AssignmentAST(lhs, rhs)
+    }
 
-    override fun visitType(ctx: TypeContext): Type = TODO()
+    override fun visitAssignmentLhs(ctx: AssignmentLhsContext): IdentifierAST =
+        visitDeclAssignLhs(ctx.declAssignLhs()) as IdentifierAST
+
+    override fun visitPrint(ctx: PrintContext): PrintAST = PrintAST(visitExpression(ctx.expression()))
+
+    override fun visitIfStatement(ctx: IfStatementContext): IfStatementAST {
+        val ifCondition = visitExpression(ctx.expression())
+        val ifBranch = visitSequence(ctx.sequence(0))
+
+        val elseBranch = if (ctx.sequence().size > 1) visitSequence(ctx.sequence(1)) else null
+
+        return IfStatementAST(ifCondition, ifBranch, elseBranch)
+    }
+
+    override fun visitWhileStatement(ctx: WhileStatementContext): WhileLoopAST {
+        val whileCondition = visitExpression(ctx.expression())
+        val sequence = visitSequence(ctx.sequence())
+
+        return WhileLoopAST(whileCondition, sequence)
+    }
 
     private fun visitIdentifierName(identifierCtx: IdentifierContext): String = identifierCtx.IDENTIFIER().toString()
+
+    /* ============================================= EXPRESSION ======================================== */
+
+    override fun visitExpression(ctx: ExpressionContext): ExpressionAST {
+        val lhs = visitExpressionLhs(ctx.expressionLhs())
+
+        return if (ctx.binaryExpression() != null) {
+            val binaryOperator = visitBinaryOperator(ctx.binaryExpression().binaryOperator())
+            val rhs = visitExpression(ctx.binaryExpression().expression())
+
+            return BinaryExpressionAST(lhs, binaryOperator, rhs)
+        } else {
+            lhs
+        }
+    }
+
+    override fun visitUnaryExpression(ctx: UnaryExpressionContext): ASTElement {
+        val operator = visitUnaryOperator(ctx.unaryOperator())
+        val expression = visitExpression(ctx.expression())
+
+        return UnaryExpressionAST(expression, operator)
+    }
+
+    override fun visitExpressionLhs(ctx: ExpressionLhsContext): ExpressionAST =
+        super.visitExpressionLhs(ctx) as ExpressionAST
+
+    override fun visitArrayConstructor(ctx: ArrayConstructorContext): ArrayInitAST {
+        val innerType = visitType(ctx.type())
+        val dimension = visitIntLiteral(ctx.intLiteral(0)).toString().toInt()
+
+        return ArrayInitAST(dimension, ArrayType(innerType))
+    }
+
+    override fun visitFunctionCall(ctx: FunctionCallContext): ExpressionAST {
+        TODO() // either returns function method call or method call
+    }
+
+    override fun visitIdentifier(ctx: IdentifierContext): IdentifierAST = TODO()
+
+    override fun visitLiteral(ctx: LiteralContext) = super.visitLiteral(ctx) as LiteralAST
+
+    override fun visitBoolLiteral(ctx: BoolLiteralContext): BooleanLiteralAST = TODO()
+
+    override fun visitIntLiteral(ctx: IntLiteralContext): IntegerLiteralAST = TODO()
+
+    override fun visitCharLiteral(ctx: CharLiteralContext): CharacterLiteralAST = TODO()
+
+    override fun visitRealLiteral(ctx: RealLiteralContext): RealLiteralAST = TODO()
+
+    override fun visitUnaryOperator(ctx: UnaryOperatorContext): UnaryOperator = when {
+        ctx.NEG() != null -> NegationOperator
+        ctx.NOT() != null -> NotOperator
+        else -> throw UnsupportedOperationException("Visiting unsupported unary operator $ctx")
+    }
+
+    override fun visitBinaryOperator(ctx: BinaryOperatorContext): BinaryOperator = when {
+        ctx.ADD() != null -> AdditionOperator
+        ctx.AND() != null -> ConjunctionOperator
+        ctx.DIV() != null -> DivisionOperator
+        ctx.EQ() != null -> EqualsOperator
+        ctx.GEQ() != null -> GreaterThanEqualOperator
+        ctx.GT() != null -> GreaterThanOperator
+        ctx.LEQ() != null -> LessThanEqualOperator
+        ctx.LT() != null -> LessThanOperator
+        ctx.IFF() != null -> IffOperator
+        ctx.IMP() != null -> ImplicationOperator
+        ctx.MOD() != null -> ModuloOperator
+        ctx.MUL() != null -> MultiplicationOperator
+        ctx.NEG() != null -> SubtractionOperator
+        ctx.OR() != null -> DisjunctionOperator
+        ctx.RIMP() != null -> ReverseImplicationOperator
+        else -> throw UnsupportedOperationException("Visiting unrecognised binary operator $ctx")
+    }
+
+    /* ============================================== TYPE ============================================= */
+
+    override fun visitType(ctx: TypeContext): Type = when {
+        ctx.BOOL() != null -> BoolType
+        ctx.INT() != null -> IntType
+        ctx.CHAR() != null -> CharType
+        ctx.REAL() != null -> RealType
+        ctx.arrayType() != null -> visitArrayType(ctx.arrayType())
+        else -> throw UnsupportedOperationException("Visiting unrecognised type context $ctx")
+    }
+
+    override fun visitArrayType(ctx: ArrayTypeContext): ArrayType {
+        val innerType = visitType(ctx.genericInstantiation().type(0))
+        return ArrayType(innerType)
+    }
 }
