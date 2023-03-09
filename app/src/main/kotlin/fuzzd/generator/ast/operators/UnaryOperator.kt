@@ -1,8 +1,9 @@
 package fuzzd.generator.ast.operators
 
+import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.Type
 
-sealed class UnaryOperator(val precedence: Int, private val symbol: String) {
+sealed class UnaryOperator(val precedence: Int, private val symbol: String) : ASTElement {
     abstract fun supportsInput(t1: Type): Boolean
 
     override fun toString(): String = symbol
