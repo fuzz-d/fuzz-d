@@ -124,6 +124,8 @@ class VisitorSymbolTable<T>(val parent: VisitorSymbolTable<T>? = null) {
         if (parent == null) throw UnsupportedOperationException("Can't decrease top level depth")
         return parent
     }
+
+    override fun toString(): String = table.toString()
 }
 
 class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
@@ -147,9 +149,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val name = visitIdentifierName(ctx.identifier(0))
 
         val extends = ctx.identifier().slice(1 until ctx.identifier().size)
-            .map { identifierCtx ->
-                identifierCtx.IDENTIFIER().toString()
-            }
+            .map { identifierCtx -> visitIdentifierName(identifierCtx) }
             .map { identifierStr -> traitsTable.getEntry(identifierStr) }
             .toSet()
 
@@ -187,9 +187,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val name = visitIdentifierName(ctx.identifier(0))
 
         val extends = ctx.identifier().slice(1 until ctx.identifier().size)
-            .map { identifierCtx ->
-                identifierCtx.IDENTIFIER().toString()
-            }
+            .map { identifierCtx -> visitIdentifierName(identifierCtx) }
             .map { identifierStr -> traitsTable.getEntry(identifierStr) }
             .toSet()
 
@@ -201,7 +199,10 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         ctx.traitMemberDecl().forEach { traitMemberDeclCtx ->
             when (val astNode = super.visitTraitMemberDecl(traitMemberDeclCtx)) {
-                is IdentifierAST -> fields.add(astNode)
+                is IdentifierAST -> {
+                    fields.add(astNode); classFieldsTable.addEntry(astNode.name, astNode)
+                }
+
                 is FunctionMethodSignatureAST -> functionMethods.add(astNode)
                 is MethodSignatureAST -> methods.add(astNode)
             }
@@ -338,16 +339,26 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitIfStatement(ctx: IfStatementContext): IfStatementAST {
         val ifCondition = visitExpression(ctx.expression())
-        val ifBranch = visitSequence(ctx.sequence(0))
 
+        identifiersTable = identifiersTable.increaseDepth()
+        val ifBranch = visitSequence(ctx.sequence(0))
+        identifiersTable = identifiersTable.decreaseDepth()
+
+        identifiersTable = identifiersTable.increaseDepth()
         val elseBranch = if (ctx.sequence().size > 1) visitSequence(ctx.sequence(1)) else null
+        identifiersTable = identifiersTable.decreaseDepth()
 
         return IfStatementAST(ifCondition, ifBranch, elseBranch)
     }
 
     override fun visitWhileStatement(ctx: WhileStatementContext): WhileLoopAST {
         val whileCondition = visitExpression(ctx.expression())
+
+        identifiersTable = identifiersTable.increaseDepth()
+
         val sequence = visitSequence(ctx.sequence())
+
+        identifiersTable = identifiersTable.decreaseDepth()
 
         return WhileLoopAST(whileCondition, sequence)
     }

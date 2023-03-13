@@ -17,6 +17,15 @@ open class FunctionMethodAST(
     fun returnType(): Type = signature.returnType
 
     override fun toString(): String = "$signature {\n${indent(body)}\n}"
+
+    override fun equals(other: Any?): Boolean =
+        other is FunctionMethodAST && other.signature == signature && other.body == body
+
+    override fun hashCode(): Int {
+        var result = signature.hashCode()
+        result = 31 * result + body.hashCode()
+        return result
+    }
 }
 
 class FunctionMethodSignatureAST(
@@ -26,4 +35,14 @@ class FunctionMethodSignatureAST(
 ) : ASTElement {
     override fun toString(): String =
         "function method $name(${params.joinToString(", ") { param -> "${param.name}: ${param.type()}" }}): $returnType"
+
+    override fun equals(other: Any?): Boolean =
+        other is FunctionMethodSignatureAST && other.name == name && other.returnType == returnType && other.params == params
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + returnType.hashCode()
+        result = 31 * result + params.hashCode()
+        return result
+    }
 }
