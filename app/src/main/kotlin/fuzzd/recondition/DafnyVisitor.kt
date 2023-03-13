@@ -5,7 +5,6 @@ import dafnyParser.ArrayConstructorContext
 import dafnyParser.ArrayTypeContext
 import dafnyParser.AssignmentContext
 import dafnyParser.AssignmentLhsContext
-import dafnyParser.BinaryOperatorContext
 import dafnyParser.BoolLiteralContext
 import dafnyParser.BreakStatementContext
 import dafnyParser.CallParametersContext
@@ -16,7 +15,6 @@ import dafnyParser.DeclAssignRhsContext
 import dafnyParser.DeclarationContext
 import dafnyParser.DeclarationLhsContext
 import dafnyParser.ExpressionContext
-import dafnyParser.ExpressionLhsContext
 import dafnyParser.FieldDeclContext
 import dafnyParser.FunctionCallContext
 import dafnyParser.FunctionDeclContext
@@ -38,7 +36,6 @@ import dafnyParser.TopDeclContext
 import dafnyParser.TopDeclMemberContext
 import dafnyParser.TraitDeclContext
 import dafnyParser.TypeContext
-import dafnyParser.UnaryExpressionContext
 import dafnyParser.UnaryOperatorContext
 import dafnyParser.WhileStatementContext
 import fuzzd.generator.ast.ASTElement
@@ -77,7 +74,6 @@ import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.RealType
-import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
@@ -91,6 +87,7 @@ import fuzzd.generator.ast.operators.BinaryOperator.LessThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MultiplicationOperator
+import fuzzd.generator.ast.operators.BinaryOperator.NotEqualsOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ReverseImplicationOperator
 import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.ast.operators.UnaryOperator
@@ -318,7 +315,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return DeclarationAST(identifier, rhs)
     }
 
-    override fun visitDeclarationLhs(ctx: DeclarationLhsContext): IdentifierAST = visitDeclAssignLhs(ctx.declAssignLhs())
+    override fun visitDeclarationLhs(ctx: DeclarationLhsContext): IdentifierAST =
+        visitDeclAssignLhs(ctx.declAssignLhs())
 
     override fun visitDeclAssignLhs(ctx: DeclAssignLhsContext): IdentifierAST =
         super.visitDeclAssignLhs(ctx) as IdentifierAST
@@ -358,28 +356,116 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     /* ============================================= EXPRESSION ======================================== */
 
-    override fun visitExpression(ctx: ExpressionContext): ExpressionAST {
-        val lhs = visitExpressionLhs(ctx.expressionLhs())
+    override fun visitExpression(ctx: ExpressionContext): ExpressionAST =
+        when {
+            ctx.literal() != null -> visitLiteral(ctx.literal())
+            ctx.functionCall() != null -> visitFunctionCall(ctx.functionCall())
+            ctx.declAssignLhs() != null -> visitDeclAssignLhs(ctx.declAssignLhs())
+            ctx.unaryOperator() != null -> UnaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                visitUnaryOperator(ctx.unaryOperator()),
+            )
 
-        return if (ctx.binaryExpression() != null) {
-            val binaryOperator = visitBinaryOperator(ctx.binaryExpression().binaryOperator())
-            val rhs = visitExpression(ctx.binaryExpression().expression())
+            ctx.ADD() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                AdditionOperator,
+                visitExpression(ctx.expression(1)),
+            )
 
-            return BinaryExpressionAST(lhs, binaryOperator, rhs)
-        } else {
-            lhs
+            ctx.AND() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                ConjunctionOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.DIV() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                DivisionOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.EQ() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                EqualsOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.GEQ() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                GreaterThanEqualOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.GT() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                GreaterThanOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.IFF() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                IffOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.IMP() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                ImplicationOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.LEQ() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                LessThanEqualOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.LT() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                LessThanOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.MOD() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                ModuloOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.MUL() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                MultiplicationOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.NEG() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                SubtractionOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.NEQ() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                NotEqualsOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.OR() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                DisjunctionOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.RIMP() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                ReverseImplicationOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.expression() != null -> visitExpression(ctx.expression(0))
+
+            else -> throw UnsupportedOperationException("No valid expression types found")
         }
-    }
-
-    override fun visitUnaryExpression(ctx: UnaryExpressionContext): ASTElement {
-        val operator = visitUnaryOperator(ctx.unaryOperator())
-        val expression = visitExpression(ctx.expression())
-
-        return UnaryExpressionAST(expression, operator)
-    }
-
-    override fun visitExpressionLhs(ctx: ExpressionLhsContext): ExpressionAST =
-        super.visitExpressionLhs(ctx) as ExpressionAST
 
     override fun visitArrayConstructor(ctx: ArrayConstructorContext): ArrayInitAST {
         val innerType = visitType(ctx.type())
@@ -409,7 +495,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return findIdentifier(name) // return actual identifier or one with dummy type
     }
 
-    fun findIdentifier(name: String): IdentifierAST = if (identifiersTable.hasEntry(name)) {
+    private fun findIdentifier(name: String): IdentifierAST = if (identifiersTable.hasEntry(name)) {
         identifiersTable.getEntry(name)
     } else if (classFieldsTable.hasEntry(name)) {
         classFieldsTable.getEntry(name)
@@ -439,25 +525,6 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.NEG() != null -> NegationOperator
         ctx.NOT() != null -> NotOperator
         else -> throw UnsupportedOperationException("Visiting unsupported unary operator $ctx")
-    }
-
-    override fun visitBinaryOperator(ctx: BinaryOperatorContext): BinaryOperator = when {
-        ctx.ADD() != null -> AdditionOperator
-        ctx.AND() != null -> ConjunctionOperator
-        ctx.DIV() != null -> DivisionOperator
-        ctx.EQ() != null -> EqualsOperator
-        ctx.GEQ() != null -> GreaterThanEqualOperator
-        ctx.GT() != null -> GreaterThanOperator
-        ctx.LEQ() != null -> LessThanEqualOperator
-        ctx.LT() != null -> LessThanOperator
-        ctx.IFF() != null -> IffOperator
-        ctx.IMP() != null -> ImplicationOperator
-        ctx.MOD() != null -> ModuloOperator
-        ctx.MUL() != null -> MultiplicationOperator
-        ctx.NEG() != null -> SubtractionOperator
-        ctx.OR() != null -> DisjunctionOperator
-        ctx.RIMP() != null -> ReverseImplicationOperator
-        else -> throw UnsupportedOperationException("Visiting unrecognised binary operator $ctx")
     }
 
     /* ============================================== TYPE ============================================= */
