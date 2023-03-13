@@ -22,7 +22,7 @@ sealed class Type : ASTElement {
         class ArrayType(val internalType: Type) : ConstructorType() {
             override fun equals(other: Any?): Boolean {
                 return other != null && other is ArrayType &&
-                        other.internalType == internalType
+                    other.internalType == internalType
             }
 
             override fun hashCode(): Int {
@@ -53,5 +53,9 @@ sealed class Type : ASTElement {
 
     object CharType : LiteralType() {
         override fun toString(): String = "char"
+    }
+
+    object PlaceholderType : Type() {
+        override fun toString(): String = "placeholder"
     }
 }
