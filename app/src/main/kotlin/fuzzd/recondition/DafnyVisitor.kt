@@ -111,8 +111,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     private var classesTable = VisitorSymbolTable<ClassAST>()
     private val classFieldsTable = VisitorSymbolTable<IdentifierAST>()
 
-    private var functionMethodsTable = VisitorSymbolTable<FunctionMethodAST>()
-    private var methodsTable = VisitorSymbolTable<MethodAST>()
+    private var functionMethodsTable = VisitorSymbolTable<FunctionMethodSignatureAST>()
+    private var methodsTable = VisitorSymbolTable<MethodSignatureAST>()
     private var identifiersTable = VisitorSymbolTable<IdentifierAST>()
 
     /* ============================================ TOP LEVEL ============================================ */
@@ -125,7 +125,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             SAFE_MULTIPLY_INT,
             SAFE_SUBTRACT_INT,
             ABSOLUTE,
-        ).forEach { functionMethodsTable.addEntry(it.name(), it) }
+        ).forEach { functionMethodsTable.addEntry(it.name(), it.signature) }
 
         return DafnyAST((ctx.topDecl()?.map { topDeclCtx -> visitTopDecl(topDeclCtx) }) ?: listOf())
     }
@@ -224,11 +224,10 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         signature.params.forEach { param -> identifiersTable.addEntry(param.name, param) }
 
         val body = visitExpression(ctx.expression())
-        val fm = FunctionMethodAST(signature, body)
 
         identifiersTable = prevIdentifiersTable
-        functionMethodsTable.addEntry(signature.name, fm)
-        return fm
+        functionMethodsTable.addEntry(signature.name, signature)
+        return FunctionMethodAST(signature, body)
     }
 
     override fun visitMethodDecl(ctx: MethodDeclContext): ASTElement {
@@ -245,7 +244,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         method.setBody(body)
 
         identifiersTable = prevIdentifierTable
-        methodsTable.addEntry(signature.name, method)
+        methodsTable.addEntry(signature.name, signature)
         return method
     }
 
@@ -316,24 +315,19 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
                 type.clazz.functionMethods
                     .map { fm ->
-                        FunctionMethodAST(
-                            FunctionMethodSignatureAST(
-                                "${identifier.name}.${fm.name()}",
-                                fm.returnType(),
-                                fm.params(),
-                            ),
-                            fm.body,
+                        FunctionMethodSignatureAST(
+                            "${identifier.name}.${fm.name()}",
+                            fm.returnType(),
+                            fm.params(),
                         )
                     }
-                    .forEach { functionMethodsTable.addEntry(it.name(), it) }
+                    .forEach { functionMethodsTable.addEntry(it.name, it) }
 
                 type.clazz.methods
                     .map { m ->
-                        val method = MethodAST("${identifier.name}.${m.name()}", m.params(), m.returns())
-                        method.setBody(m.body())
-                        method
+                        MethodSignatureAST("${identifier.name}.${m.name()}", m.params(), m.returns())
                     }
-                    .forEach { methodsTable.addEntry(it.name(), it) }
+                    .forEach { methodsTable.addEntry(it.name, it) }
             }
 
             identifier
@@ -390,7 +384,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val method = methodsTable.getEntry(ident.name)
         val params = visitParametersForCall(ctx.callParameters())
 
-        return VoidMethodCallAST(method.signature, params)
+        return VoidMethodCallAST(method, params)
     }
 
     private fun visitIdentifierName(identifierCtx: IdentifierContext): String = identifierCtx.IDENTIFIER().toString()
@@ -517,7 +511,6 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val callParams = visitParametersForCall(ctx.callParameters())
 
         if (!classesTable.hasEntry(className)) {
-            println(classesTable)
             throw UnsupportedOperationException("Visiting instantiation for unknown class $className")
         }
 
@@ -546,10 +539,10 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val name = identifier.name
         return if (methodsTable.hasEntry(name)) {
             val method = methodsTable.getEntry(name)
-            NonVoidMethodCallAST(method.signature, callParameters)
+            NonVoidMethodCallAST(method, callParameters)
         } else {
             val functionMethod = functionMethodsTable.getEntry(name)
-            FunctionMethodCallAST(functionMethod.signature, callParameters)
+            FunctionMethodCallAST(functionMethod, callParameters)
         }
     }
 
