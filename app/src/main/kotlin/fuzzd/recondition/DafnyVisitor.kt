@@ -2,6 +2,7 @@ package fuzzd.recondition
 
 import dafnyBaseVisitor
 import dafnyParser.ArrayConstructorContext
+import dafnyParser.ArrayIndexContext
 import dafnyParser.ArrayTypeContext
 import dafnyParser.AssignmentContext
 import dafnyParser.AssignmentLhsContext
@@ -10,6 +11,7 @@ import dafnyParser.BreakStatementContext
 import dafnyParser.CallParametersContext
 import dafnyParser.CharLiteralContext
 import dafnyParser.ClassDeclContext
+import dafnyParser.ClassInstantiationContext
 import dafnyParser.DeclAssignLhsContext
 import dafnyParser.DeclAssignRhsContext
 import dafnyParser.DeclarationContext
@@ -26,6 +28,7 @@ import dafnyParser.IntLiteralContext
 import dafnyParser.LiteralContext
 import dafnyParser.MethodDeclContext
 import dafnyParser.MethodSignatureDeclContext
+import dafnyParser.ObjectIdentifierContext
 import dafnyParser.ParametersContext
 import dafnyParser.PrintContext
 import dafnyParser.ProgramContext
@@ -42,10 +45,12 @@ import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
@@ -70,6 +75,7 @@ import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
+import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.PlaceholderType
@@ -93,9 +99,16 @@ import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
+import fuzzd.utils.ABSOLUTE
+import fuzzd.utils.SAFE_ADDITION_INT
+import fuzzd.utils.SAFE_DIVISION_INT
+import fuzzd.utils.SAFE_MODULO_INT
+import fuzzd.utils.SAFE_MULTIPLY_INT
+import fuzzd.utils.SAFE_SUBTRACT_INT
+import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
 
-class VisitorSymbolTable<T>(val parent: VisitorSymbolTable<T>? = null) {
+class VisitorSymbolTable<T>(private val parent: VisitorSymbolTable<T>? = null) {
     private val table = mutableMapOf<String, T>()
 
     fun addEntry(name: String, entry: T) {
@@ -138,10 +151,19 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     private var identifiersTable = VisitorSymbolTable<IdentifierAST>()
 
     /* ============================================ TOP LEVEL ============================================ */
-    override fun visitProgram(ctx: ProgramContext): DafnyAST =
-        DafnyAST(
-            (ctx.topDecl()?.map { topDeclCtx -> visitTopDecl(topDeclCtx) }) ?: listOf(),
-        )
+    override fun visitProgram(ctx: ProgramContext): DafnyAST {
+        // be able to recognise safety function calls
+        listOf(
+            SAFE_ADDITION_INT,
+            SAFE_DIVISION_INT,
+            SAFE_MODULO_INT,
+            SAFE_MULTIPLY_INT,
+            SAFE_SUBTRACT_INT,
+            ABSOLUTE
+        ).forEach { functionMethodsTable.addEntry(it.name(), it) }
+
+        return DafnyAST((ctx.topDecl()?.map { topDeclCtx -> visitTopDecl(topDeclCtx) }) ?: listOf())
+    }
 
     override fun visitTopDecl(ctx: TopDeclContext): TopLevelAST = super.visitTopDecl(ctx) as TopLevelAST
 
@@ -313,6 +335,34 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         val identifier = IdentifierAST(lhs.name, rhs.type(), mutable = true, initialised = true)
         identifiersTable.addEntry(identifier.name, identifier)
+
+        val type = identifier.type()
+        if (type is ClassType) {
+            type.clazz.fields
+                .map { ident -> IdentifierAST("${identifier.name}.${ident.name}", ident.type()) }
+                .forEach { identifiersTable.addEntry(it.name, it) }
+
+            type.clazz.functionMethods
+                .map { fm ->
+                    FunctionMethodAST(
+                        FunctionMethodSignatureAST(
+                            "${identifier.name}.${fm.name()}",
+                            fm.returnType(),
+                            fm.params()
+                        ), fm.body
+                    )
+                }
+                .forEach { functionMethodsTable.addEntry(it.name(), it) }
+
+            type.clazz.methods
+                .map { m ->
+                    val method = MethodAST("${identifier.name}.${m.name()}", m.params(), m.returns())
+                    method.setBody(m.body())
+                    method
+                }
+                .forEach { methodsTable.addEntry(it.name(), it) }
+        }
+
         return DeclarationAST(identifier, rhs)
     }
 
@@ -376,6 +426,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
                 visitExpression(ctx.expression(0)),
                 visitUnaryOperator(ctx.unaryOperator()),
             )
+
+            ctx.classInstantiation() != null -> visitClassInstantiation(ctx.classInstantiation())
 
             ctx.ADD() != null -> BinaryExpressionAST(
                 visitExpression(ctx.expression(0)),
@@ -478,6 +530,17 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             else -> throw UnsupportedOperationException("No valid expression types found")
         }
 
+    override fun visitClassInstantiation(ctx: ClassInstantiationContext): ClassInstantiationAST {
+        val className = visitIdentifierName(ctx.identifier())
+        val callParams = visitParametersForCall(ctx.callParameters())
+
+        if (!classesTable.hasEntry(className)) {
+            throw UnsupportedOperationException("Visiting instantiation for unknown class $className")
+        }
+
+        return ClassInstantiationAST(classesTable.getEntry(className), callParams)
+    }
+
     override fun visitArrayConstructor(ctx: ArrayConstructorContext): ArrayInitAST {
         val innerType = visitType(ctx.type())
         val dimension = visitIntLiteral(ctx.intLiteral(0)).toString().toInt()
@@ -506,6 +569,19 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return findIdentifier(name) // return actual identifier or one with dummy type
     }
 
+    override fun visitObjectIdentifier(ctx: ObjectIdentifierContext): IdentifierAST {
+        val name = ctx.identifier().joinToString(".", transform = this::visitIdentifierName)
+        return findIdentifier(name)
+    }
+
+    override fun visitArrayIndex(ctx: ArrayIndexContext): ArrayIndexAST {
+        val name = visitIdentifierName(ctx.identifier())
+        val arrayIdentifier = findIdentifier(name)
+
+        val expression = visitExpression(ctx.expression(0))
+        return ArrayIndexAST(arrayIdentifier, expression)
+    }
+
     private fun findIdentifier(name: String): IdentifierAST = if (identifiersTable.hasEntry(name)) {
         identifiersTable.getEntry(name)
     } else if (classFieldsTable.hasEntry(name)) {
@@ -520,7 +596,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         BooleanLiteralAST(ctx.BOOL_LITERAL().toString().toBoolean())
 
     override fun visitIntLiteral(ctx: IntLiteralContext): IntegerLiteralAST =
-        IntegerLiteralAST(ctx.INT_LITERAL().toString())
+        IntegerLiteralAST(ctx.INT_LITERAL().toString().toHexInt())
 
     override fun visitCharLiteral(ctx: CharLiteralContext): CharacterLiteralAST =
         if (ctx.CHAR_CHAR() != null) {

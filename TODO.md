@@ -3,6 +3,7 @@
 - Test case reduction workflow
 - instrumenting Dafny
 - checksum within control flow?
+- Better internal object field use representation 
 - ~~avoid reading uninitialised method return values~~
 - ~~avoid array constructors as parameters~~
 - reduce number of declarations + increase number of assigns

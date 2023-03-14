@@ -39,7 +39,7 @@ sealed class StatementAST : ASTElement {
             }
         }
 
-        override fun toString(): String = "while ($condition) {\n$body}\n}\n"
+        override fun toString(): String = "while ($condition) {\n$body\n}"
     }
 
     class CounterLimitedWhileLoopAST(

@@ -242,7 +242,7 @@ sealed class ExpressionAST : ASTElement {
         constructor(value: Int) : this(value.toString())
 
         init {
-            if (!value.matches(Regex("(-)?[0-9]+([0-9]+)*"))) {
+            if (!value.matches(Regex("(-)?[0-9]+"))) {
                 throw InvalidFormatException("Value passed (= $value) did not match supported integer format")
             }
         }
