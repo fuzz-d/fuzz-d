@@ -1,53 +1,14 @@
 package fuzzd.recondition
 
 import dafnyBaseVisitor
-import dafnyParser.ArrayConstructorContext
-import dafnyParser.ArrayIndexContext
-import dafnyParser.ArrayTypeContext
-import dafnyParser.AssignmentContext
-import dafnyParser.AssignmentLhsContext
-import dafnyParser.BoolLiteralContext
-import dafnyParser.BreakStatementContext
-import dafnyParser.CallParametersContext
-import dafnyParser.CharLiteralContext
-import dafnyParser.ClassDeclContext
-import dafnyParser.ClassInstantiationContext
-import dafnyParser.DeclAssignLhsContext
-import dafnyParser.DeclAssignRhsContext
-import dafnyParser.DeclarationContext
-import dafnyParser.DeclarationLhsContext
-import dafnyParser.ExpressionContext
-import dafnyParser.FieldDeclContext
-import dafnyParser.FunctionCallContext
-import dafnyParser.FunctionDeclContext
-import dafnyParser.FunctionSignatureDeclContext
-import dafnyParser.IdentifierContext
-import dafnyParser.IdentifierTypeContext
-import dafnyParser.IfStatementContext
-import dafnyParser.IntLiteralContext
-import dafnyParser.LiteralContext
-import dafnyParser.MethodDeclContext
-import dafnyParser.MethodSignatureDeclContext
-import dafnyParser.ObjectIdentifierContext
-import dafnyParser.ParametersContext
-import dafnyParser.PrintContext
-import dafnyParser.ProgramContext
-import dafnyParser.RealLiteralContext
-import dafnyParser.SequenceContext
-import dafnyParser.StatementContext
-import dafnyParser.TernaryExpressionContext
-import dafnyParser.TopDeclContext
-import dafnyParser.TopDeclMemberContext
-import dafnyParser.TraitDeclContext
-import dafnyParser.TypeContext
-import dafnyParser.UnaryOperatorContext
-import dafnyParser.WhileStatementContext
+import dafnyParser.* // ktlint-disable no-wildcard-imports
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
+import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
@@ -68,9 +29,10 @@ import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
-import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
@@ -80,6 +42,7 @@ import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
@@ -140,7 +103,7 @@ class VisitorSymbolTable<T>(private val parent: VisitorSymbolTable<T>? = null) {
         return parent
     }
 
-    override fun toString(): String = table.toString()
+    override fun toString(): String = "{$parent}  $table"
 }
 
 class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
@@ -331,46 +294,53 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitBreakStatement(ctx: BreakStatementContext): BreakAST = BreakAST
 
-    override fun visitDeclaration(ctx: DeclarationContext): DeclarationAST {
-        val lhs = visitDeclarationLhs(ctx.declarationLhs())
+    override fun visitDeclaration(ctx: DeclarationContext): MultiDeclarationAST {
+        val lhs = ctx.declarationLhs().declAssignLhs().map { declAssignLhs -> visitDeclAssignLhs(declAssignLhs) }
         val rhs = visitDeclAssignRhs(ctx.declAssignRhs())
 
-        val identifier = IdentifierAST(lhs.name, rhs.type(), mutable = true, initialised = true)
-        identifiersTable.addEntry(identifier.name, identifier)
-
-        val type = identifier.type()
-        if (type is ClassType) {
-            type.clazz.fields
-                .map { ident -> IdentifierAST("${identifier.name}.${ident.name}", ident.type()) }
-                .forEach { identifiersTable.addEntry(it.name, it) }
-
-            type.clazz.functionMethods
-                .map { fm ->
-                    FunctionMethodAST(
-                        FunctionMethodSignatureAST(
-                            "${identifier.name}.${fm.name()}",
-                            fm.returnType(),
-                            fm.params(),
-                        ),
-                        fm.body,
-                    )
-                }
-                .forEach { functionMethodsTable.addEntry(it.name(), it) }
-
-            type.clazz.methods
-                .map { m ->
-                    val method = MethodAST("${identifier.name}.${m.name()}", m.params(), m.returns())
-                    method.setBody(m.body())
-                    method
-                }
-                .forEach { methodsTable.addEntry(it.name(), it) }
+        val rhsTypes = if (rhs.type() is MethodReturnType) {
+            (rhs.type() as MethodReturnType).types
+        } else {
+            listOf(rhs.type())
         }
 
-        return DeclarationAST(identifier, rhs)
-    }
+        val identifiers = lhs.indices.map { i ->
+            val identifier = IdentifierAST(lhs[i].name, rhsTypes[i], mutable = true, initialised = true)
+            identifiersTable.addEntry(identifier.name, identifier)
 
-    override fun visitDeclarationLhs(ctx: DeclarationLhsContext): IdentifierAST =
-        visitDeclAssignLhs(ctx.declAssignLhs())
+            val type = identifier.type()
+            if (type is ClassType) {
+                type.clazz.fields
+                    .map { ident -> IdentifierAST("${identifier.name}.${ident.name}", ident.type()) }
+                    .forEach { identifiersTable.addEntry(it.name, it) }
+
+                type.clazz.functionMethods
+                    .map { fm ->
+                        FunctionMethodAST(
+                            FunctionMethodSignatureAST(
+                                "${identifier.name}.${fm.name()}",
+                                fm.returnType(),
+                                fm.params(),
+                            ),
+                            fm.body,
+                        )
+                    }
+                    .forEach { functionMethodsTable.addEntry(it.name(), it) }
+
+                type.clazz.methods
+                    .map { m ->
+                        val method = MethodAST("${identifier.name}.${m.name()}", m.params(), m.returns())
+                        method.setBody(m.body())
+                        method
+                    }
+                    .forEach { methodsTable.addEntry(it.name(), it) }
+            }
+
+            identifier
+        }
+
+        return MultiDeclarationAST(identifiers, listOf(rhs))
+    }
 
     override fun visitDeclAssignLhs(ctx: DeclAssignLhsContext): IdentifierAST =
         super.visitDeclAssignLhs(ctx) as IdentifierAST
@@ -385,8 +355,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return AssignmentAST(lhs, rhs)
     }
 
-    override fun visitAssignmentLhs(ctx: AssignmentLhsContext): IdentifierAST =
-        visitDeclAssignLhs(ctx.declAssignLhs()) as IdentifierAST
+    override fun visitAssignmentLhs(ctx: AssignmentLhsContext): IdentifierAST = visitDeclAssignLhs(ctx.declAssignLhs())
 
     override fun visitPrint(ctx: PrintContext): PrintAST = PrintAST(visitExpression(ctx.expression()))
 
@@ -416,6 +385,14 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return WhileLoopAST(whileCondition, sequence)
     }
 
+    override fun visitVoidMethodCall(ctx: VoidMethodCallContext): VoidMethodCallAST {
+        val ident = visitDeclAssignLhs(ctx.declAssignLhs())
+        val method = methodsTable.getEntry(ident.name)
+        val params = visitParametersForCall(ctx.callParameters())
+
+        return VoidMethodCallAST(method.signature, params)
+    }
+
     private fun visitIdentifierName(identifierCtx: IdentifierContext): String = identifierCtx.IDENTIFIER().toString()
 
     /* ============================================= EXPRESSION ======================================== */
@@ -432,6 +409,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
             ctx.classInstantiation() != null -> visitClassInstantiation(ctx.classInstantiation())
             ctx.ternaryExpression() != null -> visitTernaryExpression(ctx.ternaryExpression())
+            ctx.arrayLength() != null -> visitArrayLength(ctx.arrayLength())
 
             ctx.ADD() != null -> BinaryExpressionAST(
                 visitExpression(ctx.expression(0)),
@@ -539,6 +517,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val callParams = visitParametersForCall(ctx.callParameters())
 
         if (!classesTable.hasEntry(className)) {
+            println(classesTable)
             throw UnsupportedOperationException("Visiting instantiation for unknown class $className")
         }
 
@@ -557,10 +536,14 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return ArrayInitAST(dimension, ArrayType(innerType))
     }
 
+    override fun visitArrayLength(ctx: ArrayLengthContext): ArrayLengthAST =
+        ArrayLengthAST(findIdentifier(visitIdentifierName(ctx.identifier())))
+
     override fun visitFunctionCall(ctx: FunctionCallContext): ExpressionAST {
-        val name = visitIdentifierName(ctx.identifier())
+        val identifier = visitDeclAssignLhs(ctx.declAssignLhs())
         val callParameters = visitParametersForCall(ctx.callParameters())
 
+        val name = identifier.name
         return if (methodsTable.hasEntry(name)) {
             val method = methodsTable.getEntry(name)
             NonVoidMethodCallAST(method.signature, callParameters)
