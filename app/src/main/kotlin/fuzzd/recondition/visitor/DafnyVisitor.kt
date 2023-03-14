@@ -1,4 +1,4 @@
-package fuzzd.recondition
+package fuzzd.recondition.visitor
 
 import dafnyBaseVisitor
 import dafnyParser.* // ktlint-disable no-wildcard-imports
@@ -64,47 +64,8 @@ import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
-import fuzzd.utils.ABSOLUTE
-import fuzzd.utils.SAFE_ADDITION_INT
-import fuzzd.utils.SAFE_DIVISION_INT
-import fuzzd.utils.SAFE_MODULO_INT
-import fuzzd.utils.SAFE_MULTIPLY_INT
-import fuzzd.utils.SAFE_SUBTRACT_INT
 import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
-
-class VisitorSymbolTable<T>(private val parent: VisitorSymbolTable<T>? = null) {
-    private val table = mutableMapOf<String, T>()
-
-    fun addEntry(name: String, entry: T) {
-        table[name] = entry
-    }
-
-    fun hasEntry(name: String): Boolean = table[name] != null || (parent?.hasEntry(name) ?: false)
-
-    fun getEntry(name: String): T {
-        if (!hasEntry(name)) throw UnsupportedOperationException("Visitor symbol table for entry {$name} not found")
-
-        return if (table[name] != null) table[name]!! else parent!!.getEntry(name)
-    }
-
-    fun clone(): VisitorSymbolTable<T> {
-        val cloned = VisitorSymbolTable(parent)
-
-        table.entries.forEach { (name, entry) -> cloned.addEntry(name, entry) }
-
-        return cloned
-    }
-
-    fun increaseDepth(): VisitorSymbolTable<T> = VisitorSymbolTable(this)
-
-    fun decreaseDepth(): VisitorSymbolTable<T> {
-        if (parent == null) throw UnsupportedOperationException("Can't decrease top level depth")
-        return parent
-    }
-
-    override fun toString(): String = "{$parent}  $table"
-}
 
 class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     private val traitsTable = VisitorSymbolTable<TraitAST>()
@@ -116,19 +77,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     private var identifiersTable = VisitorSymbolTable<IdentifierAST>()
 
     /* ============================================ TOP LEVEL ============================================ */
-    override fun visitProgram(ctx: ProgramContext): DafnyAST {
-        // be able to recognise safety function calls
-        listOf(
-            SAFE_ADDITION_INT,
-            SAFE_DIVISION_INT,
-            SAFE_MODULO_INT,
-            SAFE_MULTIPLY_INT,
-            SAFE_SUBTRACT_INT,
-            ABSOLUTE,
-        ).forEach { functionMethodsTable.addEntry(it.name(), it.signature) }
-
-        return DafnyAST((ctx.topDecl()?.map { topDeclCtx -> visitTopDecl(topDeclCtx) }) ?: listOf())
-    }
+    override fun visitProgram(ctx: ProgramContext): DafnyAST =
+        DafnyAST(ctx.topDecl().map { topDeclCtx -> visitTopDecl(topDeclCtx) })
 
     override fun visitTopDecl(ctx: TopDeclContext): TopLevelAST = super.visitTopDecl(ctx) as TopLevelAST
 
@@ -387,8 +337,6 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return VoidMethodCallAST(method, params)
     }
 
-    private fun visitIdentifierName(identifierCtx: IdentifierContext): String = identifierCtx.IDENTIFIER().toString()
-
     /* ============================================= EXPRESSION ======================================== */
 
     override fun visitExpression(ctx: ExpressionContext): ExpressionAST =
@@ -555,7 +503,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     }
 
     override fun visitObjectIdentifier(ctx: ObjectIdentifierContext): IdentifierAST {
-        val name = ctx.identifier().joinToString(".", transform = this::visitIdentifierName)
+        val name = ctx.identifier().joinToString(".") { visitIdentifierName(it) }
         return findIdentifier(name)
     }
 

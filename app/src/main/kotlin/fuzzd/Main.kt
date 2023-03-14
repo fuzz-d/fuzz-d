@@ -3,11 +3,10 @@ package fuzzd
 import dafnyLexer
 import dafnyParser
 import fuzzd.generator.Generator
-import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.logging.Logger
 import fuzzd.logging.OutputWriter
-import fuzzd.recondition.DafnyVisitor
+import fuzzd.recondition.visitor.DafnyVisitor
 import fuzzd.recondition.Reconditioner
 import fuzzd.utils.WRAPPER_FUNCTIONS
 import fuzzd.validator.OutputValidator
@@ -16,7 +15,6 @@ import org.antlr.v4.runtime.CommonTokenStream
 import java.io.File
 import java.util.UUID
 import kotlin.random.Random
-import kotlin.system.exitProcess
 
 class Main(private val path: String) {
     private val validator = OutputValidator()
