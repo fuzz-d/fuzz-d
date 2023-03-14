@@ -67,7 +67,7 @@ import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
 
-class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
+class FullVisitor : dafnyBaseVisitor<ASTElement>() {
     private val traitsTable = VisitorSymbolTable<TraitAST>()
     private var classesTable = VisitorSymbolTable<ClassAST>()
     private val classFieldsTable = VisitorSymbolTable<IdentifierAST>()
