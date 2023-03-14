@@ -35,6 +35,7 @@ import dafnyParser.ProgramContext
 import dafnyParser.RealLiteralContext
 import dafnyParser.SequenceContext
 import dafnyParser.StatementContext
+import dafnyParser.TernaryExpressionContext
 import dafnyParser.TopDeclContext
 import dafnyParser.TopDeclMemberContext
 import dafnyParser.TraitDeclContext
@@ -57,6 +58,7 @@ import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
+import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
@@ -159,7 +161,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             SAFE_MODULO_INT,
             SAFE_MULTIPLY_INT,
             SAFE_SUBTRACT_INT,
-            ABSOLUTE
+            ABSOLUTE,
         ).forEach { functionMethodsTable.addEntry(it.name(), it) }
 
         return DafnyAST((ctx.topDecl()?.map { topDeclCtx -> visitTopDecl(topDeclCtx) }) ?: listOf())
@@ -348,8 +350,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
                         FunctionMethodSignatureAST(
                             "${identifier.name}.${fm.name()}",
                             fm.returnType(),
-                            fm.params()
-                        ), fm.body
+                            fm.params(),
+                        ),
+                        fm.body,
                     )
                 }
                 .forEach { functionMethodsTable.addEntry(it.name(), it) }
@@ -428,6 +431,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             )
 
             ctx.classInstantiation() != null -> visitClassInstantiation(ctx.classInstantiation())
+            ctx.ternaryExpression() != null -> visitTernaryExpression(ctx.ternaryExpression())
 
             ctx.ADD() != null -> BinaryExpressionAST(
                 visitExpression(ctx.expression(0)),
@@ -539,6 +543,11 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         }
 
         return ClassInstantiationAST(classesTable.getEntry(className), callParams)
+    }
+
+    override fun visitTernaryExpression(ctx: TernaryExpressionContext): TernaryExpressionAST {
+        val visitedExprs = ctx.expression().map { expr -> visitExpression(expr) }
+        return TernaryExpressionAST(visitedExprs[0], visitedExprs[1], visitedExprs[2])
     }
 
     override fun visitArrayConstructor(ctx: ArrayConstructorContext): ArrayInitAST {

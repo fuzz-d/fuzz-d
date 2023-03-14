@@ -4,6 +4,9 @@
 - instrumenting Dafny
 - checksum within control flow?
 - Better internal object field use representation 
+- Dafny visitor
+  - ~~ternary expressions~~
+  - multi-declaration, multi-assign
 - ~~avoid reading uninitialised method return values~~
 - ~~avoid array constructors as parameters~~
 - reduce number of declarations + increase number of assigns
