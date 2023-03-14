@@ -4,6 +4,7 @@ import dafnyBaseVisitor
 import dafnyParser.* // ktlint-disable no-wildcard-imports
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
+import fuzzd.generator.ast.ClassTemplateAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
@@ -67,13 +68,14 @@ import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
 
-class FullVisitor : dafnyBaseVisitor<ASTElement>() {
-    private val traitsTable = VisitorSymbolTable<TraitAST>()
-    private var classesTable = VisitorSymbolTable<ClassAST>()
-    private val classFieldsTable = VisitorSymbolTable<IdentifierAST>()
-
-    private var functionMethodsTable = VisitorSymbolTable<FunctionMethodSignatureAST>()
-    private var methodsTable = VisitorSymbolTable<MethodSignatureAST>()
+class FullVisitor(
+    val classTemplatesTable: VisitorSymbolTable<ClassTemplateAST>,
+    val classFieldsTable: VisitorSymbolTable<IdentifierAST>,
+    val traitsTable: VisitorSymbolTable<TraitAST>,
+    private var functionMethodsTable: VisitorSymbolTable<FunctionMethodSignatureAST>,
+    private var methodsTable: VisitorSymbolTable<MethodSignatureAST>,
+) : dafnyBaseVisitor<ASTElement>() {
+    private val classesTable = VisitorSymbolTable<ClassAST>()
     private var identifiersTable = VisitorSymbolTable<IdentifierAST>()
 
     /* ============================================ TOP LEVEL ============================================ */
