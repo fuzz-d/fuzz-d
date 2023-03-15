@@ -6,9 +6,8 @@ import fuzzd.generator.Generator
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.logging.Logger
 import fuzzd.logging.OutputWriter
-import fuzzd.recondition.visitor.FullVisitor
 import fuzzd.recondition.Reconditioner
-import fuzzd.recondition.visitor.DafnyVisitorHandler
+import fuzzd.recondition.visitor.DafnyVisitor
 import fuzzd.utils.WRAPPER_FUNCTIONS
 import fuzzd.validator.OutputValidator
 import org.antlr.v4.runtime.CharStreams
@@ -37,7 +36,7 @@ class Main(private val path: String) {
                 val charStream = CharStreams.fromStream(input)
                 val tokens = CommonTokenStream(dafnyLexer(charStream))
 
-                DafnyVisitorHandler().visitProgram(dafnyParser(tokens).program())
+                DafnyVisitor().visitProgram(dafnyParser(tokens).program())
             } else {
                 generator.generate()
             }

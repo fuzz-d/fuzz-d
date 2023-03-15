@@ -4,7 +4,6 @@ import dafnyBaseVisitor
 import dafnyParser.* // ktlint-disable no-wildcard-imports
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
-import fuzzd.generator.ast.ClassTemplateAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
@@ -65,22 +64,52 @@ import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
+import fuzzd.utils.ABSOLUTE
+import fuzzd.utils.SAFE_ADDITION_INT
+import fuzzd.utils.SAFE_DIVISION_INT
+import fuzzd.utils.SAFE_MODULO_INT
+import fuzzd.utils.SAFE_MULTIPLY_INT
+import fuzzd.utils.SAFE_SUBTRACT_INT
 import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
 
-class FullVisitor(
-    val classTemplatesTable: VisitorSymbolTable<ClassTemplateAST>,
-    val classFieldsTable: VisitorSymbolTable<IdentifierAST>,
-    val traitsTable: VisitorSymbolTable<TraitAST>,
-    private var functionMethodsTable: VisitorSymbolTable<FunctionMethodSignatureAST>,
-    private var methodsTable: VisitorSymbolTable<MethodSignatureAST>,
-) : dafnyBaseVisitor<ASTElement>() {
+class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     private val classesTable = VisitorSymbolTable<ClassAST>()
+    private val classFieldsTable = VisitorSymbolTable<IdentifierAST>()
+    private val traitsTable = VisitorSymbolTable<TraitAST>()
+    private var functionMethodsTable = VisitorSymbolTable<FunctionMethodSignatureAST>()
+    private var methodsTable = VisitorSymbolTable<MethodSignatureAST>()
     private var identifiersTable = VisitorSymbolTable<IdentifierAST>()
 
     /* ============================================ TOP LEVEL ============================================ */
-    override fun visitProgram(ctx: ProgramContext): DafnyAST =
-        DafnyAST(ctx.topDecl().map { topDeclCtx -> visitTopDecl(topDeclCtx) })
+    override fun visitProgram(ctx: ProgramContext): DafnyAST {
+        listOf(
+            SAFE_ADDITION_INT,
+            SAFE_DIVISION_INT,
+            SAFE_MODULO_INT,
+            SAFE_MULTIPLY_INT,
+            SAFE_SUBTRACT_INT,
+            ABSOLUTE,
+        ).forEach { functionMethodsTable.addEntry(it.name(), it.signature) }
+
+        val topLevelContexts = ctx.topDecl().filter { it.topDeclMember() != null }.map { it.topDeclMember() }
+
+        topLevelContexts.forEach { visitTopDeclMemberPrimaryPass(it) }
+
+        val traits = ctx.topDecl().filter { it.traitDecl() != null }.map { visitTraitDecl(it.traitDecl()) }
+        val classes = ctx.topDecl().filter { it.classDecl() != null }.map { visitClassDecl(it.classDecl()) }
+        val topLevelMembers = topLevelContexts.map { visitTopDeclMember(it) }
+
+        return DafnyAST(topLevelMembers + traits + classes)
+    }
+
+    private fun visitTopDeclMemberPrimaryPass(ctx: TopDeclMemberContext) {
+        if (ctx.functionDecl() != null) {
+            visitFunctionSignatureDecl(ctx.functionDecl().functionSignatureDecl())
+        } else {
+            visitMethodSignatureDecl(ctx.methodDecl().methodSignatureDecl())
+        }
+    }
 
     override fun visitTopDecl(ctx: TopDeclContext): TopLevelAST = super.visitTopDecl(ctx) as TopLevelAST
 
@@ -99,6 +128,13 @@ class FullVisitor(
         val fields = mutableSetOf<IdentifierAST>()
         val functionMethods = mutableSetOf<FunctionMethodAST>()
         val methods = mutableSetOf<MethodAST>()
+
+        // form top level view of class
+        ctx.classMemberDecl().filter { it.functionDecl() != null }
+            .forEach { visitFunctionSignatureDecl(it.functionDecl().functionSignatureDecl()) }
+
+        ctx.classMemberDecl().filter { it.methodDecl() != null }
+            .forEach { visitMethodSignatureDecl(it.methodDecl().methodSignatureDecl()) }
 
         ctx.classMemberDecl().forEach { classMemberDeclCtx ->
             when (val astNode = super.visitClassMemberDecl(classMemberDeclCtx)) {
@@ -134,6 +170,8 @@ class FullVisitor(
         val functionMethods = mutableSetOf<FunctionMethodSignatureAST>()
         val methods = mutableSetOf<MethodSignatureAST>()
 
+        functionMethodsTable = functionMethodsTable.increaseDepth()
+        methodsTable = methodsTable.increaseDepth()
         identifiersTable = identifiersTable.increaseDepth()
 
         ctx.traitMemberDecl().forEach { traitMemberDeclCtx ->
@@ -147,6 +185,8 @@ class FullVisitor(
             }
         }
 
+        functionMethodsTable = functionMethodsTable.decreaseDepth()
+        methodsTable = methodsTable.decreaseDepth()
         identifiersTable = identifiersTable.decreaseDepth()
 
         val trait = TraitAST(name, extends, functionMethods, methods, fields)
@@ -156,15 +196,6 @@ class FullVisitor(
 
     override fun visitTopDeclMember(ctx: TopDeclMemberContext): TopLevelAST =
         super.visitTopDeclMember(ctx) as TopLevelAST
-
-    override fun visitFunctionSignatureDecl(ctx: FunctionSignatureDeclContext): FunctionMethodSignatureAST {
-        val name = visitIdentifierName(ctx.identifier())
-
-        val params = visitParametersList(ctx.parameters())
-        val returnType = visitType(ctx.type())
-
-        return FunctionMethodSignatureAST(name, returnType, params)
-    }
 
     override fun visitFieldDecl(ctx: FieldDeclContext): IdentifierAST = visitIdentifierType(ctx.identifierType())
 
@@ -182,6 +213,21 @@ class FullVisitor(
         return FunctionMethodAST(signature, body)
     }
 
+    override fun visitFunctionSignatureDecl(ctx: FunctionSignatureDeclContext): FunctionMethodSignatureAST {
+        val name = visitIdentifierName(ctx.identifier())
+
+        if (functionMethodsTable.hasEntry(name)) {
+            return functionMethodsTable.getEntry(name)
+        }
+
+        val params = visitParametersList(ctx.parameters())
+        val returnType = visitType(ctx.type())
+
+        val signature = FunctionMethodSignatureAST(name, returnType, params)
+        functionMethodsTable.addEntry(name, signature)
+        return signature
+    }
+
     override fun visitMethodDecl(ctx: MethodDeclContext): ASTElement {
         val signature = visitMethodSignatureDecl(ctx.methodSignatureDecl())
 
@@ -196,20 +242,22 @@ class FullVisitor(
         method.setBody(body)
 
         identifiersTable = prevIdentifierTable
-        methodsTable.addEntry(signature.name, signature)
         return method
     }
-
-    override fun visitSequence(ctx: SequenceContext): SequenceAST =
-        SequenceAST(ctx.statement().map(this::visitStatement))
 
     override fun visitMethodSignatureDecl(ctx: MethodSignatureDeclContext): MethodSignatureAST {
         val name = visitIdentifierName(ctx.identifier())
 
+        if (methodsTable.hasEntry(name)) {
+            return methodsTable.getEntry(name)
+        }
+
         val params = visitParametersList(ctx.parameters(0))
         val returns = if (ctx.parameters().size > 1) visitReturnsList(ctx.parameters(1)) else emptyList()
 
-        return MethodSignatureAST(name, params, returns)
+        val signature = MethodSignatureAST(name, params, returns)
+        methodsTable.addEntry(name, signature)
+        return signature
     }
 
     private fun visitReturnsList(ctx: ParametersContext): List<IdentifierAST> =
@@ -235,6 +283,9 @@ class FullVisitor(
                     initialised = true,
                 )
             }
+
+    override fun visitSequence(ctx: SequenceContext): SequenceAST =
+        SequenceAST(ctx.statement().map(this::visitStatement))
 
     override fun visitIdentifierType(ctx: IdentifierTypeContext): IdentifierAST =
         IdentifierAST(visitIdentifierName(ctx.identifier()), visitType(ctx.type()))
