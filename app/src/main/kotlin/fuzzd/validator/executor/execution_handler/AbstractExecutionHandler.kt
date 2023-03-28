@@ -21,7 +21,7 @@ abstract class AbstractExecutionHandler(val fileDir: String, val fileName: Strin
             termination,
             if (termination) process.exitValue() else TIMEOUT_RETURN_CODE,
             process.readInputStream(),
-            process.readErrorStream()
+            process.readErrorStream(),
         )
     }
 
@@ -34,7 +34,7 @@ abstract class AbstractExecutionHandler(val fileDir: String, val fileName: Strin
             termination,
             if (termination) process.exitValue() else TIMEOUT_RETURN_CODE,
             process.readInputStream(),
-            process.readErrorStream()
+            process.readErrorStream(),
         )
     }
 
