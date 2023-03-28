@@ -6,7 +6,12 @@ class MethodAST(
     val signature: MethodSignatureAST,
 ) : TopLevelAST() {
     constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>) :
-        this(MethodSignatureAST(name, params, returns))
+            this(MethodSignatureAST(name, params, returns))
+
+    constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>, body: SequenceAST) :
+            this(MethodSignatureAST(name, params, returns)) {
+        setBody(body)
+    }
 
     private lateinit var body: SequenceAST
 

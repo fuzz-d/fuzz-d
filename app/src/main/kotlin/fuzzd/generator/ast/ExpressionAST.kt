@@ -9,6 +9,7 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.Type.StringType
 import fuzzd.generator.ast.error.InvalidFormatException
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
@@ -355,4 +356,6 @@ sealed class ExpressionAST : ASTElement {
     }
 
     class CharacterLiteralAST(char: Char) : LiteralAST("'${char.escape()}'", CharType)
+
+    class StringLiteralAST(value: String) : LiteralAST("\"$value\"", StringType)
 }

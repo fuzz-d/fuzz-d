@@ -4,6 +4,7 @@ import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.MapType
 
 /**
  * Supported operators with associated precedences taken from documentation
@@ -85,5 +86,14 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
                     }
                 }
         }
+    }
+
+    object MapMembershipOperator : BinaryOperator(5, "in") {
+
+        override fun outputType(t1: Type, t2: Type): Type = BoolType
+
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t2 is MapType
+
+        override fun supportedInputTypes(): List<Type> = throw UnsupportedOperationException()
     }
 }

@@ -120,7 +120,7 @@ class Reconditioner : ASTReconditioner {
         voidMethodCallAST.params.map(this::reconditionExpression),
     )
 
-    override fun reconditionPrintAST(printAST: PrintAST) = PrintAST(reconditionExpression(printAST.expr))
+    override fun reconditionPrintAST(printAST: PrintAST) = PrintAST(printAST.expr.map { reconditionExpression(it) })
 
     override fun reconditionExpression(expression: ExpressionAST): ExpressionAST = when (expression) {
         is BinaryExpressionAST -> reconditionBinaryExpression(expression)
@@ -133,6 +133,7 @@ class Reconditioner : ASTReconditioner {
         is ArrayLengthAST -> reconditionArrayLengthAST(expression)
         is NonVoidMethodCallAST -> reconditionNonVoidMethodCallAST(expression)
         is FunctionMethodCallAST -> reconditionFunctionMethodCall(expression)
+        else -> throw UnsupportedOperationException() // TODO ??
     }
 
     override fun reconditionBinaryExpression(expression: BinaryExpressionAST): ExpressionAST {

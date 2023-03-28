@@ -7,7 +7,7 @@ sealed class StatementAST : ASTElement {
     class IfStatementAST(
         val condition: ExpressionAST,
         val ifBranch: SequenceAST,
-        val elseBranch: SequenceAST?,
+        val elseBranch: SequenceAST? = null,
     ) : StatementAST() {
         init {
             if (condition.type() != Type.BoolType) {
@@ -74,8 +74,9 @@ sealed class StatementAST : ASTElement {
     class AssignmentAST(identifier: IdentifierAST, expr: ExpressionAST) :
         MultiAssignmentAST(listOf(identifier), listOf(expr))
 
-    class PrintAST(val expr: ExpressionAST) : StatementAST() {
-        override fun toString(): String = "print $expr;"
+    class PrintAST(val expr: List<ExpressionAST>) : StatementAST() {
+        constructor(expr: ExpressionAST) : this(listOf(expr))
+        override fun toString(): String = "print ${expr.joinToString(", ")};"
     }
 
     class VoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) : StatementAST() {
