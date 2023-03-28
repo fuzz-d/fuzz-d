@@ -31,6 +31,7 @@ import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.operators.BinaryOperator.MathematicalBinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
+import fuzzd.utils.SAFE_ARRAY_INDEX
 import fuzzd.utils.safetyMap
 
 class Reconditioner : ASTReconditioner {
@@ -140,8 +141,10 @@ class Reconditioner : ASTReconditioner {
         val rexpr1 = reconditionExpression(expression.expr1)
         val rexpr2 = reconditionExpression(expression.expr2)
 
-        return when (expression.operator) {
-            is MathematicalBinaryOperator -> FunctionMethodCallAST(
+        return if (expression.operator is MathematicalBinaryOperator &&
+            safetyMap.containsKey(Pair(expression.operator, expression.type()))
+        ) {
+            FunctionMethodCallAST(
                 safetyMap[
                     Pair(
                         expression.operator,
@@ -150,8 +153,8 @@ class Reconditioner : ASTReconditioner {
                 ]!!.signature,
                 listOf(rexpr1, rexpr2),
             )
-
-            else -> BinaryExpressionAST(rexpr1, expression.operator, rexpr2)
+        } else {
+            BinaryExpressionAST(rexpr1, expression.operator, rexpr2)
         }
     }
 
@@ -170,7 +173,7 @@ class Reconditioner : ASTReconditioner {
     override fun reconditionIdentifier(identifierAST: IdentifierAST): IdentifierAST = when (identifierAST) {
         is ArrayIndexAST -> ArrayIndexAST(
             identifierAST.array,
-            BinaryExpressionAST(identifierAST.index, ModuloOperator, ArrayLengthAST(identifierAST.array)),
+            FunctionMethodCallAST(SAFE_ARRAY_INDEX.signature, listOf(identifierAST.index, ArrayLengthAST(identifierAST.array)))
         )
 
         else -> identifierAST

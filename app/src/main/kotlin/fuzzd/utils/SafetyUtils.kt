@@ -8,6 +8,7 @@ import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.CharType
+import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.operators.BinaryOperator
@@ -15,6 +16,7 @@ import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator
+import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
@@ -29,6 +31,8 @@ private const val DAFNY_MAX_REAL = 100_000f
 private val INT_IDENTIFIER = IdentifierAST("x", IntType)
 private val INT_IDENTIFIER_1 = IdentifierAST("x1", IntType)
 private val INT_IDENTIFIER_2 = IdentifierAST("x2", IntType)
+
+private val LENGTH = IdentifierAST("length", IntType)
 
 private val REAL_IDENTIFIER_1 = IdentifierAST("x1", RealType)
 private val REAL_IDENTIFIER_2 = IdentifierAST("x2", RealType)
@@ -55,6 +59,21 @@ val ABSOLUTE = FunctionMethodAST(
         ),
         INT_IDENTIFIER,
     ),
+)
+
+val SAFE_ARRAY_INDEX = FunctionMethodAST(
+    "safeArrayIndex",
+    IntType,
+    listOf(INT_IDENTIFIER, LENGTH),
+    TernaryExpressionAST(
+        BinaryExpressionAST(INT_IDENTIFIER, LessThanOperator, IntegerLiteralAST(0)),
+        IntegerLiteralAST(0),
+        TernaryExpressionAST(
+            BinaryExpressionAST(INT_IDENTIFIER, GreaterThanEqualOperator, LENGTH),
+            BinaryExpressionAST(INT_IDENTIFIER, ModuloOperator, LENGTH),
+            INT_IDENTIFIER
+        )
+    )
 )
 
 // ----------- DIVISION & MODULO SAFETY ---------------
@@ -272,23 +291,24 @@ val SAFE_MULTIPLY_INT = FunctionMethodAST(
 // )
 
 val safetyMap = mapOf<Pair<BinaryOperator, Type>, FunctionMethodAST>(
-    Pair(AdditionOperator, IntType) to SAFE_ADDITION_INT,
+//    Pair(AdditionOperator, IntType) to SAFE_ADDITION_INT,
 //    Pair(AdditionOperator, RealType) to SAFE_ADDITION_REAL,
     Pair(DivisionOperator, IntType) to SAFE_DIVISION_INT,
 //    Pair(DivisionOperator, RealType) to SAFE_DIVISION_REAL,
     Pair(ModuloOperator, IntType) to SAFE_MODULO_INT,
-    Pair(MultiplicationOperator, IntType) to SAFE_MULTIPLY_INT,
+//    Pair(MultiplicationOperator, IntType) to SAFE_MULTIPLY_INT,
 //    Pair(MultiplicationOperator, RealType) to SAFE_MULTIPLY_REAL,
 //    Pair(SubtractionOperator, CharType) to SAFE_SUBTRACT_CHAR,
-    Pair(SubtractionOperator, IntType) to SAFE_SUBTRACT_INT,
+//    Pair(SubtractionOperator, IntType) to SAFE_SUBTRACT_INT,
 //    Pair(SubtractionOperator, RealType) to SAFE_SUBTRACT_REAL,
 )
 
 val WRAPPER_FUNCTIONS = listOf(
     ABSOLUTE,
-    SAFE_ADDITION_INT,
-    SAFE_SUBTRACT_INT,
+    SAFE_ARRAY_INDEX,
+//    SAFE_ADDITION_INT,
+//    SAFE_SUBTRACT_INT,
     SAFE_DIVISION_INT,
     SAFE_MODULO_INT,
-    SAFE_MULTIPLY_INT,
+//    SAFE_MULTIPLY_INT,
 )
