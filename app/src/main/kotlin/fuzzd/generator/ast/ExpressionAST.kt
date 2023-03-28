@@ -6,6 +6,7 @@ import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.error.InvalidFormatException
@@ -199,6 +200,79 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String {
             return "$array[$index]"
         }
+    }
+
+    class MapConstructorAST(
+        val keyType: Type,
+        val valueType: Type,
+        val assignments: List<Pair<ExpressionAST, ExpressionAST>>
+    ) : ExpressionAST() {
+        init {
+            assignments.indices.forEach { i ->
+                val pair = assignments[i]
+
+                if (pair.first.type() != keyType) {
+                    throw InvalidInputException("Invalid key type for index $i of map constructor. Expected $keyType, got ${pair.first.type()}")
+                }
+
+                if (pair.second.type() != valueType) {
+                    throw InvalidInputException("Invalid value type for index $i of map constructor. Expected $valueType, got ${pair.second.type()}")
+                }
+            }
+        }
+
+        override fun type(): Type = MapType(keyType, valueType)
+
+        override fun toString() = "map[${assignments.joinToString(", ") { "${it.first} := ${it.second}" }}]"
+    }
+
+    class MapIndexAST(
+        val map: IdentifierAST,
+        val key: ExpressionAST
+    ) : IdentifierAST(
+        map.name,
+        (map.type() as MapType).valueType
+    ) {
+        init {
+            if (map.type() !is MapType) {
+                throw InvalidInputException("Expected map type for MapIndexAST identifier. Got ${map.type()}")
+            }
+
+            val expectedKeyType = (map.type() as MapType).keyType
+
+            if (key.type() != expectedKeyType) {
+                throw InvalidInputException("Invalid key type for MapIndexAST. Expected $expectedKeyType, got ${key.type()}")
+            }
+        }
+
+        override fun toString(): String = "$map[$key]"
+    }
+
+    class MapIndexAssignAST(
+        val map: IdentifierAST,
+        val key: ExpressionAST,
+        val value: ExpressionAST
+    ) : IdentifierAST(
+        map.name,
+        map.type()
+    ) {
+        init {
+            if (map.type() !is MapType) {
+                throw InvalidInputException("Expected map type for MapIndexAssignAST identifier. Got ${map.type()}")
+            }
+
+            val mapType = map.type() as MapType
+
+            if (key.type() != mapType.keyType) {
+                throw InvalidInputException("Invalid key type for MapIndexAssignAST. Expected ${mapType.keyType}, got ${key.type()}")
+            }
+
+            if (value.type() != mapType.valueType) {
+                throw InvalidInputException("Invalid value type for MapIndexAssignAST. Expected ${mapType.valueType}, got ${value.type()}")
+            }
+        }
+
+        override fun toString(): String = "$map[$key := $value]"
     }
 
     class ArrayLengthAST(val array: IdentifierAST) : ExpressionAST() {

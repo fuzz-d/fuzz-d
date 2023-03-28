@@ -22,7 +22,7 @@ sealed class Type : ASTElement {
         class ArrayType(val internalType: Type) : ConstructorType() {
             override fun equals(other: Any?): Boolean {
                 return other != null && other is ArrayType &&
-                    other.internalType == internalType
+                        other.internalType == internalType
             }
 
             override fun hashCode(): Int {
@@ -31,6 +31,11 @@ sealed class Type : ASTElement {
 
             override fun toString(): String = "array<$internalType>"
         }
+    }
+
+    class MapType(val keyType: Type, val valueType: Type) : Type() {
+
+        override fun toString() = "map<$keyType, $valueType>"
     }
 
     class MethodReturnType(val types: List<Type>) : Type() {
@@ -53,6 +58,10 @@ sealed class Type : ASTElement {
 
     object CharType : LiteralType() {
         override fun toString(): String = "char"
+    }
+
+    object StringType : LiteralType() {
+        override fun toString(): String = "string"
     }
 
     object PlaceholderType : Type() {
