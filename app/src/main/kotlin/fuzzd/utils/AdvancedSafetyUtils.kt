@@ -7,11 +7,14 @@ import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
+import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
+import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.IntType
@@ -22,6 +25,7 @@ import fuzzd.generator.ast.operators.BinaryOperator.BooleanBinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator
+import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.LessThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MapMembershipOperator
@@ -140,6 +144,42 @@ val ADVANCED_ABSOLUTE = MethodAST(
     )
 )
 
+val ADVANCED_SAFE_ARRAY_INDEX = MethodAST(
+    "advancedSafeArrayIndex",
+    params = listOf(INT_PARAM_1, INT_PARAM_2, STATE, ID),
+    returns = listOf(INT_RETURNS, NEW_STATE),
+    body = SequenceAST(
+        listOf(
+            AssignmentAST(NEW_STATE, STATE),
+            MultiDeclarationAST(
+                listOf(IdentifierAST("b1", BoolType), IdentifierAST("b2", BoolType)), listOf(
+                    BinaryExpressionAST(
+                        INT_PARAM_1, LessThanOperator, IntegerLiteralAST(0)
+                    ), BinaryExpressionAST(INT_PARAM_1, GreaterThanEqualOperator, INT_PARAM_2)
+                )
+            ),
+            IfStatementAST(
+                BinaryExpressionAST(IdentifierAST("b1", BoolType), DisjunctionOperator, IdentifierAST("b2", BoolType)),
+                SequenceAST(
+                    listOf(
+                        PRINT_UPDATE_STATE,
+                        AssignmentAST(
+                            INT_RETURNS, TernaryExpressionAST(
+                                IdentifierAST("b1", BoolType), IntegerLiteralAST(0), BinaryExpressionAST(
+                                    INT_PARAM_1, ModuloOperator, INT_PARAM_2
+                                )
+                            )
+                        )
+                    )
+                ),
+                SequenceAST(
+                    listOf(AssignmentAST(INT_RETURNS, INT_PARAM_1))
+                )
+            )
+        )
+    )
+)
+
 fun main() {
-    println(ADVANCED_ABSOLUTE)
+    println(ADVANCED_SAFE_ARRAY_INDEX)
 }
