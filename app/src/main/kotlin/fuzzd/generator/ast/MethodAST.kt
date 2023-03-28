@@ -16,7 +16,7 @@ class MethodAST(
 
     fun returns() = signature.returns
 
-    fun body() = body
+    fun getBody() = body
 
     fun setBody(body: SequenceAST) {
         this.body = body
@@ -25,12 +25,6 @@ class MethodAST(
     override fun toString(): String = "$signature {\n$body\n}"
 
     override fun equals(other: Any?): Boolean = other is MethodAST && other.signature == signature && other.body == body
-
-    override fun hashCode(): Int {
-        var result = signature.hashCode()
-        result = 31 * result + body.hashCode()
-        return result
-    }
 }
 
 class MethodSignatureAST(

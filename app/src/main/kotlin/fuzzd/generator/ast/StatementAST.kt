@@ -44,8 +44,8 @@ sealed class StatementAST : ASTElement {
 
     class CounterLimitedWhileLoopAST(
         val counterInitialisation: DeclarationAST,
-        terminationCheck: IfStatementAST,
-        counterUpdate: AssignmentAST,
+        val terminationCheck: IfStatementAST,
+        val counterUpdate: AssignmentAST,
         condition: ExpressionAST,
         body: SequenceAST,
     ) : WhileLoopAST(condition, SequenceAST(listOf(terminationCheck, counterUpdate) + body.statements)) {

@@ -20,6 +20,7 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.BreakAST
+import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
@@ -60,7 +61,7 @@ class Reconditioner : ASTReconditioner {
     }
 
     override fun reconditionMethod(methodAST: MethodAST): MethodAST {
-        methodAST.setBody(reconditionSequence(methodAST.body()))
+        methodAST.setBody(reconditionSequence(methodAST.getBody()))
         return methodAST
     }
 
@@ -93,17 +94,26 @@ class Reconditioner : ASTReconditioner {
         multiDeclarationAST.exprs.map(this::reconditionExpression),
     )
 
-    override fun reconditionIfStatement(ifStatementAST: IfStatementAST) =
-        IfStatementAST(
-            reconditionExpression(ifStatementAST.condition),
-            reconditionSequence(ifStatementAST.ifBranch),
-            ifStatementAST.elseBranch?.run(this::reconditionSequence),
+    override fun reconditionIfStatement(ifStatementAST: IfStatementAST) = IfStatementAST(
+        reconditionExpression(ifStatementAST.condition),
+        reconditionSequence(ifStatementAST.ifBranch),
+        ifStatementAST.elseBranch?.run(this::reconditionSequence),
+    )
+
+    override fun reconditionWhileLoopAST(whileLoopAST: WhileLoopAST) = when (whileLoopAST) {
+        is CounterLimitedWhileLoopAST -> CounterLimitedWhileLoopAST(
+            whileLoopAST.counterInitialisation,
+            whileLoopAST.terminationCheck,
+            whileLoopAST.counterUpdate,
+            reconditionExpression(whileLoopAST.condition),
+            reconditionSequence(whileLoopAST.body),
         )
 
-    override fun reconditionWhileLoopAST(whileLoopAST: WhileLoopAST) = WhileLoopAST(
-        reconditionExpression(whileLoopAST.condition),
-        reconditionSequence(whileLoopAST.body),
-    )
+        else -> WhileLoopAST(
+            reconditionExpression(whileLoopAST.condition),
+            reconditionSequence(whileLoopAST.body),
+        )
+    }
 
     override fun reconditionVoidMethodCall(voidMethodCallAST: VoidMethodCallAST) = VoidMethodCallAST(
         voidMethodCallAST.method,
