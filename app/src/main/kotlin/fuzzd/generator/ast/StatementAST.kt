@@ -90,7 +90,7 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "print ${expr.joinToString(", ")};"
     }
 
-    class VoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) : StatementAST() {
+    open class VoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) : StatementAST() {
         init {
             val methodName = method.name
 

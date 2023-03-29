@@ -14,7 +14,6 @@ import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
-import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
@@ -335,9 +334,25 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return MultiDeclarationAST(identifiers, listOf(rhs))
     }
 
-    private fun visitDeclAssignLhsMethodCall(ctx: DeclAssignLhsContext): Pair<List<IdentifierAST>, String> = TODO()
+    private fun visitDeclAssignLhsMethodCall(ctx: DeclAssignLhsContext): String {
+        val strings = mutableListOf<String>()
+        var currCtx: DeclAssignLhsContext? = ctx
 
-     override fun visitDeclAssignLhs(ctx: DeclAssignLhsContext): IdentifierAST {
+        while (currCtx != null) {
+            val str = if (currCtx.identifier() != null) {
+                visitIdentifierName(currCtx.identifier())
+            } else {
+                visitArrayIndex(currCtx.arrayIndex()).toString()
+            }
+
+            strings.add(str)
+            currCtx = currCtx.declAssignLhs()
+        }
+
+        return strings.joinToString(".")
+    }
+
+    override fun visitDeclAssignLhs(ctx: DeclAssignLhsContext): IdentifierAST {
         val identifier = if (ctx.identifier() != null) {
             visitIdentifier(ctx.identifier())
         } else {
@@ -540,18 +555,17 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     }
 
     override fun visitArrayLength(ctx: ArrayLengthContext): ArrayLengthAST =
-        ArrayLengthAST(findIdentifier(visitIdentifierName(ctx.identifier())))
+        ArrayLengthAST(visitDeclAssignLhs(ctx.declAssignLhs()))
 
     override fun visitFunctionCall(ctx: FunctionCallContext): ExpressionAST {
-        val identifier = visitDeclAssignLhs(ctx.declAssignLhs())
+        val methodName = visitDeclAssignLhsMethodCall(ctx.declAssignLhs())
         val callParameters = visitParametersForCall(ctx.callParameters())
 
-        val name = identifier.name
-        return if (methodsTable.hasEntry(name)) {
-            val method = methodsTable.getEntry(name)
+        return if (methodsTable.hasEntry(methodName)) {
+            val method = methodsTable.getEntry(methodName)
             NonVoidMethodCallAST(method, callParameters)
         } else {
-            val functionMethod = functionMethodsTable.getEntry(name)
+            val functionMethod = functionMethodsTable.getEntry(methodName)
             FunctionMethodCallAST(functionMethod, callParameters)
         }
     }
