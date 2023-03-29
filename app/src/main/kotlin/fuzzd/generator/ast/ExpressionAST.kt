@@ -106,7 +106,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String {
             val sb = StringBuilder()
             sb.append(operator)
-            val wrapExpr = expr is BinaryExpressionAST
+            val wrapExpr = expr is BinaryExpressionAST || expr is TernaryExpressionAST
             sb.append(if (wrapExpr) "($expr)" else "$expr")
             return sb.toString()
         }
