@@ -175,11 +175,15 @@ sealed class ExpressionAST : ASTElement {
         clazz: ClassAST,
         name: String,
     ) : IdentifierAST(name, ClassType(clazz)) {
-        val fields = clazz.fields.map { IdentifierAST("$name.${it.name}", it.type()) }
-        val functionMethods =
-            clazz.functionMethods.map { FunctionMethodSignatureAST("$name.${it.name()}", it.returnType(), it.params()) }
-        val methods = clazz.methods.map { MethodSignatureAST("$name.${it.name()}", it.params(), it.returns()) }
+        val fields = clazz.fields.map { ClassInstanceFieldAST(this, it) }
+        val functionMethods = clazz.functionMethods.map { ClassInstanceFunctionMethodSignatureAST(this, it.signature) }
+        val methods = clazz.methods.map { ClassInstanceMethodSignatureAST(this, it.signature) }
     }
+
+    class ClassInstanceFieldAST(
+        classInstance: IdentifierAST,
+        classField: IdentifierAST
+    ) : IdentifierAST("${classInstance.name}.${classField.name}", classField.type(), initialised = true)
 
     class ArrayIndexAST(
         val array: IdentifierAST,

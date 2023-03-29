@@ -4,6 +4,8 @@ import dafnyBaseVisitor
 import dafnyParser.* // ktlint-disable no-wildcard-imports
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
+import fuzzd.generator.ast.ClassInstanceFunctionMethodSignatureAST
+import fuzzd.generator.ast.ClassInstanceMethodSignatureAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
@@ -12,6 +14,8 @@ import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
@@ -313,23 +317,15 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             val type = identifier.type()
             if (type is ClassType) {
                 type.clazz.fields
-                    .map { ident -> IdentifierAST("${identifier.name}.${ident.name}", ident.type()) }
+                    .map { ident -> ClassInstanceFieldAST(identifier, ident) }
                     .forEach { identifiersTable.addEntry(it.name, it) }
 
                 type.clazz.functionMethods
-                    .map { fm ->
-                        FunctionMethodSignatureAST(
-                            "${identifier.name}.${fm.name()}",
-                            fm.returnType(),
-                            fm.params(),
-                        )
-                    }
+                    .map { fm -> ClassInstanceFunctionMethodSignatureAST(identifier, fm.signature) }
                     .forEach { functionMethodsTable.addEntry(it.name, it) }
 
                 type.clazz.methods
-                    .map { m ->
-                        MethodSignatureAST("${identifier.name}.${m.name()}", m.params(), m.returns())
-                    }
+                    .map { m -> ClassInstanceMethodSignatureAST(identifier, m.signature) }
                     .forEach { methodsTable.addEntry(it.name, it) }
             }
 
@@ -339,8 +335,21 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return MultiDeclarationAST(identifiers, listOf(rhs))
     }
 
-    override fun visitDeclAssignLhs(ctx: DeclAssignLhsContext): IdentifierAST =
-        super.visitDeclAssignLhs(ctx) as IdentifierAST
+    private fun visitDeclAssignLhsMethodCall(ctx: DeclAssignLhsContext): Pair<List<IdentifierAST>, String> = TODO()
+
+     override fun visitDeclAssignLhs(ctx: DeclAssignLhsContext): IdentifierAST {
+        val identifier = if (ctx.identifier() != null) {
+            visitIdentifier(ctx.identifier())
+        } else {
+            visitArrayIndex(ctx.arrayIndex())
+        }
+
+        return if (ctx.declAssignLhs() != null) {
+            ClassInstanceFieldAST(identifier, visitDeclAssignLhs(ctx.declAssignLhs()))
+        } else {
+            identifier
+        }
+    }
 
     override fun visitDeclAssignRhs(ctx: DeclAssignRhsContext): ExpressionAST =
         super.visitDeclAssignRhs(ctx) as ExpressionAST
@@ -553,11 +562,6 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitIdentifier(ctx: IdentifierContext): IdentifierAST {
         val name = visitIdentifierName(ctx)
         return findIdentifier(name) // return actual identifier or one with dummy type
-    }
-
-    override fun visitObjectIdentifier(ctx: ObjectIdentifierContext): IdentifierAST {
-        val name = ctx.identifier().joinToString(".") { visitIdentifierName(it) }
-        return findIdentifier(name)
     }
 
     override fun visitArrayIndex(ctx: ArrayIndexContext): ArrayIndexAST {

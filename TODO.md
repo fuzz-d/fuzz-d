@@ -1,12 +1,13 @@
 ## TODO
     
 - Test case reduction workflow
+  - unnecessary while loop limiter removal
 - instrumenting Dafny
 - checksum within control flow?
 - Better internal object field use representation 
-- Dafny visitor
+- ~~Dafny visitor~~
   - ~~ternary expressions~~
-  - multi-declaration, multi-assign
+  - ~~multi-declaration, multi-assign~~
 - ~~avoid reading uninitialised method return values~~
 - ~~avoid array constructors as parameters~~
 - reduce number of declarations + increase number of assigns

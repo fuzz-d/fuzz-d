@@ -36,7 +36,7 @@ class MethodAST(
     override fun equals(other: Any?): Boolean = other is MethodAST && other.signature == signature && other.body == body
 }
 
-class MethodSignatureAST(
+open class MethodSignatureAST(
     val name: String,
     val params: List<IdentifierAST>,
     val returns: List<IdentifierAST>,
@@ -61,3 +61,6 @@ class MethodSignatureAST(
         return result
     }
 }
+
+class ClassInstanceMethodSignatureAST(classInstance: IdentifierAST, signature: MethodSignatureAST) :
+    MethodSignatureAST("$classInstance.${signature.name}", signature.params, signature.returns)
