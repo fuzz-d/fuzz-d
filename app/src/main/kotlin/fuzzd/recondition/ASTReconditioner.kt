@@ -21,6 +21,7 @@ import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.TypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
@@ -45,6 +46,8 @@ interface ASTReconditioner {
     fun reconditionStatement(statement: StatementAST): StatementAST
 
     fun reconditionMultiAssignmentAST(multiAssignmentAST: MultiAssignmentAST): MultiAssignmentAST
+
+    fun reconditionTypedDeclarationAST(typedDeclarationAST: TypedDeclarationAST): TypedDeclarationAST
 
     fun reconditionMultiDeclarationAST(multiDeclarationAST: MultiDeclarationAST): MultiDeclarationAST
 

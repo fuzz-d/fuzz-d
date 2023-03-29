@@ -25,6 +25,7 @@ import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.TypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
@@ -77,6 +78,7 @@ class Reconditioner : ASTReconditioner {
     override fun reconditionStatement(statement: StatementAST) = when (statement) {
         is BreakAST -> statement
         is MultiAssignmentAST -> reconditionMultiAssignmentAST(statement) // covers AssignmentAST
+        is TypedDeclarationAST -> TODO()
         is MultiDeclarationAST -> reconditionMultiDeclarationAST(statement) // covers DeclarationAST
         is IfStatementAST -> reconditionIfStatement(statement)
         is WhileLoopAST -> reconditionWhileLoopAST(statement)
@@ -87,6 +89,11 @@ class Reconditioner : ASTReconditioner {
     override fun reconditionMultiAssignmentAST(multiAssignmentAST: MultiAssignmentAST) = MultiAssignmentAST(
         multiAssignmentAST.identifiers.map(this::reconditionIdentifier),
         multiAssignmentAST.exprs.map(this::reconditionExpression),
+    )
+
+    override fun reconditionTypedDeclarationAST(typedDeclarationAST: TypedDeclarationAST) = TypedDeclarationAST(
+        reconditionIdentifier(typedDeclarationAST.identifier),
+        typedDeclarationAST.expr?.let(this::reconditionExpression)
     )
 
     override fun reconditionMultiDeclarationAST(multiDeclarationAST: MultiDeclarationAST) = MultiDeclarationAST(
@@ -172,7 +179,10 @@ class Reconditioner : ASTReconditioner {
     override fun reconditionIdentifier(identifierAST: IdentifierAST): IdentifierAST = when (identifierAST) {
         is ArrayIndexAST -> ArrayIndexAST(
             identifierAST.array,
-            FunctionMethodCallAST(SAFE_ARRAY_INDEX.signature, listOf(identifierAST.index, ArrayLengthAST(identifierAST.array)))
+            FunctionMethodCallAST(
+                SAFE_ARRAY_INDEX.signature,
+                listOf(identifierAST.index, ArrayLengthAST(identifierAST.array))
+            )
         )
 
         else -> identifierAST
