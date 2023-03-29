@@ -5,6 +5,7 @@ import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
@@ -31,6 +32,7 @@ import fuzzd.generator.ast.Type.StringType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
 
 class AdvancedReconditioner {
+    private val methodSignatures = mutableMapOf<String, MethodSignatureAST>()
     private val tempGenerator = TemporaryNameGenerator()
 
     fun recondition(dafnyAST: DafnyAST): DafnyAST = DafnyAST(dafnyAST.topLevelElements.map(this::reconditionTopLevel))
@@ -83,11 +85,8 @@ class AdvancedReconditioner {
         )
     }
 
-    fun reconditionMethodSignature(signature: MethodSignatureAST): MethodSignatureAST = MethodSignatureAST(
-        signature.name,
-        signature.params + additionalParams,
-        signature.returns + additionalReturns
-    )
+    fun reconditionMethodSignature(signature: MethodSignatureAST): MethodSignatureAST =
+        getReconditionedMethodSignature(signature)
 
     // convert to MethodAST then let reconditioning of method do the rest
     fun reconditionFunctionMethod(functionMethodAST: FunctionMethodAST): MethodAST = reconditionMethod(
@@ -105,11 +104,7 @@ class AdvancedReconditioner {
     )
 
     fun reconditionFunctionMethodSignature(signature: FunctionMethodSignatureAST): MethodSignatureAST =
-        MethodSignatureAST(
-            signature.name,
-            signature.params + additionalParams,
-            listOf(IdentifierAST(FM_RETURNS, signature.returnType)) + additionalReturns
-        )
+        getReconditionedFunctionMethodSignature(signature)
 
     fun reconditionMainFunction(mainFunctionAST: MainFunctionAST): MainFunctionAST {
         val stateDecl = DeclarationAST(newState, MapConstructorAST(STATE_TYPE.keyType, STATE_TYPE.valueType))
@@ -121,25 +116,69 @@ class AdvancedReconditioner {
     fun reconditionSequence(sequenceAST: SequenceAST): SequenceAST =
         SequenceAST(sequenceAST.statements.map(this::reconditionStatement).reduceRight { l, r -> l + r })
 
+    private fun getReconditionedMethodSignature(signature: MethodSignatureAST): MethodSignatureAST {
+        if (!methodSignatures.containsKey(signature.name)) {
+            methodSignatures[signature.name] = MethodSignatureAST(
+                signature.name,
+                signature.params + additionalParams,
+                signature.returns + additionalReturns
+            )
+        }
+
+        return methodSignatures[signature.name]!!
+    }
+
+    private fun getReconditionedFunctionMethodSignature(signature: FunctionMethodSignatureAST): MethodSignatureAST {
+        if (!methodSignatures.containsKey(signature.name)) {
+            methodSignatures[signature.name] = MethodSignatureAST(
+                signature.name,
+                signature.params + additionalParams,
+                listOf(IdentifierAST(FM_RETURNS, signature.returnType)) + additionalReturns
+            )
+        }
+
+        return methodSignatures[signature.name]!!
+    }
+
     /* ==================================== STATEMENTS ======================================== */
 
     fun reconditionStatement(statementAST: StatementAST): List<StatementAST> = when (statementAST) {
         is BreakAST -> listOf(statementAST)
-        is MultiAssignmentAST -> TODO()
-        is TypedDeclarationAST -> TODO()
-        is MultiDeclarationAST -> TODO()
-        is IfStatementAST -> reconditionIfStatementAST(statementAST)
-        is CounterLimitedWhileLoopAST -> reconditionCounterLimitedWhileLoopAST(statementAST)
-        is WhileLoopAST -> reconditionWhileLoopAST(statementAST)
-        is PrintAST -> TODO()
-        is VoidMethodCallAST -> TODO()
+        is MultiAssignmentAST -> reconditionMultiAssignment(statementAST)
+        is TypedDeclarationAST -> reconditionTypedDeclaration(statementAST)
+        is MultiDeclarationAST -> reconditionMultiDeclaration(statementAST)
+        is IfStatementAST -> reconditionIfStatement(statementAST)
+        is CounterLimitedWhileLoopAST -> reconditionCounterLimitedWhileLoop(statementAST)
+        is WhileLoopAST -> reconditionWhileLoop(statementAST)
+        is PrintAST -> reconditionPrint(statementAST)
+        is VoidMethodCallAST -> reconditionVoidMethodCall(statementAST)
     }
 
-    fun reconditionMultiAssignmentAST(multiAssignmentAST: MultiAssignmentAST): List<StatementAST> = TODO()
+    fun reconditionMultiAssignment(multiAssignmentAST: MultiAssignmentAST): List<StatementAST> {
+        val (reconditionedIdentifiers, identifierDependents) = reconditionExpressionList(multiAssignmentAST.identifiers)
+        val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
-    fun reconditionMultiDeclarationAST(multiDeclarationAST: MultiDeclarationAST): List<StatementAST> = TODO()
+        return identifierDependents + exprDependents +
+                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+    }
 
-    fun reconditionIfStatementAST(ifStatementAST: IfStatementAST): List<StatementAST> {
+    fun reconditionTypedDeclaration(typedDeclarationAST: TypedDeclarationAST): List<StatementAST> {
+        val (reconditionedIdentifier, identifierDependents) = reconditionIdentifier(typedDeclarationAST.identifier)
+        val (reconditionedExpr, exprDependents) = typedDeclarationAST.expr?.let(this::reconditionExpression)
+            ?: Pair(null, emptyList())
+
+        return identifierDependents + exprDependents + TypedDeclarationAST(reconditionedIdentifier, reconditionedExpr)
+    }
+
+    fun reconditionMultiDeclaration(multiDeclarationAST: MultiDeclarationAST): List<StatementAST> {
+        val (reconditionedIdentifiers, identifierDependents) = reconditionExpressionList(multiDeclarationAST.identifiers)
+        val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
+
+        return identifierDependents + exprDependents +
+                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+    }
+
+    fun reconditionIfStatement(ifStatementAST: IfStatementAST): List<StatementAST> {
         val (newCondition, dependents) = reconditionExpression(ifStatementAST.condition)
         return dependents + IfStatementAST(
             newCondition,
@@ -148,7 +187,7 @@ class AdvancedReconditioner {
         )
     }
 
-    fun reconditionCounterLimitedWhileLoopAST(whileLoopAST: CounterLimitedWhileLoopAST): List<StatementAST> {
+    fun reconditionCounterLimitedWhileLoop(whileLoopAST: CounterLimitedWhileLoopAST): List<StatementAST> {
         val (newCondition, dependents) = reconditionExpression(whileLoopAST.condition)
         val reconditionedBody = reconditionSequence(whileLoopAST.body)
 
@@ -161,16 +200,33 @@ class AdvancedReconditioner {
         )
     }
 
-    fun reconditionWhileLoopAST(whileLoopAST: WhileLoopAST): List<StatementAST> {
+    fun reconditionWhileLoop(whileLoopAST: WhileLoopAST): List<StatementAST> {
         val (newCondition, dependents) = reconditionExpression(whileLoopAST.condition)
         val reconditionedBody = reconditionSequence(whileLoopAST.body)
 
         return dependents + WhileLoopAST(newCondition, SequenceAST(reconditionedBody.statements + dependents))
     }
 
-    fun reconditionVoidMethodCall(voidMethodCallAST: VoidMethodCallAST): List<StatementAST> = TODO()
+    fun reconditionPrint(printAST: PrintAST): List<StatementAST> {
+        val (reconditionedExprs, exprDependents) = reconditionExpressionList(printAST.expr)
+        return exprDependents + PrintAST(reconditionedExprs)
+    }
+
+    fun reconditionVoidMethodCall(voidMethodCallAST: VoidMethodCallAST): List<StatementAST> {
+        val method = getReconditionedMethodSignature(voidMethodCallAST.method)
+        val (params, dependents) = reconditionExpressionList(voidMethodCallAST.params)
+
+        return dependents + VoidMethodCallAST(method, params + listOf(newState, getHash(voidMethodCallAST)))
+    }
+
+    private fun reconditionExpressionList(exprs: List<ExpressionAST>): Pair<List<ExpressionAST>, List<StatementAST>> =
+        exprs.map(this::reconditionExpression).fold(Pair(emptyList(), emptyList())) { acc, r ->
+            Pair(acc.first + r.first, acc.second + r.second)
+        }
 
     fun reconditionExpression(expressionAST: ExpressionAST): Pair<ExpressionAST, List<StatementAST>> = TODO()
+
+    fun reconditionIdentifier(identifierAST: IdentifierAST): Pair<IdentifierAST, List<StatementAST>> = TODO()
 
     companion object {
         private const val FM_RETURNS = "r1"
@@ -187,5 +243,7 @@ class AdvancedReconditioner {
 
         private val additionalParams = listOf(state, id)
         private val additionalReturns = listOf(newState)
+
+        private fun <T> getHash(obj: T) = StringLiteralAST(obj.hashCode().toString())
     }
 }
