@@ -74,8 +74,6 @@ interface ASTReconditioner {
 
     fun reconditionClassInstantiation(classInstantiation: ClassInstantiationAST): ExpressionAST
 
-    fun reconditionArrayInitialisation(arrayInit: ArrayInitAST): ExpressionAST
-
     fun reconditionArrayLengthAST(arrayLengthAST: ArrayLengthAST): ExpressionAST
 
     fun reconditionNonVoidMethodCallAST(nonVoidMethodCall: NonVoidMethodCallAST): ExpressionAST

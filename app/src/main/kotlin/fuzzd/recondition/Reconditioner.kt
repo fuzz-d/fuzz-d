@@ -135,9 +135,8 @@ class Reconditioner : ASTReconditioner {
         is UnaryExpressionAST -> reconditionUnaryExpression(expression)
         is TernaryExpressionAST -> reconditionTernaryExpression(expression)
         is IdentifierAST -> reconditionIdentifier(expression)
-        is LiteralAST -> expression // don't need to do anything
+        is LiteralAST, is ArrayInitAST -> expression // don't need to do anything
         is ClassInstantiationAST -> reconditionClassInstantiation(expression)
-        is ArrayInitAST -> reconditionArrayInitialisation(expression)
         is ArrayLengthAST -> reconditionArrayLengthAST(expression)
         is NonVoidMethodCallAST -> reconditionNonVoidMethodCallAST(expression)
         is FunctionMethodCallAST -> reconditionFunctionMethodCall(expression)
@@ -206,8 +205,6 @@ class Reconditioner : ASTReconditioner {
             classInstantiation.clazz,
             classInstantiation.params.map(this::reconditionExpression),
         )
-
-    override fun reconditionArrayInitialisation(arrayInit: ArrayInitAST): ExpressionAST = arrayInit
 
     override fun reconditionArrayLengthAST(arrayLengthAST: ArrayLengthAST): ExpressionAST =
         ArrayLengthAST(reconditionIdentifier(arrayLengthAST.array))
