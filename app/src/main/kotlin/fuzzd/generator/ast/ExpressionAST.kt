@@ -172,7 +172,7 @@ sealed class ExpressionAST : ASTElement {
     }
 
     class ClassInstanceAST(
-        clazz: ClassAST,
+        val clazz: ClassAST,
         name: String,
     ) : IdentifierAST(name, ClassType(clazz)) {
         val fields = clazz.fields.map { ClassInstanceFieldAST(this, it) }

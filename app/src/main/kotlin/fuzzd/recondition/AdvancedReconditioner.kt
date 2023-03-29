@@ -3,9 +3,12 @@ package fuzzd.recondition
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
@@ -35,9 +38,15 @@ import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type.BoolType
+import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.StringType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
+import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
+import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
+import fuzzd.utils.ADVANCED_SAFE_DIV_INT
+import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 
 class AdvancedReconditioner {
     private val classes = mutableMapOf<String, ClassAST>()
@@ -264,8 +273,29 @@ class AdvancedReconditioner {
             else -> throw UnsupportedOperationException()
         }
 
-    fun reconditionBinaryExpression(binaryExpressionAST: BinaryExpressionAST): Pair<ExpressionAST, List<StatementAST>> =
-        TODO()
+    fun reconditionBinaryExpression(binaryExpressionAST: BinaryExpressionAST): Pair<ExpressionAST, List<StatementAST>> {
+        val (rexpr1, deps1) = reconditionExpression(binaryExpressionAST.expr1)
+        val (rexpr2, deps2) = reconditionExpression(binaryExpressionAST.expr2)
+
+        return when (binaryExpressionAST.operator) {
+            DivisionOperator, ModuloOperator -> {
+                val additionalDeps = mutableListOf<StatementAST>()
+                val temp = IdentifierAST(tempGenerator.newValue(), binaryExpressionAST.type())
+                additionalDeps.add(TypedDeclarationAST(temp))
+
+                val methodCall = NonVoidMethodCallAST(
+                    if (binaryExpressionAST.operator == DivisionOperator) ADVANCED_SAFE_DIV_INT.signature else ADVANCED_SAFE_MODULO_INT.signature,
+                    listOf(rexpr1, rexpr2, newState, getHash(binaryExpressionAST)),
+                )
+                val tempAssignment = MultiAssignmentAST(listOf(temp, newState), listOf(methodCall))
+                additionalDeps.add(tempAssignment)
+
+                Pair(temp, deps1 + deps2 + additionalDeps)
+            }
+
+            else -> Pair(BinaryExpressionAST(rexpr1, binaryExpressionAST.operator, rexpr2), deps1 + deps2)
+        }
+    }
 
     fun reconditionUnaryExpression(unaryExpressionAST: UnaryExpressionAST): Pair<UnaryExpressionAST, List<StatementAST>> {
         val (reconditionedExpression, dependents) = reconditionExpression(unaryExpressionAST.expr)
@@ -296,14 +326,58 @@ class AdvancedReconditioner {
         return Pair(ArrayLengthAST(identifier), dependents)
     }
 
-    fun reconditionIdentifier(identifierAST: IdentifierAST): Pair<IdentifierAST, List<StatementAST>> = TODO()
+    fun reconditionIdentifier(identifierAST: IdentifierAST): Pair<IdentifierAST, List<StatementAST>> =
+        when (identifierAST) {
+            is ArrayIndexAST -> {
+                val (arr, arrDependents) = reconditionIdentifier(identifierAST.array)
+                val temp = IdentifierAST(tempGenerator.newValue(), IntType)
+                val (rexpr, exprDependents) = reconditionExpression(identifierAST.index)
+
+                val methodCall = NonVoidMethodCallAST(
+                    ADVANCED_SAFE_ARRAY_INDEX.signature,
+                    listOf(rexpr, newState, getHash(identifierAST)),
+                ) // TODO will getHash work?
+                val assignment = MultiAssignmentAST(listOf(temp, newState), listOf(methodCall))
+
+                Pair(ArrayIndexAST(arr, temp), arrDependents + exprDependents + assignment)
+            }
+
+            is ClassInstanceAST -> Pair(
+                ClassInstanceAST(classes.getValue(identifierAST.clazz.name), identifierAST.name),
+                emptyList(),
+            )
+
+            is ClassInstanceFieldAST -> {
+                val (instance, instanceDependents) = reconditionIdentifier(identifierAST.classInstance)
+                val (field, fieldDependents) = reconditionIdentifier(identifierAST.classField)
+
+                Pair(ClassInstanceFieldAST(instance, field), instanceDependents + fieldDependents)
+            }
+
+            else -> Pair(identifierAST, emptyList())
+        }
 
     fun reconditionNonVoidMethodCall(nonVoidMethodCallAST: NonVoidMethodCallAST): Pair<NonVoidMethodCallAST, List<StatementAST>> {
-        TODO()
+        val reconditionedMethod = getReconditionedMethodSignature(nonVoidMethodCallAST.method)
+        val (params, dependents) = reconditionExpressionList(nonVoidMethodCallAST.params)
+
+        return Pair(NonVoidMethodCallAST(reconditionedMethod, params + newState), dependents)
     }
 
     fun reconditionFunctionMethodCall(functionMethodCallAST: FunctionMethodCallAST): Pair<ExpressionAST, List<StatementAST>> {
-        TODO()
+        val temp = IdentifierAST(tempGenerator.newValue(), functionMethodCallAST.type())
+        val reconditionedMethod = getReconditionedFunctionMethodSignature(functionMethodCallAST.function)
+        val (params, dependents) = reconditionExpressionList(functionMethodCallAST.params)
+
+        val allDependents = dependents + listOf(
+            TypedDeclarationAST(temp),
+            MultiAssignmentAST(
+                listOf(temp, newState),
+                listOf(NonVoidMethodCallAST(reconditionedMethod, params + newState)),
+            ),
+        )
+
+        return Pair(temp, allDependents)
     }
 
     companion object {
