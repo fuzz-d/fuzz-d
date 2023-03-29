@@ -97,7 +97,7 @@ class Reconditioner : ASTReconditioner {
     override fun reconditionIfStatement(ifStatementAST: IfStatementAST) = IfStatementAST(
         reconditionExpression(ifStatementAST.condition),
         reconditionSequence(ifStatementAST.ifBranch),
-        ifStatementAST.elseBranch?.run(this::reconditionSequence),
+        ifStatementAST.elseBranch?.let(this::reconditionSequence),
     )
 
     override fun reconditionWhileLoopAST(whileLoopAST: WhileLoopAST) = when (whileLoopAST) {

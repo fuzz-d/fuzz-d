@@ -13,7 +13,16 @@ import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
+import fuzzd.generator.ast.StatementAST.BreakAST
+import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
+import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
+import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
+import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.TypedDeclarationAST
+import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
+import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type.BoolType
@@ -103,7 +112,7 @@ class AdvancedReconditioner {
         )
 
     fun reconditionMainFunction(mainFunctionAST: MainFunctionAST): MainFunctionAST {
-        val stateDecl = DeclarationAST(state, MapConstructorAST(STATE_TYPE.keyType, STATE_TYPE.valueType))
+        val stateDecl = DeclarationAST(newState, MapConstructorAST(STATE_TYPE.keyType, STATE_TYPE.valueType))
         val reconditionedBody = reconditionSequence(mainFunctionAST.sequenceAST)
 
         return MainFunctionAST(SequenceAST(listOf(stateDecl) + reconditionedBody.statements))
@@ -112,7 +121,54 @@ class AdvancedReconditioner {
     fun reconditionSequence(sequenceAST: SequenceAST): SequenceAST =
         SequenceAST(sequenceAST.statements.map(this::reconditionStatement).reduceRight { l, r -> l + r })
 
-    fun reconditionStatement(statementAST: StatementAST): List<StatementAST> = TODO()
+    /* ==================================== STATEMENTS ======================================== */
+
+    fun reconditionStatement(statementAST: StatementAST): List<StatementAST> = when (statementAST) {
+        is BreakAST -> listOf(statementAST)
+        is MultiAssignmentAST -> TODO()
+        is TypedDeclarationAST -> TODO()
+        is MultiDeclarationAST -> TODO()
+        is IfStatementAST -> reconditionIfStatementAST(statementAST)
+        is CounterLimitedWhileLoopAST -> reconditionCounterLimitedWhileLoopAST(statementAST)
+        is WhileLoopAST -> reconditionWhileLoopAST(statementAST)
+        is PrintAST -> TODO()
+        is VoidMethodCallAST -> TODO()
+    }
+
+    fun reconditionMultiAssignmentAST(multiAssignmentAST: MultiAssignmentAST): List<StatementAST> = TODO()
+
+    fun reconditionMultiDeclarationAST(multiDeclarationAST: MultiDeclarationAST): List<StatementAST> = TODO()
+
+    fun reconditionIfStatementAST(ifStatementAST: IfStatementAST): List<StatementAST> {
+        val (newCondition, dependents) = reconditionExpression(ifStatementAST.condition)
+        return dependents + IfStatementAST(
+            newCondition,
+            reconditionSequence(ifStatementAST.ifBranch),
+            ifStatementAST.elseBranch?.let(this::reconditionSequence)
+        )
+    }
+
+    fun reconditionCounterLimitedWhileLoopAST(whileLoopAST: CounterLimitedWhileLoopAST): List<StatementAST> {
+        val (newCondition, dependents) = reconditionExpression(whileLoopAST.condition)
+        val reconditionedBody = reconditionSequence(whileLoopAST.body)
+
+        return dependents + CounterLimitedWhileLoopAST(
+            whileLoopAST.counterInitialisation,
+            whileLoopAST.terminationCheck,
+            whileLoopAST.counterUpdate,
+            newCondition,
+            SequenceAST(reconditionedBody.statements + dependents)
+        )
+    }
+
+    fun reconditionWhileLoopAST(whileLoopAST: WhileLoopAST): List<StatementAST> {
+        val (newCondition, dependents) = reconditionExpression(whileLoopAST.condition)
+        val reconditionedBody = reconditionSequence(whileLoopAST.body)
+
+        return dependents + WhileLoopAST(newCondition, SequenceAST(reconditionedBody.statements + dependents))
+    }
+
+    fun reconditionVoidMethodCall(voidMethodCallAST: VoidMethodCallAST): List<StatementAST> = TODO()
 
     fun reconditionExpression(expressionAST: ExpressionAST): Pair<ExpressionAST, List<StatementAST>> = TODO()
 

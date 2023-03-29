@@ -55,19 +55,29 @@ sealed class StatementAST : ASTElement {
     open class MultiDeclarationAST(
         val identifiers: List<IdentifierAST>,
         val exprs: List<ExpressionAST>,
-    ) :
-        StatementAST() {
+    ) : StatementAST() {
         override fun toString(): String = "var ${identifiers.joinToString(", ")} := ${exprs.joinToString(", ")};"
     }
 
     class DeclarationAST(identifier: IdentifierAST, expr: ExpressionAST) :
         MultiDeclarationAST(listOf(identifier), listOf(expr))
 
+    class TypedDeclarationAST(val identifier: IdentifierAST,val expr: ExpressionAST? = null) : StatementAST() {
+        override fun toString(): String {
+            val sb = StringBuilder()
+            sb.append("var ${identifier.name}: ${identifier.type()}")
+            if (expr != null) {
+                sb.append(" := $expr")
+            }
+            sb.append(";")
+            return sb.toString()
+        }
+    }
+
     open class MultiAssignmentAST(
         val identifiers: List<IdentifierAST>,
         val exprs: List<ExpressionAST>,
-    ) :
-        StatementAST() {
+    ) : StatementAST() {
         override fun toString(): String = "${identifiers.joinToString(", ")} := ${exprs.joinToString(", ")};"
     }
 
@@ -76,6 +86,7 @@ sealed class StatementAST : ASTElement {
 
     class PrintAST(val expr: List<ExpressionAST>) : StatementAST() {
         constructor(expr: ExpressionAST) : this(listOf(expr))
+
         override fun toString(): String = "print ${expr.joinToString(", ")};"
     }
 
