@@ -3,9 +3,18 @@ package fuzzd.recondition
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
+import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
+import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
+import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
@@ -224,7 +233,42 @@ class AdvancedReconditioner {
             Pair(acc.first + r.first, acc.second + r.second)
         }
 
-    fun reconditionExpression(expressionAST: ExpressionAST): Pair<ExpressionAST, List<StatementAST>> = TODO()
+    /* =========================================== EXPRESSIONS =========================================== */
+
+    fun reconditionExpression(expressionAST: ExpressionAST): Pair<ExpressionAST, List<StatementAST>> =
+        when (expressionAST) {
+            is BinaryExpressionAST -> reconditionBinaryExpression(expressionAST)
+            is UnaryExpressionAST -> reconditionUnaryExpression(expressionAST)
+            is TernaryExpressionAST -> reconditionTernaryExpression(expressionAST)
+            is IdentifierAST -> reconditionIdentifier(expressionAST)
+            is LiteralAST -> Pair(expressionAST, emptyList()) // do nothing
+            is ClassInstantiationAST -> TODO()
+            is ArrayInitAST -> TODO()
+            is ArrayLengthAST -> TODO()
+            is NonVoidMethodCallAST -> TODO()
+            is FunctionMethodCallAST -> TODO()
+            else -> throw UnsupportedOperationException()
+        }
+
+    fun reconditionBinaryExpression(binaryExpressionAST: BinaryExpressionAST): Pair<ExpressionAST, List<StatementAST>> =
+        TODO()
+
+    fun reconditionUnaryExpression(unaryExpressionAST: UnaryExpressionAST): Pair<UnaryExpressionAST, List<StatementAST>> {
+        val (reconditionedExpression, dependents) = reconditionExpression(unaryExpressionAST.expr)
+
+        return Pair(UnaryExpressionAST(reconditionedExpression, unaryExpressionAST.operator), dependents)
+    }
+
+    fun reconditionTernaryExpression(ternaryExpressionAST: TernaryExpressionAST): Pair<TernaryExpressionAST, List<StatementAST>> {
+        val (newCondition, conditionDependents) = reconditionExpression(ternaryExpressionAST.condition)
+        val (newIfBranch, ifBranchDependents) = reconditionExpression(ternaryExpressionAST.ifBranch)
+        val (newElseBranch, elseBranchDependents) = reconditionExpression(ternaryExpressionAST.elseBranch)
+
+        return Pair(
+            TernaryExpressionAST(newCondition, newIfBranch, newElseBranch),
+            conditionDependents + ifBranchDependents + elseBranchDependents
+        )
+    }
 
     fun reconditionIdentifier(identifierAST: IdentifierAST): Pair<IdentifierAST, List<StatementAST>> = TODO()
 
