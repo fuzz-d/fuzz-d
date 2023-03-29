@@ -93,7 +93,7 @@ class Reconditioner : ASTReconditioner {
 
     override fun reconditionTypedDeclarationAST(typedDeclarationAST: TypedDeclarationAST) = TypedDeclarationAST(
         reconditionIdentifier(typedDeclarationAST.identifier),
-        typedDeclarationAST.expr?.let(this::reconditionExpression)
+        typedDeclarationAST.expr?.let(this::reconditionExpression),
     )
 
     override fun reconditionMultiDeclarationAST(multiDeclarationAST: MultiDeclarationAST) = MultiDeclarationAST(
@@ -181,8 +181,8 @@ class Reconditioner : ASTReconditioner {
             identifierAST.array,
             FunctionMethodCallAST(
                 SAFE_ARRAY_INDEX.signature,
-                listOf(identifierAST.index, ArrayLengthAST(identifierAST.array))
-            )
+                listOf(identifierAST.index, ArrayLengthAST(identifierAST.array)),
+            ),
         )
 
         else -> identifierAST
