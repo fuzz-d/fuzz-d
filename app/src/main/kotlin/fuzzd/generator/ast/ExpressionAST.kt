@@ -181,8 +181,8 @@ sealed class ExpressionAST : ASTElement {
     }
 
     class ClassInstanceFieldAST(
-        classInstance: IdentifierAST,
-        classField: IdentifierAST
+        val classInstance: IdentifierAST,
+        val classField: IdentifierAST,
     ) : IdentifierAST("${classInstance.name}.${classField.name}", classField.type(), initialised = true)
 
     class ArrayIndexAST(
@@ -210,7 +210,7 @@ sealed class ExpressionAST : ASTElement {
     class MapConstructorAST(
         val keyType: Type,
         val valueType: Type,
-        val assignments: List<Pair<ExpressionAST, ExpressionAST>> = emptyList()
+        val assignments: List<Pair<ExpressionAST, ExpressionAST>> = emptyList(),
     ) : ExpressionAST() {
         init {
             assignments.indices.forEach { i ->
@@ -233,10 +233,10 @@ sealed class ExpressionAST : ASTElement {
 
     class MapIndexAST(
         val map: IdentifierAST,
-        val key: ExpressionAST
+        val key: ExpressionAST,
     ) : IdentifierAST(
         map.name,
-        (map.type() as MapType).valueType
+        (map.type() as MapType).valueType,
     ) {
         init {
             if (map.type() !is MapType) {
@@ -256,10 +256,10 @@ sealed class ExpressionAST : ASTElement {
     class MapIndexAssignAST(
         val map: IdentifierAST,
         val key: ExpressionAST,
-        val value: ExpressionAST
+        val value: ExpressionAST,
     ) : IdentifierAST(
         map.name,
-        map.type()
+        map.type(),
     ) {
         init {
             if (map.type() !is MapType) {

@@ -7,6 +7,7 @@ import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
@@ -183,6 +184,11 @@ class Reconditioner : ASTReconditioner {
                 SAFE_ARRAY_INDEX.signature,
                 listOf(identifierAST.index, ArrayLengthAST(identifierAST.array)),
             ),
+        )
+
+        is ClassInstanceFieldAST -> ClassInstanceFieldAST(
+            reconditionIdentifier(identifierAST.classInstance),
+            reconditionIdentifier(identifierAST.classField),
         )
 
         else -> identifierAST
