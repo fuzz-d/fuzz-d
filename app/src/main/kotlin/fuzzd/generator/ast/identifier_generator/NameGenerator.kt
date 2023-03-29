@@ -22,4 +22,6 @@ sealed class NameGenerator(private val namePrefix: String) {
     class TraitNameGenerator : NameGenerator("T")
 
     class FieldNameGenerator : NameGenerator("f")
+
+    class TemporaryNameGenerator : NameGenerator("t")
 }

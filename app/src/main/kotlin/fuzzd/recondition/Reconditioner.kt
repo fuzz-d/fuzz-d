@@ -30,7 +30,6 @@ import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.operators.BinaryOperator.MathematicalBinaryOperator
-import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
 import fuzzd.utils.SAFE_ARRAY_INDEX
 import fuzzd.utils.safetyMap
 

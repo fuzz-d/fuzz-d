@@ -206,7 +206,7 @@ sealed class ExpressionAST : ASTElement {
     class MapConstructorAST(
         val keyType: Type,
         val valueType: Type,
-        val assignments: List<Pair<ExpressionAST, ExpressionAST>>
+        val assignments: List<Pair<ExpressionAST, ExpressionAST>> = emptyList()
     ) : ExpressionAST() {
         init {
             assignments.indices.forEach { i ->

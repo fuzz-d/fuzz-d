@@ -5,6 +5,10 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 class MethodAST(
     val signature: MethodSignatureAST,
 ) : TopLevelAST() {
+    constructor(signature: MethodSignatureAST, body: SequenceAST) : this(signature) {
+        setBody(body)
+    }
+
     constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>) :
             this(MethodSignatureAST(name, params, returns))
 
