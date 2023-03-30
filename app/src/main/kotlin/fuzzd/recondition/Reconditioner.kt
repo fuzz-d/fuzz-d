@@ -27,16 +27,16 @@ import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
-import fuzzd.generator.ast.StatementAST.TypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.operators.BinaryOperator.MathematicalBinaryOperator
+import fuzzd.logging.Logger
 import fuzzd.utils.SAFE_ARRAY_INDEX
 import fuzzd.utils.safetyMap
 
-class Reconditioner(private val ids: Set<Int>? = null) : ASTReconditioner {
+class Reconditioner(private val logger: Logger, private val ids: Set<Int>? = null) : ASTReconditioner {
     private fun <T> requiresSafety(obj: T) = ids == null || obj.hashCode() in ids
 
     override fun recondition(dafnyAST: DafnyAST): DafnyAST =
@@ -98,7 +98,7 @@ class Reconditioner(private val ids: Set<Int>? = null) : ASTReconditioner {
     override fun reconditionMultiTypedDeclarationAST(multiTypedDeclarationAST: MultiTypedDeclarationAST) =
         MultiTypedDeclarationAST(
             multiTypedDeclarationAST.identifiers.map(this::reconditionIdentifier),
-            multiTypedDeclarationAST.exprs.map(this::reconditionExpression)
+            multiTypedDeclarationAST.exprs.map(this::reconditionExpression),
         )
 
     override fun reconditionMultiDeclarationAST(multiDeclarationAST: MultiDeclarationAST) = MultiDeclarationAST(
@@ -154,6 +154,10 @@ class Reconditioner(private val ids: Set<Int>? = null) : ASTReconditioner {
         return if (expression.operator is MathematicalBinaryOperator &&
             safetyMap.containsKey(Pair(expression.operator, expression.type())) && requiresSafety(expression)
         ) {
+            if (ids != null) {
+                logger.log { "Advanced reconditioning requires safety for binary expression $expression" }
+            }
+
             FunctionMethodCallAST(
                 safetyMap[
                     Pair(
@@ -182,6 +186,11 @@ class Reconditioner(private val ids: Set<Int>? = null) : ASTReconditioner {
 
     override fun reconditionIdentifier(identifierAST: IdentifierAST): IdentifierAST = when (identifierAST) {
         is ArrayIndexAST -> if (requiresSafety(identifierAST)) {
+            // log advanced reconditioning applications
+            if (ids != null) {
+                logger.log { "Advanced reconditioning requires safety for array index $identifierAST" }
+            }
+
             ArrayIndexAST(
                 identifierAST.array,
                 FunctionMethodCallAST(

@@ -8,7 +8,6 @@ import fuzzd.validator.executor.execution_handler.JavaExecutionHandler
 import fuzzd.validator.executor.execution_handler.JsExecutionHandler
 import fuzzd.validator.executor.execution_handler.PyExecutionHandler
 import java.io.File
-import javax.management.monitor.StringMonitor
 
 class OutputValidator {
     /**
@@ -46,13 +45,8 @@ class OutputValidator {
         return ValidationResult(handlers)
     }
 
-    fun collectOutput(
-        handler: ExecutionHandler
-    ): String {
+    fun collectOutput(handler: ExecutionHandler): String {
         handler.run()
-
-        println(ValidationResult(listOf(handler)))
-
         return handler.executeResult().stdOut
     }
 }

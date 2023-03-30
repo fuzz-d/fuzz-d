@@ -3,6 +3,13 @@ package fuzzd.utils
 import java.io.File
 import java.lang.ProcessBuilder.Redirect
 
+const val DAFNY_WRAPPERS = "wrappers"
+const val DAFNY_ADVANCED = "advanced"
+const val DAFNY_MAIN = "main"
+const val DAFNY_BODY = "body"
+const val DAFNY_TYPE = "dfy"
+const val DAFNY_GENERATED = "generated"
+
 fun runCommand(command: String): Process {
     return Runtime.getRuntime().exec(command)
 }

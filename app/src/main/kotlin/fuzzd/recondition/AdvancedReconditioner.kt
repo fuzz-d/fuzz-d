@@ -197,7 +197,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
         return identifierDependents + exprDependents +
-                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+            MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMultiTypedDeclaration(multiTypedDeclarationAST: MultiTypedDeclarationAST): List<StatementAST> {
@@ -206,7 +206,7 @@ class AdvancedReconditioner {
 
         return identifierDependents + exprDependents + MultiTypedDeclarationAST(
             reconditionedIdentifiers.map { it as IdentifierAST },
-            reconditionedExprs
+            reconditionedExprs,
         )
     }
 
@@ -215,7 +215,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
 
         return identifierDependents + exprDependents +
-                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+            MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionIfStatement(ifStatementAST: IfStatementAST): List<StatementAST> {
@@ -258,7 +258,7 @@ class AdvancedReconditioner {
 
         return dependents + AssignmentAST(
             newState,
-            NonVoidMethodCallAST(method, params + listOf(newState))
+            NonVoidMethodCallAST(method, params + listOf(newState)),
         )
     }
 
@@ -374,7 +374,7 @@ class AdvancedReconditioner {
         val temps = (0 until nonVoidMethodCallAST.method.returns.size).map { i ->
             IdentifierAST(
                 tempGenerator.newValue(),
-                nonVoidMethodCallAST.method.returns[i].type()
+                nonVoidMethodCallAST.method.returns[i].type(),
             )
         }
         val decl = MultiTypedDeclarationAST(temps, emptyList())
