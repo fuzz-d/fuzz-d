@@ -6,10 +6,16 @@ import fuzzd.generator.Generator
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.logging.Logger
 import fuzzd.logging.OutputWriter
+import fuzzd.recondition.AdvancedReconditioner
 import fuzzd.recondition.Reconditioner
 import fuzzd.recondition.visitor.DafnyVisitor
+import fuzzd.utils.ADVANCED_ABSOLUTE
+import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
+import fuzzd.utils.ADVANCED_SAFE_DIV_INT
+import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.WRAPPER_FUNCTIONS
 import fuzzd.validator.OutputValidator
+import fuzzd.validator.executor.execution_handler.CsExecutionHandler
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.ExperimentalCli
@@ -84,20 +90,49 @@ class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
 
 @OptIn(ExperimentalCli::class)
 class Recondition : Subcommand("recondition", "Recondition a reduced test case") {
-    private val file by argument(ArgType.String, "file", "f", "path to .dfy file to reduce")
-    private val optimise by option(
+    private val file by argument(ArgType.String, "file",  "path to .dfy file to recondition")
+    private val advanced by option(
         ArgType.Boolean,
-        "optimise",
-        "o",
-        "Optimise reconditioning to reduce use of safety wrappers",
+        "advanced",
+        "a",
+        "Use advanced reconditioning to reduce use of safety wrappers",
     )
 
     override fun execute() {
-        val input = File(file).inputStream()
+        val userPath = System.getProperty("user.dir")
+        val input = File("$userPath/$file").inputStream()
         val cs = CharStreams.fromStream(input)
         val tokens = CommonTokenStream(dafnyLexer(cs))
 
+        val path = "../output"
+        val dir = UUID.randomUUID().toString()
+
         val ast = DafnyVisitor().visitProgram(dafnyParser(tokens).program())
+
+        val ids = if (advanced == true) {
+            val advancedAST = AdvancedReconditioner().recondition(ast)
+
+            val writer = OutputWriter(path, dir, "advanced.dfy")
+            writer.write { ADVANCED_ABSOLUTE }
+            writer.write { ADVANCED_SAFE_ARRAY_INDEX }
+            writer.write { ADVANCED_SAFE_MODULO_INT }
+            writer.write { ADVANCED_SAFE_DIV_INT }
+            writer.write { advancedAST }
+            writer.close()
+
+            val output = OutputValidator().collectOutput(CsExecutionHandler(writer.dirPath, "advanced"))
+            println(output)
+            val necessaryIds = output?.split("\n") ?: emptyList()
+
+            necessaryIds.subList(0, necessaryIds.size).map { it.toInt() }.toSet()
+        } else {
+            null
+        }
+
+        val reconditionedAST = Reconditioner(ids).recondition(ast)
+        val reconditionedWriter = OutputWriter(path, dir, "reconditioned.dfy")
+        reconditionedWriter.write { reconditionedAST }
+        reconditionedWriter.close()
     }
 }
 

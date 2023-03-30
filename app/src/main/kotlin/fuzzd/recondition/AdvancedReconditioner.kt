@@ -258,7 +258,7 @@ class AdvancedReconditioner {
 
         return dependents + AssignmentAST(
             newState,
-            NonVoidMethodCallAST(method, params + listOf(newState, getHash(voidMethodCallAST)))
+            NonVoidMethodCallAST(method, params + listOf(newState))
         )
     }
 

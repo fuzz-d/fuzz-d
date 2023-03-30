@@ -36,7 +36,9 @@ import fuzzd.generator.ast.operators.BinaryOperator.MathematicalBinaryOperator
 import fuzzd.utils.SAFE_ARRAY_INDEX
 import fuzzd.utils.safetyMap
 
-class Reconditioner : ASTReconditioner {
+class Reconditioner(private val ids: Set<Int>? = null) : ASTReconditioner {
+    private fun <T> requiresSafety(obj: T) = ids == null || obj.hashCode() in ids
+
     override fun recondition(dafnyAST: DafnyAST): DafnyAST =
         DafnyAST(dafnyAST.topLevelElements.map(this::reconditionTopLevel))
 
@@ -150,7 +152,7 @@ class Reconditioner : ASTReconditioner {
         val rexpr2 = reconditionExpression(expression.expr2)
 
         return if (expression.operator is MathematicalBinaryOperator &&
-            safetyMap.containsKey(Pair(expression.operator, expression.type()))
+            safetyMap.containsKey(Pair(expression.operator, expression.type())) && requiresSafety(expression)
         ) {
             FunctionMethodCallAST(
                 safetyMap[
@@ -179,13 +181,17 @@ class Reconditioner : ASTReconditioner {
         )
 
     override fun reconditionIdentifier(identifierAST: IdentifierAST): IdentifierAST = when (identifierAST) {
-        is ArrayIndexAST -> ArrayIndexAST(
-            identifierAST.array,
-            FunctionMethodCallAST(
-                SAFE_ARRAY_INDEX.signature,
-                listOf(identifierAST.index, ArrayLengthAST(identifierAST.array)),
-            ),
-        )
+        is ArrayIndexAST -> if (requiresSafety(identifierAST)) {
+            ArrayIndexAST(
+                identifierAST.array,
+                FunctionMethodCallAST(
+                    SAFE_ARRAY_INDEX.signature,
+                    listOf(identifierAST.index, ArrayLengthAST(identifierAST.array)),
+                ),
+            )
+        } else {
+            identifierAST
+        }
 
         is ClassInstanceFieldAST -> ClassInstanceFieldAST(
             reconditionIdentifier(identifierAST.classInstance),

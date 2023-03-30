@@ -2,11 +2,13 @@ package fuzzd.validator
 
 import fuzzd.logging.OutputWriter
 import fuzzd.validator.executor.execution_handler.CsExecutionHandler
+import fuzzd.validator.executor.execution_handler.ExecutionHandler
 import fuzzd.validator.executor.execution_handler.GoExecutionHandler
 import fuzzd.validator.executor.execution_handler.JavaExecutionHandler
 import fuzzd.validator.executor.execution_handler.JsExecutionHandler
 import fuzzd.validator.executor.execution_handler.PyExecutionHandler
 import java.io.File
+import javax.management.monitor.StringMonitor
 
 class OutputValidator {
     /**
@@ -42,5 +44,15 @@ class OutputValidator {
             .map { t -> t.join() }
 
         return ValidationResult(handlers)
+    }
+
+    fun collectOutput(
+        handler: ExecutionHandler
+    ): String {
+        handler.run()
+
+        println(ValidationResult(listOf(handler)))
+
+        return handler.executeResult().stdOut
     }
 }
