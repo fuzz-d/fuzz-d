@@ -34,8 +34,16 @@ sealed class Type : ASTElement {
     }
 
     class MapType(val keyType: Type, val valueType: Type) : Type() {
-
         override fun toString() = "map<$keyType, $valueType>"
+
+        override fun equals(other: Any?): Boolean =
+            other is MapType && other.keyType == keyType && other.valueType == valueType
+
+        override fun hashCode(): Int {
+            var result = keyType.hashCode()
+            result = 31 * result + valueType.hashCode()
+            return result
+        }
     }
 
     class MethodReturnType(val types: List<Type>) : Type() {

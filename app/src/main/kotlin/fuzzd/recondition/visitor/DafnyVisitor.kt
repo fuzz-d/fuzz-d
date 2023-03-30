@@ -26,6 +26,7 @@ import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
+import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
@@ -241,8 +242,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         signature.returns.forEach { r -> identifiersTable.addEntry(r.name, r) }
 
         val body = visitSequence(ctx.sequence())
-        val method = MethodAST(signature)
-        method.setBody(body)
+        val method = if (signature.name == "Main") MainFunctionAST(body) else MethodAST(signature, body)
 
         identifiersTable = prevIdentifierTable
         return method

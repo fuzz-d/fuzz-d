@@ -25,6 +25,7 @@ import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
+import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.TypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
@@ -79,7 +80,7 @@ class Reconditioner : ASTReconditioner {
     override fun reconditionStatement(statement: StatementAST) = when (statement) {
         is BreakAST -> statement
         is MultiAssignmentAST -> reconditionMultiAssignmentAST(statement) // covers AssignmentAST
-        is TypedDeclarationAST -> TODO()
+        is MultiTypedDeclarationAST -> reconditionMultiTypedDeclarationAST(statement)
         is MultiDeclarationAST -> reconditionMultiDeclarationAST(statement) // covers DeclarationAST
         is IfStatementAST -> reconditionIfStatement(statement)
         is WhileLoopAST -> reconditionWhileLoopAST(statement)
@@ -92,10 +93,11 @@ class Reconditioner : ASTReconditioner {
         multiAssignmentAST.exprs.map(this::reconditionExpression),
     )
 
-    override fun reconditionTypedDeclarationAST(typedDeclarationAST: TypedDeclarationAST) = TypedDeclarationAST(
-        reconditionIdentifier(typedDeclarationAST.identifier),
-        typedDeclarationAST.expr?.let(this::reconditionExpression),
-    )
+    override fun reconditionMultiTypedDeclarationAST(multiTypedDeclarationAST: MultiTypedDeclarationAST) =
+        MultiTypedDeclarationAST(
+            multiTypedDeclarationAST.identifiers.map(this::reconditionIdentifier),
+            multiTypedDeclarationAST.exprs.map(this::reconditionExpression)
+        )
 
     override fun reconditionMultiDeclarationAST(multiDeclarationAST: MultiDeclarationAST) = MultiDeclarationAST(
         multiDeclarationAST.identifiers.map(this::reconditionIdentifier),

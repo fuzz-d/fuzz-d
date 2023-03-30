@@ -62,17 +62,21 @@ sealed class StatementAST : ASTElement {
     class DeclarationAST(identifier: IdentifierAST, expr: ExpressionAST) :
         MultiDeclarationAST(listOf(identifier), listOf(expr))
 
-    class TypedDeclarationAST(val identifier: IdentifierAST,val expr: ExpressionAST? = null) : StatementAST() {
+    open class MultiTypedDeclarationAST(val identifiers: List<IdentifierAST>, val exprs: List<ExpressionAST>) :
+        StatementAST() {
         override fun toString(): String {
             val sb = StringBuilder()
-            sb.append("var ${identifier.name}: ${identifier.type()}")
-            if (expr != null) {
-                sb.append(" := $expr")
+            sb.append("var ${identifiers.joinToString(", ") { "${it.name}: ${it.type()}" }}")
+            if (exprs.isNotEmpty()) {
+                sb.append(" := ${exprs.joinToString(", ")}")
             }
             sb.append(";")
             return sb.toString()
         }
     }
+
+    class TypedDeclarationAST(val identifier: IdentifierAST, val expr: ExpressionAST? = null) :
+        MultiTypedDeclarationAST(listOf(identifier), if (expr != null) listOf(expr) else emptyList())
 
     open class MultiAssignmentAST(
         val identifiers: List<IdentifierAST>,
