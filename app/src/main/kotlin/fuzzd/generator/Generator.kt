@@ -16,6 +16,7 @@ import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
+import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
@@ -47,6 +48,7 @@ import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
 import fuzzd.generator.ast.error.MethodOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ClassNameGenerator
+import fuzzd.generator.ast.identifier_generator.NameGenerator.ControlFlowGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.FieldNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.FunctionMethodNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.MethodNameGenerator
@@ -86,6 +88,7 @@ import fuzzd.utils.unionAll
 
 class Generator(
     private val selectionManager: SelectionManager,
+    private val instrument: Boolean = false,
 ) : ASTGenerator {
     private val classNameGenerator = ClassNameGenerator()
     private val fieldNameGenerator = FieldNameGenerator()
@@ -93,6 +96,8 @@ class Generator(
     private val methodNameGenerator = MethodNameGenerator()
     private val traitNameGenerator = TraitNameGenerator()
     private val methodCallTable = DependencyTable<MethodSignatureAST>()
+
+    private val controlFlowGenerator = ControlFlowGenerator()
 
     /* ==================================== TOP LEVEL ==================================== */
 
@@ -361,10 +366,17 @@ class Generator(
     override fun generateIfStatement(context: GenerationContext): IfStatementAST {
         val condition = generateExpression(context, BoolType)
 
+        val ifPrint = PrintAST(StringLiteralAST(controlFlowGenerator.newValue()))
+        val elsePrint = PrintAST(StringLiteralAST(controlFlowGenerator.newValue()))
+
         val ifBranch = generateSequence(context.increaseStatementDepth())
         val elseBranch = generateSequence(context.increaseStatementDepth())
 
-        return IfStatementAST(condition, ifBranch, elseBranch)
+        return IfStatementAST(
+            condition,
+            SequenceAST((if (instrument) listOf(ifPrint) else emptyList<StatementAST>()) + ifBranch.statements),
+            SequenceAST((if (instrument) listOf(elsePrint) else emptyList<StatementAST>()) + elseBranch.statements),
+        )
     }
 
     override fun generateWhileStatement(context: GenerationContext): WhileLoopAST {
@@ -396,7 +408,13 @@ class Generator(
 
         val whileBody = generateSequence(context.increaseStatementDepth())
 
-        return CounterLimitedWhileLoopAST(counterInitialisation, counterTerminationCheck, counterUpdate, condition, whileBody)
+        return CounterLimitedWhileLoopAST(
+            counterInitialisation,
+            counterTerminationCheck,
+            counterUpdate,
+            condition,
+            whileBody,
+        )
     }
 
     override fun generatePrintStatement(context: GenerationContext): PrintAST {

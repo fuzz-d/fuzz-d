@@ -21,10 +21,16 @@ class Fuzz(
         "a",
         "Use advanced reconditioning to reduce use of safety wrappers",
     )
+    private val instrument by option(
+        ArgType.Boolean,
+        "instrument",
+        "i",
+        "Instrument control flow with print statements for debugging program paths",
+    )
 
     override fun execute() {
         val generationSeed = seed?.toLong() ?: Random.Default.nextLong()
-        FuzzRunner(outputPath, outputDir, logger).run(generationSeed, advanced == true)
+        FuzzRunner(outputPath, outputDir, logger).run(generationSeed, advanced == true, instrument == true)
     }
 }
 
@@ -63,7 +69,8 @@ fun main(args: Array<String>) {
 
     try {
         parser.parse(args)
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        e.printStackTrace()
     } finally {
         logger.close()
     }
