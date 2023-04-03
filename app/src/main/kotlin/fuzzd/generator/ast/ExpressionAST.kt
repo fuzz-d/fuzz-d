@@ -39,7 +39,6 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): Type = MethodReturnType(exprs.map { it.type() })
 
         override fun toString(): String = exprs.joinToString(", ")
-
     }
 
     class ClassInstantiationAST(val clazz: ClassAST, val params: List<ExpressionAST>) :
@@ -144,11 +143,7 @@ sealed class ExpressionAST : ASTElement {
             return sb.toString()
         }
 
-        // we need to add parentheses around expressions when
-        // they're boolean binary expressions and have the same precedence
-        // otherwise we can choose to / not to wrap
-        private fun shouldWrap(expr: ExpressionAST) =
-            expr is TernaryExpressionAST || (expr is BinaryExpressionAST && type() == BoolType)
+        private fun shouldWrap(expr: ExpressionAST) = expr is TernaryExpressionAST || expr is BinaryExpressionAST
     }
 
     open class IdentifierAST(
