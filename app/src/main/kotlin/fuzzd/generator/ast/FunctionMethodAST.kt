@@ -35,7 +35,7 @@ open class FunctionMethodSignatureAST(
     val params: List<IdentifierAST>,
 ) : ASTElement {
     override fun toString(): String =
-        "function method $name(${params.joinToString(", ") { param -> "${param.name}: ${param.type()}" }}): $returnType"
+        "function $name(${params.joinToString(", ") { param -> "${param.name}: ${param.type()}" }}): $returnType"
 
     override fun equals(other: Any?): Boolean =
         other is FunctionMethodSignatureAST && other.name == name && other.returnType == returnType && other.params == params
