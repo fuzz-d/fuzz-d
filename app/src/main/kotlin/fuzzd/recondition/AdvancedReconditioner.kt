@@ -1,5 +1,6 @@
 package fuzzd.recondition
 
+import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
@@ -35,17 +36,19 @@ import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
-import fuzzd.generator.ast.StatementAST.TypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type.BoolType
+import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.StringType
+import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
+import fuzzd.utils.ADVANCED_RECONDITION_CLASS
 import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
@@ -55,6 +58,10 @@ class AdvancedReconditioner {
     private val traits = mutableMapOf<String, TraitAST>()
     private val methodSignatures = mutableMapOf<String, MethodSignatureAST>()
     private val tempGenerator = TemporaryNameGenerator()
+
+    private val safetyIdGenerator = SafetyIdGenerator()
+
+    val idsMap = mutableMapOf<String, ASTElement>()
 
     fun recondition(dafnyAST: DafnyAST): DafnyAST {
         // get top level view of program
@@ -105,7 +112,7 @@ class AdvancedReconditioner {
             traitAST.extends().map { traits.getValue(it.name) }.toSet(),
             emptySet(),
             reconditionedMethodSignatures union reconditionedFunctionMethodSignatures,
-            traitAST.fields(),
+            traitAST.fields,
         )
 
         traits[traitAST.name] = trait
@@ -114,12 +121,11 @@ class AdvancedReconditioner {
 
     fun reconditionMethod(methodAST: MethodAST): MethodAST {
         val reconditionedSignature = reconditionMethodSignature(methodAST.signature)
-        val newStateDecl = AssignmentAST(newState, state)
         val reconditionedBody = reconditionSequence(methodAST.getBody())
 
         return MethodAST(
             reconditionedSignature,
-            SequenceAST(listOf(newStateDecl) + reconditionedBody.statements),
+            SequenceAST(reconditionedBody.statements),
         )
     }
 
@@ -145,7 +151,18 @@ class AdvancedReconditioner {
         getReconditionedFunctionMethodSignature(signature)
 
     fun reconditionMainFunction(mainFunctionAST: MainFunctionAST): MainFunctionAST {
-        val stateDecl = DeclarationAST(newState, MapConstructorAST(STATE_TYPE.keyType, STATE_TYPE.valueType))
+        val stateDecl = DeclarationAST(
+            state,
+            ClassInstantiationAST(
+                ADVANCED_RECONDITION_CLASS,
+                listOf(
+                    MapConstructorAST(
+                        STATE_MAP_TYPE.keyType,
+                        STATE_MAP_TYPE.valueType,
+                    ),
+                ),
+            ),
+        )
         val reconditionedBody = reconditionSequence(mainFunctionAST.sequenceAST)
 
         return MainFunctionAST(SequenceAST(listOf(stateDecl) + reconditionedBody.statements))
@@ -159,7 +176,7 @@ class AdvancedReconditioner {
             methodSignatures[signature.name] = MethodSignatureAST(
                 signature.name,
                 signature.params + additionalParams,
-                signature.returns + additionalReturns,
+                signature.returns,
             )
         }
 
@@ -171,7 +188,7 @@ class AdvancedReconditioner {
             methodSignatures[signature.name] = MethodSignatureAST(
                 signature.name,
                 signature.params + additionalParams,
-                listOf(IdentifierAST(FM_RETURNS, signature.returnType)) + additionalReturns,
+                listOf(IdentifierAST(FM_RETURNS, signature.returnType)),
             )
         }
 
@@ -256,10 +273,7 @@ class AdvancedReconditioner {
         val method = getReconditionedMethodSignature(voidMethodCallAST.method)
         val (params, dependents) = reconditionExpressionList(voidMethodCallAST.params)
 
-        return dependents + AssignmentAST(
-            newState,
-            NonVoidMethodCallAST(method, params + listOf(newState)),
-        )
+        return dependents + VoidMethodCallAST(method, params + listOf(state))
     }
 
     private fun reconditionExpressionList(exprs: List<ExpressionAST>): Pair<List<ExpressionAST>, List<StatementAST>> =
@@ -289,18 +303,17 @@ class AdvancedReconditioner {
 
         return when (binaryExpressionAST.operator) {
             DivisionOperator, ModuloOperator -> {
-                val additionalDeps = mutableListOf<StatementAST>()
                 val temp = IdentifierAST(tempGenerator.newValue(), binaryExpressionAST.type())
-                additionalDeps.add(TypedDeclarationAST(temp))
+
+                val safetyId = safetyIdGenerator.newValue()
+                idsMap[safetyId] = binaryExpressionAST
 
                 val methodCall = NonVoidMethodCallAST(
                     if (binaryExpressionAST.operator == DivisionOperator) ADVANCED_SAFE_DIV_INT.signature else ADVANCED_SAFE_MODULO_INT.signature,
-                    listOf(rexpr1, rexpr2, newState, getHash(binaryExpressionAST)),
+                    listOf(rexpr1, rexpr2, state, StringLiteralAST(safetyId)),
                 )
-                val tempAssignment = MultiAssignmentAST(listOf(temp, newState), listOf(methodCall))
-                additionalDeps.add(tempAssignment)
 
-                Pair(temp, deps1 + deps2 + additionalDeps)
+                Pair(temp, deps1 + deps2 + DeclarationAST(temp, methodCall))
             }
 
             else -> Pair(BinaryExpressionAST(rexpr1, binaryExpressionAST.operator, rexpr2), deps1 + deps2)
@@ -340,16 +353,19 @@ class AdvancedReconditioner {
         when (identifierAST) {
             is ArrayIndexAST -> {
                 val (arr, arrDependents) = reconditionIdentifier(identifierAST.array)
-                val temp = IdentifierAST(tempGenerator.newValue(), IntType)
                 val (rexpr, exprDependents) = reconditionExpression(identifierAST.index)
+
+                val temp = IdentifierAST(tempGenerator.newValue(), IntType)
+                val safetyId = safetyIdGenerator.newValue()
+                idsMap[safetyId] = identifierAST
 
                 val methodCall = NonVoidMethodCallAST(
                     ADVANCED_SAFE_ARRAY_INDEX.signature,
-                    listOf(rexpr, ArrayLengthAST(arr), newState, getHash(identifierAST)),
-                ) // TODO will getHash work?
-                val assignment = MultiAssignmentAST(listOf(temp, newState), listOf(methodCall))
+                    listOf(rexpr, ArrayLengthAST(arr), state, StringLiteralAST(safetyId)),
+                )
 
-                Pair(ArrayIndexAST(arr, temp), arrDependents + exprDependents + TypedDeclarationAST(temp) + assignment)
+                val decl = DeclarationAST(temp, methodCall)
+                Pair(ArrayIndexAST(arr, temp), arrDependents + exprDependents + decl)
             }
 
             is ClassInstanceAST -> Pair(
@@ -377,11 +393,9 @@ class AdvancedReconditioner {
                 nonVoidMethodCallAST.method.returns[i].type(),
             )
         }
-        val decl = MultiTypedDeclarationAST(temps, emptyList())
-        val assign =
-            MultiAssignmentAST(temps + newState, listOf(NonVoidMethodCallAST(reconditionedMethod, params + newState)))
+        val decl = MultiDeclarationAST(temps, listOf(NonVoidMethodCallAST(reconditionedMethod, params + state)))
 
-        return Pair(ExpressionListAST(temps), dependents + decl + assign)
+        return Pair(ExpressionListAST(temps), dependents + decl)
     }
 
     fun reconditionFunctionMethodCall(functionMethodCallAST: FunctionMethodCallAST): Pair<ExpressionAST, List<StatementAST>> {
@@ -390,11 +404,7 @@ class AdvancedReconditioner {
         val (params, dependents) = reconditionExpressionList(functionMethodCallAST.params)
 
         val allDependents = dependents + listOf(
-            TypedDeclarationAST(temp),
-            MultiAssignmentAST(
-                listOf(temp, newState),
-                listOf(NonVoidMethodCallAST(reconditionedMethod, params + newState)),
-            ),
+            DeclarationAST(temp, NonVoidMethodCallAST(reconditionedMethod, params + state)),
         )
 
         return Pair(temp, allDependents)
@@ -402,17 +412,13 @@ class AdvancedReconditioner {
 
     companion object {
         private const val FM_RETURNS = "r1"
-        private const val NEW_STATE_NAME = "newState"
-        private const val STATE_NAME = "state"
+        private const val STATE_NAME = "advancedState"
 
-        private val STATE_TYPE = MapType(StringType, BoolType)
+        private val STATE_MAP_TYPE = MapType(StringType, BoolType)
+        private val STATE_TYPE = ClassType(ADVANCED_RECONDITION_CLASS)
 
         private val state = IdentifierAST(STATE_NAME, STATE_TYPE)
-        private val newState = IdentifierAST(NEW_STATE_NAME, STATE_TYPE)
 
         private val additionalParams = listOf(state)
-        private val additionalReturns = listOf(newState)
-
-        private fun <T> getHash(obj: T) = StringLiteralAST(obj.hashCode().toString())
     }
 }

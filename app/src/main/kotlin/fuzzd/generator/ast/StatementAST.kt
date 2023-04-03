@@ -32,14 +32,16 @@ sealed class StatementAST : ASTElement {
         }
     }
 
-    open class WhileLoopAST(val condition: ExpressionAST, val body: SequenceAST) : StatementAST() {
+    open class WhileLoopAST(val condition: ExpressionAST, open val body: SequenceAST) : StatementAST() {
         init {
             if (condition.type() != Type.BoolType) {
                 throw InvalidInputException("If statement condition not bool type")
             }
         }
 
-        override fun toString(): String = "while ($condition) {\n$body\n}"
+        open fun body(): SequenceAST = body
+
+        override fun toString(): String = "while ($condition) {\n${body()}\n}"
     }
 
     class CounterLimitedWhileLoopAST(
@@ -47,8 +49,10 @@ sealed class StatementAST : ASTElement {
         val terminationCheck: IfStatementAST,
         val counterUpdate: AssignmentAST,
         condition: ExpressionAST,
-        body: SequenceAST,
+        override val body: SequenceAST,
     ) : WhileLoopAST(condition, SequenceAST(listOf(terminationCheck, counterUpdate) + body.statements)) {
+        override fun body(): SequenceAST = SequenceAST(listOf(terminationCheck, counterUpdate) + body.statements)
+
         override fun toString(): String = "$counterInitialisation\n${super.toString()}"
     }
 
@@ -91,7 +95,7 @@ sealed class StatementAST : ASTElement {
     class PrintAST(val expr: List<ExpressionAST>) : StatementAST() {
         constructor(expr: ExpressionAST) : this(listOf(expr))
 
-        override fun toString(): String = "print ${expr.joinToString(", ")};"
+        override fun toString(): String = "print ${expr.joinToString(", ")}, \"\\n\";"
     }
 
     open class VoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) : StatementAST() {

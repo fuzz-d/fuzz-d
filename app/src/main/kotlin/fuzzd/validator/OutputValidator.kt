@@ -45,8 +45,13 @@ class OutputValidator {
         return ValidationResult(handlers)
     }
 
-    fun collectOutput(handler: ExecutionHandler): String {
+    fun collectOutput(handler: ExecutionHandler): String? {
         handler.run()
-        return handler.executeResult().stdOut
+        return if (handler.executeResult().terminated) {
+            println(ValidationResult(listOf(handler)))
+            handler.executeResult().stdOut
+        } else {
+            null
+        }
     }
 }

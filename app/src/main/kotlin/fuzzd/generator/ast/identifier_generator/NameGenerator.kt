@@ -24,4 +24,8 @@ sealed class NameGenerator(private val namePrefix: String) {
     class FieldNameGenerator : NameGenerator("f")
 
     class TemporaryNameGenerator : NameGenerator("t")
+
+    class SafetyIdGenerator : NameGenerator("safety")
+
+    class ControlFlowGenerator : NameGenerator("ctr_flow")
 }

@@ -7,7 +7,12 @@ import fuzzd.utils.runCommand
 import fuzzd.validator.executor.ExecutionResult
 import java.util.concurrent.TimeUnit
 
-abstract class AbstractExecutionHandler(val fileDir: String, val fileName: String) : ExecutionHandler {
+abstract class AbstractExecutionHandler(
+    val fileDir: String,
+    val fileName: String,
+    val compileTimeout: Long = TIMEOUT_SECONDS,
+    val executeTimeout: Long = TIMEOUT_SECONDS,
+) : ExecutionHandler {
     private var compileResult: ExecutionResult = ExecutionResult()
     private var executionResult: ExecutionResult = ExecutionResult()
 
@@ -15,7 +20,7 @@ abstract class AbstractExecutionHandler(val fileDir: String, val fileName: Strin
 
     override fun compile(): ExecutionResult {
         val process = compileDafny(getCompileTarget(), fileDir, fileName)
-        val termination = process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        val termination = process.waitFor(compileTimeout, TimeUnit.SECONDS)
 
         return ExecutionResult(
             termination,
@@ -29,7 +34,7 @@ abstract class AbstractExecutionHandler(val fileDir: String, val fileName: Strin
 
     override fun execute(): ExecutionResult {
         val process = runCommand(getExecuteCommand(fileDir, fileName))
-        val termination = process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        val termination = process.waitFor(executeTimeout, TimeUnit.SECONDS)
         return ExecutionResult(
             termination,
             if (termination) process.exitValue() else TIMEOUT_RETURN_CODE,
@@ -49,7 +54,7 @@ abstract class AbstractExecutionHandler(val fileDir: String, val fileName: Strin
     }
 
     companion object {
-        private const val TIMEOUT_SECONDS = 15L
+        const val TIMEOUT_SECONDS = 15L
         private const val TIMEOUT_RETURN_CODE = 2
     }
 }

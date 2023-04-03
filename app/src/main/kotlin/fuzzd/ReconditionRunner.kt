@@ -9,6 +9,7 @@ import fuzzd.recondition.AdvancedReconditioner
 import fuzzd.recondition.Reconditioner
 import fuzzd.recondition.visitor.DafnyVisitor
 import fuzzd.utils.ADVANCED_ABSOLUTE
+import fuzzd.utils.ADVANCED_RECONDITION_CLASS
 import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
@@ -36,13 +37,15 @@ class ReconditionRunner(private val outputPath: String, private val outputDir: S
     }
 
     fun run(ast: DafnyAST, advanced: Boolean) {
+        val advancedReconditioner = AdvancedReconditioner()
         try {
             val ids = if (advanced) {
                 logger.log { "Running advanced reconditioning" }
 
-                val advancedAST = AdvancedReconditioner().recondition(ast)
+                val advancedAST = advancedReconditioner.recondition(ast)
 
                 val writer = OutputWriter(outputPath, outputDir, "$DAFNY_ADVANCED.$DAFNY_TYPE")
+                writer.write { "$ADVANCED_RECONDITION_CLASS\n" }
                 writer.write { "$ADVANCED_ABSOLUTE\n" }
                 writer.write { "$ADVANCED_SAFE_ARRAY_INDEX\n" }
                 writer.write { "$ADVANCED_SAFE_MODULO_INT\n" }
@@ -50,17 +53,32 @@ class ReconditionRunner(private val outputPath: String, private val outputDir: S
                 writer.write { advancedAST }
                 writer.close()
 
-                val output = validator.collectOutput(CsExecutionHandler(writer.dirPath, DAFNY_ADVANCED))
-                val necessaryIds = output.split("\n")
-
-                val ids = necessaryIds.subList(0, necessaryIds.size - 1).map { it.toInt() }.toSet()
-                logger.log { "Advanced reconditioning gave ids: $ids " }
-                ids
+                val output = validator.collectOutput(
+                    CsExecutionHandler(
+                        writer.dirPath,
+                        DAFNY_ADVANCED,
+                        compileTimeout = 180L,
+                        executeTimeout = 60L,
+                    ),
+                )
+                if (output != null) {
+                    val safetyRegex = Regex("safety[0-9]+\\n")
+                    val ids = safetyRegex.findAll(output, 0)
+                        .map { it.value }
+                        .map { it.substring(0, it.lastIndex) }
+                        .toSet()
+                    logger.log { "Advanced reconditioning gave ids: $ids " }
+                    ids
+                } else {
+                    logger.log { "Advanced reconditioning timed out" }
+                    null
+                }
             } else {
                 null
             }
 
-            val reconditionedAST = Reconditioner(logger, ids).recondition(ast)
+            val reconditioner = Reconditioner(logger, ids)
+            val reconditionedAST = reconditioner.recondition(ast)
 
             val reconditionedWriter = OutputWriter(outputPath, outputDir, "$DAFNY_BODY.$DAFNY_TYPE")
             reconditionedWriter.write { reconditionedAST }
@@ -73,7 +91,6 @@ class ReconditionRunner(private val outputPath: String, private val outputDir: S
             logger.log { "Reconditioning threw error" }
             logger.log { "===================================" }
             logger.log { e.stackTraceToString() }
-            println(e.stackTraceToString())
         }
     }
 }

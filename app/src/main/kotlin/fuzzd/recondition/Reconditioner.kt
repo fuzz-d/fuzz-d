@@ -1,5 +1,6 @@
 package fuzzd.recondition
 
+import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
@@ -31,16 +32,36 @@ import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
+import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.MathematicalBinaryOperator
 import fuzzd.logging.Logger
 import fuzzd.utils.SAFE_ARRAY_INDEX
 import fuzzd.utils.safetyMap
 
-class Reconditioner(private val logger: Logger, private val ids: Set<Int>? = null) : ASTReconditioner {
-    private fun <T> requiresSafety(obj: T) = ids == null || obj.hashCode() in ids
+class Reconditioner(private val logger: Logger, private val ids: Set<String>? = null) : ASTReconditioner {
+    private fun requiresSafety(str: String) = ids == null || str in ids
 
-    override fun recondition(dafnyAST: DafnyAST): DafnyAST =
-        DafnyAST(dafnyAST.topLevelElements.map(this::reconditionTopLevel))
+    private val safetyIdGenerator = SafetyIdGenerator()
+    val idsMap = mutableMapOf<String, ASTElement>()
+
+    override fun recondition(dafnyAST: DafnyAST): DafnyAST {
+        // needs to recondition in the same order as Advanced Reconditioning
+        val reconditionedTraits = dafnyAST.topLevelElements.filterIsInstance<TraitAST>()
+        val reconditionedClasses = dafnyAST.topLevelElements.filterIsInstance<ClassAST>().map(this::reconditionClass)
+        val reconditionedMethods = dafnyAST.topLevelElements.filterIsInstance<MethodAST>().map(this::reconditionMethod)
+        val reconditionedFunctionMethods =
+            dafnyAST.topLevelElements.filterIsInstance<FunctionMethodAST>().map(this::reconditionFunctionMethod)
+        val reconditionedMain =
+            reconditionMainFunction(dafnyAST.topLevelElements.first { it is MainFunctionAST } as MainFunctionAST)
+
+        return DafnyAST(
+            reconditionedTraits +
+                reconditionedClasses +
+                reconditionedFunctionMethods +
+                reconditionedMethods +
+                reconditionedMain,
+        )
+    }
 
     override fun reconditionTopLevel(topLevelAST: TopLevelAST) = when (topLevelAST) {
         is ClassAST -> reconditionClass(topLevelAST)
@@ -152,21 +173,27 @@ class Reconditioner(private val logger: Logger, private val ids: Set<Int>? = nul
         val rexpr2 = reconditionExpression(expression.expr2)
 
         return if (expression.operator is MathematicalBinaryOperator &&
-            safetyMap.containsKey(Pair(expression.operator, expression.type())) && requiresSafety(expression)
+            safetyMap.containsKey(Pair(expression.operator, expression.type()))
         ) {
-            if (ids != null) {
-                logger.log { "Advanced reconditioning requires safety for binary expression $expression" }
-            }
+            val safetyId = safetyIdGenerator.newValue()
+            idsMap[safetyId] = expression
+            if (requiresSafety(safetyId)) {
+                if (ids != null) {
+                    logger.log { "$safetyId: Advanced reconditioning requires safety for binary expression $expression" }
+                }
 
-            FunctionMethodCallAST(
-                safetyMap[
-                    Pair(
-                        expression.operator,
-                        expression.type(),
-                    ),
-                ]!!.signature,
-                listOf(rexpr1, rexpr2),
-            )
+                FunctionMethodCallAST(
+                    safetyMap[
+                        Pair(
+                            expression.operator,
+                            expression.type(),
+                        ),
+                    ]!!.signature,
+                    listOf(rexpr1, rexpr2),
+                )
+            } else {
+                BinaryExpressionAST(rexpr1, expression.operator, rexpr2)
+            }
         } else {
             BinaryExpressionAST(rexpr1, expression.operator, rexpr2)
         }
@@ -185,21 +212,25 @@ class Reconditioner(private val logger: Logger, private val ids: Set<Int>? = nul
         )
 
     override fun reconditionIdentifier(identifierAST: IdentifierAST): IdentifierAST = when (identifierAST) {
-        is ArrayIndexAST -> if (requiresSafety(identifierAST)) {
-            // log advanced reconditioning applications
-            if (ids != null) {
-                logger.log { "Advanced reconditioning requires safety for array index $identifierAST" }
-            }
+        is ArrayIndexAST -> {
+            val safetyId = safetyIdGenerator.newValue()
+            idsMap[safetyId] = identifierAST
+            if (requiresSafety(safetyId)) {
+                // log advanced reconditioning applications
+                if (ids != null) {
+                    logger.log { "$safetyId: Advanced reconditioning requires safety for array index $identifierAST" }
+                }
 
-            ArrayIndexAST(
-                identifierAST.array,
-                FunctionMethodCallAST(
-                    SAFE_ARRAY_INDEX.signature,
-                    listOf(identifierAST.index, ArrayLengthAST(identifierAST.array)),
-                ),
-            )
-        } else {
-            identifierAST
+                ArrayIndexAST(
+                    identifierAST.array,
+                    FunctionMethodCallAST(
+                        SAFE_ARRAY_INDEX.signature,
+                        listOf(identifierAST.index, ArrayLengthAST(identifierAST.array)),
+                    ),
+                )
+            } else {
+                identifierAST
+            }
         }
 
         is ClassInstanceFieldAST -> ClassInstanceFieldAST(
