@@ -62,7 +62,7 @@ fun createArgParser(path: String, dir: String, logger: Logger): ArgParser {
 }
 
 fun main(args: Array<String>) {
-    val path = "output"
+    val path = "../output"
     val dir = UUID.randomUUID().toString()
     val logger = Logger(path, dir)
     val parser = createArgParser(path, dir, logger)

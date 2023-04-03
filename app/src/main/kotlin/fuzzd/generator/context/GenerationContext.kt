@@ -1,5 +1,6 @@
 package fuzzd.generator.context
 
+import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGenerator
@@ -18,6 +19,15 @@ data class GenerationContext(
     val onDemandIdentifiers: Boolean = true,
     private val dependentStatements: MutableList<StatementAST.DeclarationAST> = mutableListOf(),
 ) {
+    private lateinit var globalState: ClassAST
+
+    fun globalState() = globalState
+
+    fun setGlobalState(globalState: ClassAST): GenerationContext {
+        this.globalState = globalState
+        return this
+    }
+
     fun addDependentStatement(statement: StatementAST.DeclarationAST) {
         dependentStatements.add(statement)
     }
@@ -39,7 +49,7 @@ data class GenerationContext(
             methodContext,
             onDemandIdentifiers,
             dependentStatements,
-        )
+        ).setGlobalState(globalState)
 
     fun increaseStatementDepth(): GenerationContext =
         GenerationContext(
@@ -51,7 +61,7 @@ data class GenerationContext(
             loopCounterGenerator,
             methodContext,
             onDemandIdentifiers,
-        )
+        ).setGlobalState(globalState)
 
     fun disableOnDemand(): GenerationContext =
         GenerationContext(
@@ -64,5 +74,5 @@ data class GenerationContext(
             methodContext,
             false,
             dependentStatements,
-        )
+        ).setGlobalState(globalState)
 }

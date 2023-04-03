@@ -1,10 +1,11 @@
 ## TODO
     
-- Test case reduction workflow
+- ~~Test case reduction workflow~~
   - unnecessary while loop limiter removal
+- dafny interpreter
 - instrumenting Dafny
-- checksum within control flow?
-- Better internal object field use representation 
+- ~~checksum within control flow?~~
+- ~~Better internal object field use representation~~
 - ~~Dafny visitor~~
   - ~~ternary expressions~~
   - ~~multi-declaration, multi-assign~~

@@ -60,9 +60,7 @@ class SelectionManager(
             if (withProbability(0.0 / depth)) {
                 selectArrayTypeWithDepth(context, depth + 1)
             } else {
-                selectLiteralType(
-                    context,
-                )
+                selectLiteralType(context)
             }
         return ArrayType(innerType)
     }
@@ -216,6 +214,8 @@ class SelectionManager(
 
     fun selectNumberOfFields() = random.nextInt(0, MAX_FIELDS)
 
+    fun selectNumberOfGlobalFields() = random.nextInt(0, MAX_GLOBAL_FIELDS)
+
     fun selectNumberOfFunctionMethods() = random.nextInt(0, MAX_FUNCTION_METHODS)
 
     fun selectNumberOfMethods() = random.nextInt(0, MAX_METHODS)
@@ -239,6 +239,7 @@ class SelectionManager(
         private const val MAX_PARAMETERS = 15
         private const val MAX_RETURNS = 15
         private const val MAX_FIELDS = 5
+        private const val MAX_GLOBAL_FIELDS = 15
         private const val MAX_FUNCTION_METHODS = 10
         private const val MAX_METHODS = 3
         private const val MAX_TRAITS = 3
