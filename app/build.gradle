@@ -50,6 +50,17 @@ application {
     mainClass = 'fuzzd.MainKt'
 }
 
+jar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    manifest {
+        attributes['Main-Class'] = 'fuzzd.MainKt'
+    }
+
+    dependsOn(configurations.runtimeClasspath)
+    from { configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+}
+
 generateGrammarSource {
     arguments += ['-no-listener', '-visitor']
 }
