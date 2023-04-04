@@ -26,7 +26,7 @@ import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
-import fuzzd.generator.ast.operators.BinaryOperator.MapMembershipOperator
+import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MultiplicationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
@@ -51,7 +51,7 @@ val ADVANCED_STATE_FIELD = ClassInstanceFieldAST(ADVANCED_STATE, STATE)
 private val PRINT_UPDATE_STATE = IfStatementAST(
     BinaryExpressionAST(
         UnaryExpressionAST(
-            BinaryExpressionAST(ID, MapMembershipOperator, ADVANCED_STATE_FIELD),
+            BinaryExpressionAST(ID, MembershipOperator, ADVANCED_STATE_FIELD),
             NotOperator,
         ),
         DisjunctionOperator,

@@ -22,7 +22,7 @@ sealed class Type : ASTElement {
         class ArrayType(val internalType: Type) : ConstructorType() {
             override fun equals(other: Any?): Boolean {
                 return other != null && other is ArrayType &&
-                        other.internalType == internalType
+                    other.internalType == internalType
             }
 
             override fun hashCode(): Int {
@@ -44,6 +44,14 @@ sealed class Type : ASTElement {
             result = 31 * result + valueType.hashCode()
             return result
         }
+    }
+
+    class SetType(val innerType: Type) : Type() {
+        override fun toString(): String = "set<$innerType>"
+
+        override fun equals(other: Any?): Boolean = other is SetType && other.innerType == innerType
+
+        override fun hashCode(): Int = innerType.hashCode()
     }
 
     class MethodReturnType(val types: List<Type>) : Type() {

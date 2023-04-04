@@ -77,27 +77,27 @@ class SelectionManager(
     // selects operator, returning the operator and a selected input type for inner expressions
     fun selectBinaryOperator(targetType: Type): Pair<BinaryOperator, Type> =
         when (targetType) {
-            BoolType ->
-                if (random.nextBoolean()) {
-                    val subclasses = BinaryOperator.BooleanBinaryOperator::class.sealedSubclasses
-                    val selectedIndex = random.nextInt(subclasses.size)
-                    Pair(subclasses[selectedIndex].objectInstance!!, BoolType)
-                } else {
-                    val subclasses = BinaryOperator.ComparisonBinaryOperator::class.sealedSubclasses
-                    val subclass = subclasses[random.nextInt(subclasses.size)].objectInstance!!
-                    val supportedInputTypes = subclass.supportedInputTypes()
-                    val inputType = supportedInputTypes[random.nextInt(supportedInputTypes.size)]
-
-                    Pair(subclass, inputType)
-                }
-
-            IntType/*, RealType, CharType*/ -> {
-                val subclassInstances = BinaryOperator.MathematicalBinaryOperator::class.sealedSubclasses
-                    .mapNotNull { it.objectInstance }
-                    .filter { targetType in it.supportedInputTypes() }
-                val selectedIndex = random.nextInt(subclassInstances.size)
-                Pair(subclassInstances[selectedIndex], targetType)
-            }
+//            BoolType ->
+//                if (random.nextBoolean()) {
+//                    val subclasses = BinaryOperator.BooleanBinaryOperator::class.sealedSubclasses
+//                    val selectedIndex = random.nextInt(subclasses.size)
+//                    Pair(subclasses[selectedIndex].objectInstance!!, BoolType)
+//                } else {
+//                    val subclasses = BinaryOperator.ComparisonBinaryOperator::class.sealedSubclasses
+//                    val subclass = subclasses[random.nextInt(subclasses.size)].objectInstance!!
+//                    val supportedInputTypes = subclass.supportedInputTypes()
+//                    val inputType = supportedInputTypes[random.nextInt(supportedInputTypes.size)]
+//
+//                    Pair(subclass, inputType)
+//                }
+//
+//            IntType/*, RealType, CharType*/ -> {
+//                val subclassInstances = BinaryOperator.MathematicalBinaryOperator::class.sealedSubclasses
+//                    .mapNotNull { it.objectInstance }
+//                    .filter { targetType in it.supportedInputTypes() }
+//                val selectedIndex = random.nextInt(subclassInstances.size)
+//                Pair(subclassInstances[selectedIndex], targetType)
+//            }
 
             else -> throw UnsupportedOperationException("Target type $targetType not supported for binary operations")
         }

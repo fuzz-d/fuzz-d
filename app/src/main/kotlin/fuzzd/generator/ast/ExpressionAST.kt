@@ -9,6 +9,7 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.StringType
 import fuzzd.generator.ast.error.InvalidFormatException
 import fuzzd.generator.ast.error.InvalidInputException
@@ -280,6 +281,20 @@ sealed class ExpressionAST : ASTElement {
         }
 
         override fun toString(): String = "$map[$key := $value]"
+    }
+
+    class SetDisplayAST(val innerType: Type, val exprs: List<ExpressionAST>) : ExpressionAST() {
+        init {
+            exprs.indices.forEach { i ->
+                if (exprs[i].type() != innerType) {
+                    throw InvalidInputException("Invalid expression type at elem $i for set display. Expected $innerType, got ${exprs[i].type()}")
+                }
+            }
+        }
+
+        override fun type(): Type = SetType(innerType)
+
+        override fun toString(): String = "{${exprs.joinToString(", ")}}"
     }
 
     class ArrayLengthAST(val array: IdentifierAST) : ExpressionAST() {

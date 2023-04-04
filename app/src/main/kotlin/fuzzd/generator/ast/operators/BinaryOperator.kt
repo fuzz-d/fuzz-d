@@ -4,7 +4,9 @@ import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
+import fuzzd.generator.ast.Type.SetType
 
 /**
  * Supported operators with associated precedences taken from documentation
@@ -22,14 +24,10 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
 
     abstract fun supportsInput(t1: Type, t2: Type): Boolean
 
-    abstract fun supportedInputTypes(): List<Type>
-
     override fun toString(): String = symbol
 
     /* -------------------------------------- Logical Binary Operators -------------------------------------- */
     sealed class BooleanBinaryOperator(precedence: Int, symbol: String) : BinaryOperator(precedence, symbol) {
-        override fun supportedInputTypes(): List<Type> = listOf(BoolType)
-
         override fun supportsInput(t1: Type, t2: Type): Boolean =
             t1 == BoolType && t2 == BoolType
     }
@@ -41,13 +39,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     object DisjunctionOperator : BooleanBinaryOperator(3, "||")
 
     sealed class ComparisonBinaryOperator(symbol: String) : BinaryOperator(4, symbol) {
-        private val supportedInputTypes = listOf(IntType/*, CharType, RealType*/)
-
-        override fun supportedInputTypes(): List<Type> = supportedInputTypes
-
-        override fun supportsInput(t1: Type, t2: Type): Boolean =
-            t1 == t2 && t1 in supportedInputTypes
-
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && t1 is LiteralType
         override fun outputType(t1: Type, t2: Type): Type = BoolType
     }
 
@@ -63,37 +55,57 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     sealed class MathematicalBinaryOperator(
         precedence: Int,
         symbol: String,
-        private val supportedInputTypes: List<Type> = listOf(IntType/*, RealType*/),
     ) : BinaryOperator(precedence, symbol) {
-        override fun supportedInputTypes(): List<Type> = supportedInputTypes
-
-        override fun supportsInput(t1: Type, t2: Type): Boolean =
-            t1 == t2 && t1 in supportedInputTypes
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && t1 == IntType
     }
 
-    object AdditionOperator : MathematicalBinaryOperator(1, "+"/*, listOf(IntType, CharType, RealType)*/)
-    object SubtractionOperator : MathematicalBinaryOperator(1, "-"/*, listOf(IntType, CharType, RealType)*/)
+    object AdditionOperator : MathematicalBinaryOperator(1, "+")
+    object SubtractionOperator : MathematicalBinaryOperator(1, "-")
     object MultiplicationOperator : MathematicalBinaryOperator(2, "*")
     object DivisionOperator : MathematicalBinaryOperator(2, "/")
-    object ModuloOperator : MathematicalBinaryOperator(2, "%"/*, listOf(IntType)*/)
+    object ModuloOperator : MathematicalBinaryOperator(2, "%")
+
+    /* ------------------------------ DATA STRUCTURE OPERATORS -------------------------------- */
+
+    sealed class DataStructureBinaryOperator(precedence: Int, symbol: String) : BinaryOperator(precedence, symbol) {
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MapType)
+    }
+
+    object MembershipOperator : DataStructureBinaryOperator(4, "in")
+    object AntiMembershipOperator : DataStructureBinaryOperator(4, "!in")
+    object DataStructureEqualityOperator : DataStructureBinaryOperator(4, "==")
+    object DataStructureInequalityOperator : DataStructureBinaryOperator(4, "!=")
+
+    sealed class DataStructureComparisonOperator(symbol: String) : DataStructureBinaryOperator(4, symbol) {
+        override fun outputType(t1: Type, t2: Type): Type = BoolType
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && t1 is SetType
+    }
+
+    object ProperSubsetOperator : DataStructureComparisonOperator("<")
+    object SubsetOperator : DataStructureComparisonOperator("<=")
+    object SupersetOperator : DataStructureComparisonOperator(">=")
+    object ProperSupersetOperator : DataStructureComparisonOperator(">")
+
+    sealed class DataStructureMathematicalOperator(precedence: Int, symbol: String) : DataStructureBinaryOperator(precedence, symbol) {
+        override fun outputType(t1: Type, t2: Type): Type = t1
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && t1 is SetType
+    }
+
+    object DisjointOperator : DataStructureMathematicalOperator(4, "!!")
+    object UnionOperator : DataStructureMathematicalOperator(6, "+") {
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MapType)
+    }
+    object DifferenceOperator : DataStructureMathematicalOperator(6, "-")
+    object IntersectionOperator : DataStructureMathematicalOperator(7, "*")
 
     companion object {
         fun isBinaryType(type: Type): Boolean {
             return BinaryOperator::class.sealedSubclasses
                 .any { opType ->
                     opType.sealedSubclasses.any { op ->
-                        type in (op.objectInstance?.supportedInputTypes() ?: emptyList())
+                        op.objectInstance?.supportsInput(type, type) ?: false
                     }
                 }
         }
-    }
-
-    object MapMembershipOperator : BinaryOperator(5, "in") {
-
-        override fun outputType(t1: Type, t2: Type): Type = BoolType
-
-        override fun supportsInput(t1: Type, t2: Type): Boolean = t2 is MapType
-
-        override fun supportedInputTypes(): List<Type> = throw UnsupportedOperationException()
     }
 }
