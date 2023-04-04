@@ -14,8 +14,12 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
+import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
+import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
@@ -44,7 +48,9 @@ import fuzzd.generator.ast.Type.ConstructorType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
+import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
 import fuzzd.generator.ast.error.MethodOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ClassNameGenerator
@@ -681,6 +687,44 @@ class Generator(
         val index = IntegerLiteralAST(generateDecimalLiteralValue(false), false)
 
         return ArrayIndexAST(identifier, index)
+    }
+
+    override fun generateSetDisplay(context: GenerationContext, targetType: Type): SetDisplayAST {
+        val setType = targetType as SetType
+        val numberOfExpressions = selectionManager.selectNumberOfParameters()
+        val exprs =
+            (1..numberOfExpressions).map { generateExpression(context.increaseExpressionDepth(), setType.innerType) }
+        return SetDisplayAST(setType.innerType, exprs)
+    }
+
+    override fun generateMapConstructor(context: GenerationContext, targetType: Type): MapConstructorAST {
+        val mapType = targetType as MapType
+        val numberOfExpressions = selectionManager.selectNumberOfParameters()
+        val assigns = (1..numberOfExpressions).map {
+            Pair(
+                generateExpression(context.increaseExpressionDepth(), mapType.keyType),
+                generateExpression(context.increaseExpressionDepth(), mapType.valueType),
+            )
+        }
+
+        return MapConstructorAST(mapType.keyType, mapType.valueType, assigns)
+    }
+
+    override fun generateMapIndexAssign(context: GenerationContext, targetType: Type): MapIndexAssignAST {
+        val mapType = targetType as MapType
+        val map = generateIdentifier(context, mapType)
+        val index = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
+        val newValue = generateExpression(context.increaseExpressionDepth(), targetType.valueType)
+
+        return MapIndexAssignAST(map, index, newValue)
+    }
+
+    override fun generateMapIndex(context: GenerationContext, targetType: Type): MapIndexAST {
+        val mapType = targetType as MapType
+        val map = generateIdentifier(context, mapType)
+        val index = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
+
+        return MapIndexAST(map, index)
     }
 
     override fun generateUnaryExpression(
