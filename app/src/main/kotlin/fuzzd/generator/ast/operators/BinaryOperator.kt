@@ -71,10 +71,16 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
         override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MapType)
     }
 
-    object MembershipOperator : DataStructureBinaryOperator(4, "in")
-    object AntiMembershipOperator : DataStructureBinaryOperator(4, "!in")
     object DataStructureEqualityOperator : DataStructureBinaryOperator(4, "==")
     object DataStructureInequalityOperator : DataStructureBinaryOperator(4, "!=")
+
+    sealed class DataStructureMembershipOperator(symbol: String) : BinaryOperator(4, symbol) {
+        override fun outputType(t1: Type, t2: Type): Type = BoolType
+        override fun supportsInput(t1: Type, t2: Type) = t2 is SetType && t1 == t2.innerType
+    }
+
+    object MembershipOperator : DataStructureBinaryOperator(4, "in")
+    object AntiMembershipOperator : DataStructureBinaryOperator(4, "!in")
 
     sealed class DataStructureComparisonOperator(symbol: String) : DataStructureBinaryOperator(4, symbol) {
         override fun outputType(t1: Type, t2: Type): Type = BoolType
@@ -86,7 +92,8 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     object SupersetOperator : DataStructureComparisonOperator(">=")
     object ProperSupersetOperator : DataStructureComparisonOperator(">")
 
-    sealed class DataStructureMathematicalOperator(precedence: Int, symbol: String) : DataStructureBinaryOperator(precedence, symbol) {
+    sealed class DataStructureMathematicalOperator(precedence: Int, symbol: String) :
+        DataStructureBinaryOperator(precedence, symbol) {
         override fun outputType(t1: Type, t2: Type): Type = t1
         override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && t1 is SetType
     }
@@ -95,6 +102,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     object UnionOperator : DataStructureMathematicalOperator(6, "+") {
         override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MapType)
     }
+
     object DifferenceOperator : DataStructureMathematicalOperator(6, "-")
     object IntersectionOperator : DataStructureMathematicalOperator(7, "*")
 

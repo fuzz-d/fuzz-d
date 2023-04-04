@@ -698,9 +698,9 @@ class Generator(
         targetType: Type,
     ): BinaryExpressionAST {
         val nextDepthContext = context.increaseExpressionDepth()
-        val (operator, inputType) = selectionManager.selectBinaryOperator(targetType)
-        val expr1 = generateExpression(nextDepthContext, inputType)
-        val expr2 = generateExpression(nextDepthContext, inputType)
+        val (operator, type) = selectionManager.selectBinaryOperator(context, targetType)
+        val expr1 = generateExpression(nextDepthContext, type.first)
+        val expr2 = generateExpression(nextDepthContext, type.second)
 
         return BinaryExpressionAST(expr1, operator, expr2)
     }

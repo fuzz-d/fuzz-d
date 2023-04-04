@@ -6,11 +6,18 @@ import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
+import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
+import fuzzd.generator.ast.operators.BinaryOperator.BooleanBinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.Companion.isBinaryType
+import fuzzd.generator.ast.operators.BinaryOperator.ComparisonBinaryOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DataStructureBinaryOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DataStructureMembershipOperator
+import fuzzd.generator.ast.operators.BinaryOperator.UnionOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator.Companion.isUnaryType
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
@@ -29,6 +36,7 @@ import fuzzd.generator.selection.StatementType.DECLARATION
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.METHOD_CALL
 import fuzzd.generator.selection.StatementType.WHILE
+import fuzzd.utils.unionAll
 import kotlin.random.Random
 
 class SelectionManager(
@@ -38,12 +46,12 @@ class SelectionManager(
         val selection = listOf<Pair<(GenerationContext) -> Type, Double>>(
 //            this::selectClassType to 0.0,
 //            this::selectTraitType to 0.0,
-            this::selectArrayType to if (literalOnly) 0.0 else 0.2,
-            this::selectLiteralType to if (literalOnly) 1.0 else 0.8,
+            this::selectArrayType to if (literalOnly) 0.0 else 0.1,
+            this::selectDataStructureType to 0.2,
+            this::selectLiteralType to if (literalOnly) 0.8 else 0.7,
         )
 
-        val selected = randomWeightedSelection(selection).invoke(context)
-        return selected
+        return randomWeightedSelection(selection).invoke(context)
     }
 
     private fun selectClassType(context: GenerationContext): ClassType =
@@ -51,6 +59,18 @@ class SelectionManager(
 
     private fun selectTraitType(context: GenerationContext): TraitType =
         TraitType(randomSelection(context.functionSymbolTable.traits().toList()))
+
+    private fun selectDataStructureType(context: GenerationContext): Type =
+        randomWeightedSelection(
+            listOf<Pair<(GenerationContext) -> Type, Double>>(
+                this::selectSetType to 0.5,
+                this::selectMapType to 0.5,
+            ),
+        ).invoke(context)
+
+    private fun selectSetType(context: GenerationContext): SetType = SetType(selectType(context))
+
+    private fun selectMapType(context: GenerationContext): MapType = MapType(selectType(context), selectType(context))
 
     private fun selectArrayType(context: GenerationContext): ArrayType = selectArrayTypeWithDepth(context, 1)
 
@@ -75,29 +95,58 @@ class SelectionManager(
     }
 
     // selects operator, returning the operator and a selected input type for inner expressions
-    fun selectBinaryOperator(targetType: Type): Pair<BinaryOperator, Type> =
+    fun selectBinaryOperator(context: GenerationContext, targetType: Type): Pair<BinaryOperator, Pair<Type, Type>> =
         when (targetType) {
-//            BoolType ->
-//                if (random.nextBoolean()) {
-//                    val subclasses = BinaryOperator.BooleanBinaryOperator::class.sealedSubclasses
-//                    val selectedIndex = random.nextInt(subclasses.size)
-//                    Pair(subclasses[selectedIndex].objectInstance!!, BoolType)
-//                } else {
-//                    val subclasses = BinaryOperator.ComparisonBinaryOperator::class.sealedSubclasses
-//                    val subclass = subclasses[random.nextInt(subclasses.size)].objectInstance!!
-//                    val supportedInputTypes = subclass.supportedInputTypes()
-//                    val inputType = supportedInputTypes[random.nextInt(supportedInputTypes.size)]
-//
-//                    Pair(subclass, inputType)
-//                }
-//
-//            IntType/*, RealType, CharType*/ -> {
-//                val subclassInstances = BinaryOperator.MathematicalBinaryOperator::class.sealedSubclasses
-//                    .mapNotNull { it.objectInstance }
-//                    .filter { targetType in it.supportedInputTypes() }
-//                val selectedIndex = random.nextInt(subclassInstances.size)
-//                Pair(subclassInstances[selectedIndex], targetType)
-//            }
+            BoolType -> {
+                val subclasses = BinaryOperator::class.sealedSubclasses
+                val subclassInstances = subclasses.map { it.sealedSubclasses }.unionAll()
+                    .mapNotNull { it.objectInstance }
+                    .filter { it.outputType(targetType, targetType) == BoolType }
+                val selectedIndex = random.nextInt(subclassInstances.size)
+
+                when (val selectedSubclass = subclassInstances[selectedIndex]) {
+                    is BooleanBinaryOperator -> Pair(selectedSubclass, Pair(BoolType, BoolType))
+                    is ComparisonBinaryOperator -> Pair(selectedSubclass, Pair(IntType, IntType))
+                    is DataStructureMembershipOperator -> {
+                        val dataStructureType = selectDataStructureType(context)
+                        Pair(
+                            selectedSubclass,
+                            if (dataStructureType is SetType) {
+                                Pair(
+                                    dataStructureType.innerType,
+                                    dataStructureType,
+                                )
+                            } else {
+                                Pair((dataStructureType as MapType).keyType, dataStructureType)
+                            },
+                        )
+                    }
+
+                    is DataStructureBinaryOperator -> {
+                        val dataStructureType = selectDataStructureType(context)
+                        Pair(selectedSubclass, Pair(dataStructureType, dataStructureType))
+                    }
+
+                    else -> throw UnsupportedOperationException()
+                }
+            }
+
+            is SetType -> {
+                val subclassInstances = BinaryOperator.DataStructureMathematicalOperator::class.sealedSubclasses
+                    .mapNotNull { it.objectInstance }
+                val selectedIndex = random.nextInt(subclassInstances.size)
+                Pair(subclassInstances[selectedIndex], Pair(targetType, targetType))
+            }
+
+            is MapType -> Pair(UnionOperator, Pair(targetType, targetType))
+
+            IntType -> {
+                val subclassInstances = BinaryOperator.MathematicalBinaryOperator::class.sealedSubclasses
+                    .mapNotNull { it.objectInstance }
+                    .filter { it.supportsInput(targetType, targetType) }
+                val selectedIndex = random.nextInt(subclassInstances.size)
+                Pair(subclassInstances[selectedIndex], Pair(targetType, targetType))
+            }
 
             else -> throw UnsupportedOperationException("Target type $targetType not supported for binary operations")
         }
