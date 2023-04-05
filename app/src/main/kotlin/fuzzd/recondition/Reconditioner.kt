@@ -13,7 +13,11 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
+import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
@@ -56,10 +60,10 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
         return DafnyAST(
             reconditionedTraits +
-                reconditionedClasses +
-                reconditionedFunctionMethods +
-                reconditionedMethods +
-                reconditionedMain,
+                    reconditionedClasses +
+                    reconditionedFunctionMethods +
+                    reconditionedMethods +
+                    reconditionedMain,
         )
     }
 
@@ -165,6 +169,9 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is ArrayLengthAST -> reconditionArrayLengthAST(expression)
         is NonVoidMethodCallAST -> reconditionNonVoidMethodCallAST(expression)
         is FunctionMethodCallAST -> reconditionFunctionMethodCall(expression)
+        is SetDisplayAST -> reconditionSetDisplay(expression)
+        is MapConstructorAST -> reconditionMapConstructor(expression)
+        is MapIndexAssignAST -> reconditionMapIndexAssign(expression)
         else -> throw UnsupportedOperationException() // TODO ??
     }
 
@@ -233,6 +240,11 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             }
         }
 
+        is MapIndexAST -> MapIndexAST(
+            reconditionIdentifier(identifierAST.map),
+            reconditionExpression(identifierAST.key)
+        )
+
         is ClassInstanceFieldAST -> ClassInstanceFieldAST(
             reconditionIdentifier(identifierAST.classInstance),
             reconditionIdentifier(identifierAST.classField),
@@ -262,4 +274,21 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             nonVoidMethodCall.method,
             nonVoidMethodCall.params.map(this::reconditionExpression),
         )
+
+    override fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): ExpressionAST = SetDisplayAST(
+        setDisplayAST.innerType,
+        setDisplayAST.exprs.map(this::reconditionExpression)
+    )
+
+    override fun reconditionMapConstructor(mapConstructorAST: MapConstructorAST): MapConstructorAST = MapConstructorAST(
+        mapConstructorAST.keyType,
+        mapConstructorAST.valueType,
+        mapConstructorAST.assignments.map { (k, v) -> Pair(reconditionExpression(k), reconditionExpression(v)) }
+    )
+
+    override fun reconditionMapIndexAssign(mapIndexAssignAST: MapIndexAssignAST): MapIndexAssignAST = MapIndexAssignAST(
+        reconditionIdentifier(mapIndexAssignAST.map),
+        reconditionExpression(mapIndexAssignAST.key),
+        reconditionExpression(mapIndexAssignAST.value)
+    )
 }

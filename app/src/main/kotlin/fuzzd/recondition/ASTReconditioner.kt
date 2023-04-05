@@ -9,7 +9,11 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
@@ -78,4 +82,10 @@ interface ASTReconditioner {
     fun reconditionArrayLengthAST(arrayLengthAST: ArrayLengthAST): ExpressionAST
 
     fun reconditionNonVoidMethodCallAST(nonVoidMethodCall: NonVoidMethodCallAST): ExpressionAST
+
+    fun reconditionSetDisplay(setDisplayAST: SetDisplayAST) : ExpressionAST
+
+    fun reconditionMapConstructor(mapConstructorAST: MapConstructorAST): MapConstructorAST
+
+    fun reconditionMapIndexAssign(mapIndexAssignAST: MapIndexAssignAST): MapIndexAssignAST
 }
