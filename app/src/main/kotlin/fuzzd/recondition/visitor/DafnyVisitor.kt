@@ -442,6 +442,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.arrayLength() != null -> visitArrayLength(ctx.arrayLength())
         ctx.setDisplay() != null -> visitSetDisplay(ctx.setDisplay())
         ctx.mapConstructor() != null -> visitMapConstructor(ctx.mapConstructor())
+        ctx.mapIndexAssign() != null -> visitMapIndexAssign(ctx.mapIndexAssign())
 
         ctx.ADD() != null -> {
             val expr1 = visitExpression(ctx.expression(0))
