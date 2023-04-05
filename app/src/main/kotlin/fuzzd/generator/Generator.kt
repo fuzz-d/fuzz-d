@@ -308,7 +308,7 @@ class Generator(
 
         val parameterNameGenerator = ParameterNameGenerator()
         val returnType = targetType ?: generateType(context.disableOnDemand())
-        var parameters = (1..numberOfParameters).map {
+        val parameters = (1..numberOfParameters).map {
             IdentifierAST(
                 parameterNameGenerator.newValue(),
                 generateType(context.disableOnDemand()),
@@ -344,7 +344,7 @@ class Generator(
         val parameters = (1..numberOfParameters).map {
             IdentifierAST(
                 parameterNameGenerator.newValue(),
-                generateType(context, literalOnly = true),
+                generateType(context),
                 mutable = false,
                 initialised = true,
             )
@@ -460,7 +460,7 @@ class Generator(
     }
 
     override fun generatePrintStatement(context: GenerationContext): PrintAST {
-        val targetType = generateType(context, literalOnly = true)
+        val targetType = generateType(context.disableOnDemand())
         val safeExpr = generateExpression(context, targetType)
         return PrintAST(safeExpr)
     }
@@ -810,11 +810,7 @@ class Generator(
     }
 
     override fun generateType(context: GenerationContext, literalOnly: Boolean): Type =
-        if (!context.onDemandIdentifiers) {
-            selectionManager.randomSelection(listOf(IntType, BoolType))
-        } else {
-            selectionManager.selectType(context, literalOnly = literalOnly)
-        }
+        selectionManager.selectType(context, literalOnly = literalOnly)
 
     private fun generateDecimalLiteralValue(negative: Boolean = true): String {
         var value = selectionManager.selectDecimalLiteral()

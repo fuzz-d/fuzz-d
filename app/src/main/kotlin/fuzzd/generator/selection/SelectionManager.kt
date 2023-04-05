@@ -43,7 +43,7 @@ class SelectionManager(
     private val random: Random,
 ) {
     fun selectType(context: GenerationContext, literalOnly: Boolean = false): Type {
-        val selection = listOf<Pair<(GenerationContext) -> Type, Double>>(
+        val selection = listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
 //            this::selectClassType to 0.0,
 //            this::selectTraitType to 0.0,
             this::selectArrayType to if (literalOnly || !context.onDemandIdentifiers) 0.0 else 0.1,
@@ -51,7 +51,7 @@ class SelectionManager(
             this::selectLiteralType to if (literalOnly) 0.8 else 0.7,
         )
 
-        return randomWeightedSelection(selection).invoke(context)
+        return randomWeightedSelection(normaliseWeights(selection)).invoke(context, literalOnly)
     }
 
     private fun selectClassType(context: GenerationContext): ClassType =
@@ -60,19 +60,22 @@ class SelectionManager(
     private fun selectTraitType(context: GenerationContext): TraitType =
         TraitType(randomSelection(context.functionSymbolTable.traits().toList()))
 
-    private fun selectDataStructureType(context: GenerationContext): Type =
+    private fun selectDataStructureType(context: GenerationContext, literalOnly: Boolean): Type =
         randomWeightedSelection(
-            listOf<Pair<(GenerationContext) -> Type, Double>>(
+            listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
                 this::selectSetType to 0.5,
                 this::selectMapType to 0.5,
             ),
-        ).invoke(context)
+        ).invoke(context, literalOnly)
 
-    private fun selectSetType(context: GenerationContext): SetType = SetType(selectType(context))
+    private fun selectSetType(context: GenerationContext, literalOnly: Boolean): SetType =
+        SetType(selectType(context, literalOnly))
 
-    private fun selectMapType(context: GenerationContext): MapType = MapType(selectType(context), selectType(context))
+    private fun selectMapType(context: GenerationContext, literalOnly: Boolean): MapType =
+        MapType(selectType(context, literalOnly), selectType(context, literalOnly))
 
-    private fun selectArrayType(context: GenerationContext): ArrayType = selectArrayTypeWithDepth(context, 1)
+    private fun selectArrayType(context: GenerationContext, literalOnly: Boolean): ArrayType =
+        selectArrayTypeWithDepth(context, 1)
 
     private fun selectArrayTypeWithDepth(context: GenerationContext, depth: Int): ArrayType {
         // TODO: Multi dimensional arrays
@@ -80,13 +83,13 @@ class SelectionManager(
             if (withProbability(0.0 / depth)) {
                 selectArrayTypeWithDepth(context, depth + 1)
             } else {
-                selectLiteralType(context)
+                selectLiteralType(context, false)
             }
         return ArrayType(innerType)
     }
 
     @Suppress("UNUSED_PARAMETER")
-    private fun selectLiteralType(context: GenerationContext): LiteralType =
+    private fun selectLiteralType(context: GenerationContext, literalOnly: Boolean): LiteralType =
         randomSelection(LITERAL_TYPES)
 
     fun selectMethodReturnType(context: GenerationContext): List<Type> {
@@ -108,7 +111,7 @@ class SelectionManager(
                     is BooleanBinaryOperator -> Pair(selectedSubclass, Pair(BoolType, BoolType))
                     is ComparisonBinaryOperator -> Pair(selectedSubclass, Pair(IntType, IntType))
                     is DataStructureMembershipOperator -> {
-                        val dataStructureType = selectDataStructureType(context)
+                        val dataStructureType = selectDataStructureType(context, false)
                         Pair(
                             selectedSubclass,
                             if (dataStructureType is SetType) {
@@ -123,7 +126,7 @@ class SelectionManager(
                     }
 
                     is DataStructureBinaryOperator -> {
-                        val dataStructureType = selectDataStructureType(context)
+                        val dataStructureType = selectDataStructureType(context, false)
                         Pair(selectedSubclass, Pair(dataStructureType, dataStructureType))
                     }
 
@@ -197,7 +200,8 @@ class SelectionManager(
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
-        val functionMethodCallProbability = if (!context.onDemandIdentifiers) 0.15 / context.expressionDepth else 0.0
+        val functionMethodCallProbability =
+            if (!targetType.hasArrayType() && context.onDemandIdentifiers) 0.15 / context.expressionDepth else 0.0
         val ternaryProbability = 0.07 / context.expressionDepth
 
         val remainingProbability =
@@ -234,7 +238,7 @@ class SelectionManager(
         var weightSum = 0.0
 
         items.forEach { item -> weightSum += item.second }
-        return items.map { item -> Pair(item.first, item.second / weightSum) }
+        return items.mapNotNull { item -> if (item.second == 0.0) null else Pair(item.first, item.second / weightSum) }
     }
 
     fun <T> randomSelection(items: List<T>): T {

@@ -45,8 +45,6 @@ class FuzzRunner(private val outputPath: String, private val outputDir: String, 
                 )
 
                 logger.log { validationResult }
-            } else {
-                println(ast)
             }
         } catch (e: Exception) {
             // do nothing

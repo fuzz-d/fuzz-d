@@ -2,6 +2,8 @@ package fuzzd.generator.ast
 
 sealed class Type : ASTElement {
 
+    open fun hasArrayType(): Boolean = false
+
     class ClassType(val clazz: ClassAST) : Type() {
         override fun equals(other: Any?): Boolean = other is ClassType && other.clazz == this.clazz
 
@@ -20,6 +22,8 @@ sealed class Type : ASTElement {
 
     sealed class ConstructorType : Type() {
         class ArrayType(val internalType: Type) : ConstructorType() {
+            override fun hasArrayType() = true
+
             override fun equals(other: Any?): Boolean {
                 return other != null && other is ArrayType &&
                     other.internalType == internalType
@@ -34,6 +38,8 @@ sealed class Type : ASTElement {
     }
 
     class MapType(val keyType: Type, val valueType: Type) : Type() {
+        override fun hasArrayType(): Boolean = keyType.hasArrayType() || valueType.hasArrayType()
+
         override fun toString() = "map<$keyType, $valueType>"
 
         override fun equals(other: Any?): Boolean =
@@ -47,6 +53,8 @@ sealed class Type : ASTElement {
     }
 
     class SetType(val innerType: Type) : Type() {
+        override fun hasArrayType(): Boolean = innerType.hasArrayType()
+
         override fun toString(): String = "set<$innerType>"
 
         override fun equals(other: Any?): Boolean = other is SetType && other.innerType == innerType
