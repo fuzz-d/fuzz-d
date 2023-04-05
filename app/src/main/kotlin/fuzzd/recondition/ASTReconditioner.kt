@@ -86,6 +86,4 @@ interface ASTReconditioner {
     fun reconditionSetDisplay(setDisplayAST: SetDisplayAST) : ExpressionAST
 
     fun reconditionMapConstructor(mapConstructorAST: MapConstructorAST): MapConstructorAST
-
-    fun reconditionMapIndexAssign(mapIndexAssignAST: MapIndexAssignAST): MapIndexAssignAST
 }

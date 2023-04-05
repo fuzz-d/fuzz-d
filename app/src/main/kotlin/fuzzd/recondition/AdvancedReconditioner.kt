@@ -16,7 +16,10 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
@@ -214,7 +217,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
         return identifierDependents + exprDependents +
-            MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMultiTypedDeclaration(multiTypedDeclarationAST: MultiTypedDeclarationAST): List<StatementAST> {
@@ -232,7 +235,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
 
         return identifierDependents + exprDependents +
-            MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionIfStatement(ifStatementAST: IfStatementAST): List<StatementAST> {
@@ -294,6 +297,8 @@ class AdvancedReconditioner {
             is ArrayLengthAST -> reconditionArrayLength(expressionAST)
             is NonVoidMethodCallAST -> reconditionNonVoidMethodCall(expressionAST)
             is FunctionMethodCallAST -> reconditionFunctionMethodCall(expressionAST)
+            is SetDisplayAST -> reconditionSetDisplay(expressionAST)
+            is MapConstructorAST -> reconditionMapConstructor(expressionAST)
             else -> throw UnsupportedOperationException()
         }
 
@@ -368,6 +373,19 @@ class AdvancedReconditioner {
                 Pair(ArrayIndexAST(arr, temp), arrDependents + exprDependents + decl)
             }
 
+            is MapIndexAssignAST -> {
+                val (map, mapDependents) = reconditionIdentifier(identifierAST.map)
+                val (key, keyDependents) = reconditionExpression(identifierAST.key)
+                val (value, valueDependents) = reconditionExpression(identifierAST.value)
+                Pair(MapIndexAssignAST(map, key, value), mapDependents + keyDependents + valueDependents)
+            }
+
+            is MapIndexAST -> {
+                val (map, mapDependents) = reconditionIdentifier(identifierAST.map)
+                val (key, keyDependents) = reconditionExpression(identifierAST.key)
+                Pair(MapIndexAST(map, key), mapDependents + keyDependents)
+            }
+
             is ClassInstanceAST -> Pair(
                 ClassInstanceAST(classes.getValue(identifierAST.clazz.name), identifierAST.name),
                 emptyList(),
@@ -408,6 +426,25 @@ class AdvancedReconditioner {
         )
 
         return Pair(temp, allDependents)
+    }
+
+    fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): Pair<ExpressionAST, List<StatementAST>> {
+        val (exprs, exprDependents) = reconditionExpressionList(setDisplayAST.exprs)
+        return Pair(SetDisplayAST(setDisplayAST.innerType, exprs), exprDependents)
+    }
+
+    fun reconditionMapConstructor(mapConstructorAST: MapConstructorAST): Pair<ExpressionAST, List<StatementAST>> {
+        val (assigns, assignDependents) = mapConstructorAST.assignments.map { (k, v) ->
+            val (rk, kdeps) = reconditionExpression(k)
+            val (rv, vdeps) = reconditionExpression(v)
+            Pair(Pair(rk, rv), kdeps + vdeps)
+        }.fold(Pair(emptyList<Pair<ExpressionAST, ExpressionAST>>(), emptyList<StatementAST>())) { acc, l ->
+            Pair(acc.first + l.first, acc.second + l.second)
+        }
+        return Pair(
+            MapConstructorAST(mapConstructorAST.keyType, mapConstructorAST.valueType, assigns),
+            assignDependents
+        )
     }
 
     companion object {

@@ -171,7 +171,6 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is FunctionMethodCallAST -> reconditionFunctionMethodCall(expression)
         is SetDisplayAST -> reconditionSetDisplay(expression)
         is MapConstructorAST -> reconditionMapConstructor(expression)
-        is MapIndexAssignAST -> reconditionMapIndexAssign(expression)
         else -> throw UnsupportedOperationException() // TODO ??
     }
 
@@ -240,6 +239,12 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             }
         }
 
+        is MapIndexAssignAST -> MapIndexAssignAST(
+            reconditionIdentifier(identifierAST.map),
+            reconditionExpression(identifierAST.key),
+            reconditionExpression(identifierAST.value)
+        )
+
         is MapIndexAST -> MapIndexAST(
             reconditionIdentifier(identifierAST.map),
             reconditionExpression(identifierAST.key)
@@ -284,11 +289,5 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         mapConstructorAST.keyType,
         mapConstructorAST.valueType,
         mapConstructorAST.assignments.map { (k, v) -> Pair(reconditionExpression(k), reconditionExpression(v)) }
-    )
-
-    override fun reconditionMapIndexAssign(mapIndexAssignAST: MapIndexAssignAST): MapIndexAssignAST = MapIndexAssignAST(
-        reconditionIdentifier(mapIndexAssignAST.map),
-        reconditionExpression(mapIndexAssignAST.key),
-        reconditionExpression(mapIndexAssignAST.value)
     )
 }
