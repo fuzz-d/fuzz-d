@@ -46,11 +46,17 @@ import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DataStructureEqualityOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DataStructureInequalityOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DifferenceOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DisjointOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator
@@ -58,13 +64,20 @@ import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.IffOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ImplicationOperator
+import fuzzd.generator.ast.operators.BinaryOperator.IntersectionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.LessThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
+import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MultiplicationOperator
 import fuzzd.generator.ast.operators.BinaryOperator.NotEqualsOperator
+import fuzzd.generator.ast.operators.BinaryOperator.ProperSubsetOperator
+import fuzzd.generator.ast.operators.BinaryOperator.ProperSupersetOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ReverseImplicationOperator
+import fuzzd.generator.ast.operators.BinaryOperator.SubsetOperator
 import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.SupersetOperator
+import fuzzd.generator.ast.operators.BinaryOperator.UnionOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
@@ -430,15 +443,21 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             ctx.ternaryExpression() != null -> visitTernaryExpression(ctx.ternaryExpression())
             ctx.arrayLength() != null -> visitArrayLength(ctx.arrayLength())
 
-            ctx.ADD() != null -> BinaryExpressionAST(
-                visitExpression(ctx.expression(0)),
-                AdditionOperator,
-                visitExpression(ctx.expression(1)),
-            )
+            ctx.ADD() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(expr1, if (expr1.type() is LiteralType) AdditionOperator else UnionOperator, expr2)
+            }
 
             ctx.AND() != null -> BinaryExpressionAST(
                 visitExpression(ctx.expression(0)),
                 ConjunctionOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.DISJ() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                DisjointOperator,
                 visitExpression(ctx.expression(1)),
             )
 
@@ -448,23 +467,35 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
                 visitExpression(ctx.expression(1)),
             )
 
-            ctx.EQ() != null -> BinaryExpressionAST(
-                visitExpression(ctx.expression(0)),
-                EqualsOperator,
-                visitExpression(ctx.expression(1)),
-            )
+            ctx.EQ() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) EqualsOperator else DataStructureEqualityOperator,
+                    expr2
+                )
+            }
 
-            ctx.GEQ() != null -> BinaryExpressionAST(
-                visitExpression(ctx.expression(0)),
-                GreaterThanEqualOperator,
-                visitExpression(ctx.expression(1)),
-            )
+            ctx.GEQ() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) GreaterThanEqualOperator else SupersetOperator,
+                    expr2
+                )
+            }
 
-            ctx.GT() != null -> BinaryExpressionAST(
-                visitExpression(ctx.expression(0)),
-                GreaterThanOperator,
-                visitExpression(ctx.expression(1)),
-            )
+            ctx.GT() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) GreaterThanOperator else ProperSupersetOperator,
+                    expr2
+                )
+            }
 
             ctx.IFF() != null -> BinaryExpressionAST(
                 visitExpression(ctx.expression(0)),
@@ -478,17 +509,31 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
                 visitExpression(ctx.expression(1)),
             )
 
-            ctx.LEQ() != null -> BinaryExpressionAST(
+            ctx.IN() != null -> BinaryExpressionAST(
                 visitExpression(ctx.expression(0)),
-                LessThanEqualOperator,
+                MembershipOperator,
                 visitExpression(ctx.expression(1)),
             )
 
-            ctx.LT() != null -> BinaryExpressionAST(
-                visitExpression(ctx.expression(0)),
-                LessThanOperator,
-                visitExpression(ctx.expression(1)),
-            )
+            ctx.LEQ() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) LessThanEqualOperator else SubsetOperator,
+                    expr2
+                )
+            }
+
+            ctx.LT() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) LessThanOperator else ProperSubsetOperator,
+                    expr2
+                )
+            }
 
             ctx.MOD() != null -> BinaryExpressionAST(
                 visitExpression(ctx.expression(0)),
@@ -496,21 +541,39 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
                 visitExpression(ctx.expression(1)),
             )
 
-            ctx.MUL() != null -> BinaryExpressionAST(
-                visitExpression(ctx.expression(0)),
-                MultiplicationOperator,
-                visitExpression(ctx.expression(1)),
-            )
+            ctx.MUL() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) MultiplicationOperator else IntersectionOperator,
+                    expr2
+                )
+            }
 
-            ctx.NEG() != null -> BinaryExpressionAST(
-                visitExpression(ctx.expression(0)),
-                SubtractionOperator,
-                visitExpression(ctx.expression(1)),
-            )
+            ctx.NEG() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) SubtractionOperator else DifferenceOperator,
+                    expr2
+                )
+            }
 
-            ctx.NEQ() != null -> BinaryExpressionAST(
+            ctx.NEQ() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) NotEqualsOperator else DataStructureInequalityOperator,
+                    expr2
+                )
+            }
+
+            ctx.NOT_IN() != null -> BinaryExpressionAST(
                 visitExpression(ctx.expression(0)),
-                NotEqualsOperator,
+                AntiMembershipOperator,
                 visitExpression(ctx.expression(1)),
             )
 
