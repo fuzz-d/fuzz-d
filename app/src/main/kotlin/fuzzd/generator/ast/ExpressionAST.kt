@@ -129,6 +129,8 @@ sealed class ExpressionAST : ASTElement {
 
         init {
             if (!operator.supportsInput(type1, type2)) {
+                println("=================")
+                println(this.operator::class)
                 throw InvalidInputException("Operator $operator does not support input types ($type1, $type2)")
             }
         }

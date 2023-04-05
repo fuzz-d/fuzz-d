@@ -56,6 +56,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
         precedence: Int,
         symbol: String,
     ) : BinaryOperator(precedence, symbol) {
+        override fun outputType(t1: Type, t2: Type): Type = IntType
         override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && t1 == IntType
     }
 
@@ -68,6 +69,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     /* ------------------------------ DATA STRUCTURE OPERATORS -------------------------------- */
 
     sealed class DataStructureBinaryOperator(precedence: Int, symbol: String) : BinaryOperator(precedence, symbol) {
+        override fun outputType(t1: Type, t2: Type): Type = BoolType
         override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MapType)
     }
 
@@ -76,11 +78,12 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
 
     sealed class DataStructureMembershipOperator(symbol: String) : BinaryOperator(4, symbol) {
         override fun outputType(t1: Type, t2: Type): Type = BoolType
-        override fun supportsInput(t1: Type, t2: Type) = t2 is SetType && t1 == t2.innerType
+        override fun supportsInput(t1: Type, t2: Type) =
+            t2 is SetType && t1 == t2.innerType || t2 is MapType && t1 == t2.keyType
     }
 
-    object MembershipOperator : DataStructureBinaryOperator(4, "in")
-    object AntiMembershipOperator : DataStructureBinaryOperator(4, "!in")
+    object MembershipOperator : DataStructureMembershipOperator("in")
+    object AntiMembershipOperator : DataStructureMembershipOperator("!in")
 
     sealed class DataStructureComparisonOperator(symbol: String) : DataStructureBinaryOperator(4, symbol) {
         override fun outputType(t1: Type, t2: Type): Type = BoolType

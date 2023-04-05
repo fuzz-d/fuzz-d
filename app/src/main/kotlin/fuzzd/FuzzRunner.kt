@@ -16,7 +16,7 @@ class FuzzRunner(private val outputPath: String, private val outputDir: String, 
     private val validator = OutputValidator()
     private val reconditionRunner = ReconditionRunner(outputPath, outputDir, logger)
 
-    fun run(seed: Long, advanced: Boolean, instrument: Boolean) {
+    fun run(seed: Long, advanced: Boolean, instrument: Boolean, run: Boolean) {
         val generator = Generator(SelectionManager(Random(seed)), instrument)
 
         logger.log { "Fuzzing with seed: $seed" }
@@ -33,17 +33,21 @@ class FuzzRunner(private val outputPath: String, private val outputDir: String, 
             originalWriter.write { ast }
             originalWriter.close()
 
-            reconditionRunner.run(ast, advanced)
+            if (run) {
+                reconditionRunner.run(ast, advanced)
 
-            // differential testing; log results
-            val validationResult = validator.validateFile(
-                originalWriter.dirPath,
-                DAFNY_WRAPPERS,
-                DAFNY_BODY,
-                DAFNY_MAIN,
-            )
+                // differential testing; log results
+                val validationResult = validator.validateFile(
+                    originalWriter.dirPath,
+                    DAFNY_WRAPPERS,
+                    DAFNY_BODY,
+                    DAFNY_MAIN,
+                )
 
-            logger.log { validationResult }
+                logger.log { validationResult }
+            } else {
+                println(ast)
+            }
         } catch (e: Exception) {
             // do nothing
             logger.log { "Generation threw error" }

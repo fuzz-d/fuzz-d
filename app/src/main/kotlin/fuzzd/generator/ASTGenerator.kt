@@ -47,16 +47,11 @@ interface ASTGenerator {
 
     fun generateField(context: GenerationContext): IdentifierAST
 
-    fun generateFunctionMethod(
-        context: GenerationContext,
-        targetType: Type? = null,
-        literalParams: Boolean = false,
-    ): FunctionMethodAST
+    fun generateFunctionMethod(context: GenerationContext, targetType: Type? = null): FunctionMethodAST
 
     fun generateFunctionMethodSignature(
         context: GenerationContext,
         targetType: Type? = null,
-        literalParams: Boolean = false,
     ): FunctionMethodSignatureAST
 
     fun generateMethod(context: GenerationContext): MethodAST

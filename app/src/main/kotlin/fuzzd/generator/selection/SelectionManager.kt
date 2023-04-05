@@ -46,7 +46,7 @@ class SelectionManager(
         val selection = listOf<Pair<(GenerationContext) -> Type, Double>>(
 //            this::selectClassType to 0.0,
 //            this::selectTraitType to 0.0,
-            this::selectArrayType to if (literalOnly) 0.0 else 0.1,
+            this::selectArrayType to if (literalOnly || !context.onDemandIdentifiers) 0.0 else 0.1,
             this::selectDataStructureType to 0.2,
             this::selectLiteralType to if (literalOnly) 0.8 else 0.7,
         )
@@ -127,7 +127,7 @@ class SelectionManager(
                         Pair(selectedSubclass, Pair(dataStructureType, dataStructureType))
                     }
 
-                    else -> throw UnsupportedOperationException()
+                    else -> throw UnsupportedOperationException("$selectedSubclass not a valid boolean-type binary operator")
                 }
             }
 
@@ -197,8 +197,8 @@ class SelectionManager(
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
-        val functionMethodCallProbability = if (targetType !is ArrayType) 0.15 / context.expressionDepth else 0.0
-        val ternaryProbability = 0.10 / context.expressionDepth
+        val functionMethodCallProbability = if (!context.onDemandIdentifiers) 0.15 / context.expressionDepth else 0.0
+        val ternaryProbability = 0.07 / context.expressionDepth
 
         val remainingProbability =
             (1 - binaryProbability - unaryProbability - functionMethodCallProbability - ternaryProbability)
@@ -209,7 +209,9 @@ class SelectionManager(
             } else {
                 0.0
             }
-        val constructorProbability = if (!isLiteralType(targetType) && context.expressionDepth == 1) {
+        val constructorProbability = if ((targetType is ArrayType && context.expressionDepth == 1) ||
+            (targetType !is LiteralType && targetType !is ArrayType)
+        ) {
             if (identifier) remainingProbability / 3 else remainingProbability
         } else {
             0.0
@@ -264,6 +266,9 @@ class SelectionManager(
     fun selectNumberOfFields() = random.nextInt(0, MAX_FIELDS)
 
     fun selectNumberOfGlobalFields() = random.nextInt(0, MAX_GLOBAL_FIELDS)
+
+    fun selectNumberOfConstructorFields() =
+        randomWeightedSelection(listOf(0 to 0.3, 1 to 0.2, 2 to 0.2, 3 to 0.1, 4 to 0.1, 5 to 0.1))
 
     fun selectNumberOfFunctionMethods() = random.nextInt(0, MAX_FUNCTION_METHODS)
 

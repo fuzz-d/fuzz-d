@@ -27,10 +27,21 @@ class Fuzz(
         "i",
         "Instrument control flow with print statements for debugging program paths",
     )
+    private val noRun by option(
+        ArgType.Boolean,
+        "noRun",
+        "n",
+        "Generate a program without running differential testing on it",
+    )
 
     override fun execute() {
         val generationSeed = seed?.toLong() ?: Random.Default.nextLong()
-        FuzzRunner(outputPath, outputDir, logger).run(generationSeed, advanced == true, instrument == true)
+        FuzzRunner(outputPath, outputDir, logger).run(
+            generationSeed,
+            advanced == true,
+            instrument == true,
+            noRun != true,
+        )
     }
 }
 

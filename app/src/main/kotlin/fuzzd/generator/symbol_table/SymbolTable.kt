@@ -6,7 +6,7 @@ import fuzzd.generator.ast.Type
 import fuzzd.utils.unionAll
 
 class SymbolTable(private val parent: SymbolTable? = null) {
-    private val symbolTable = mutableMapOf<IdentifierAST, Type>()
+    val symbolTable = mutableMapOf<IdentifierAST, Type>()
     private val typeTable = mutableMapOf<Type, MutableList<IdentifierAST>>()
 
     fun has(identifier: IdentifierAST): Boolean = symbolTable[identifier] != null || parent?.has(identifier) ?: false

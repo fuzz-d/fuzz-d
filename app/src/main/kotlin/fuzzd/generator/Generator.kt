@@ -147,15 +147,15 @@ class Generator(
     }
 
     override fun generateMainFunction(context: GenerationContext): MainFunctionAST {
-        val exprContext = context.increaseExpressionDepth()
         val (globalStateParams, globalStateDeps) = context.globalState().fields.map {
+            val exprContext = context.increaseExpressionDepth().disableOnDemand()
             if (it.type() is LiteralType) {
                 Pair(generateLiteralForType(exprContext, it.type() as LiteralType), emptyList<StatementAST>())
             } else {
                 val ident = IdentifierAST(context.identifierNameGenerator.newValue(), it.type())
                 val decl = DeclarationAST(
                     ident,
-                    generateExpressionFromType(CONSTRUCTOR, exprContext, it.type()),
+                    generateExpressionFromType(CONSTRUCTOR, context.disableOnDemand(), it.type()),
                 )
                 context.symbolTable.add(ident)
                 Pair(ident, listOf(decl))
@@ -171,7 +171,6 @@ class Generator(
         context.symbolTable.add(globalStateIdentifier)
 
         val body = generateSequence(context)
-        val printContext = context.disableOnDemand()
         val prints = generateChecksum(context)
         return MainFunctionAST(SequenceAST(globalStateDeps + globalStateDecl + body.statements + prints))
     }
@@ -277,12 +276,8 @@ class Generator(
     override fun generateField(context: GenerationContext) =
         IdentifierAST(fieldNameGenerator.newValue(), selectionManager.selectType(context), initialised = true)
 
-    override fun generateFunctionMethod(
-        context: GenerationContext,
-        targetType: Type?,
-        literalParams: Boolean,
-    ): FunctionMethodAST {
-        val functionMethodSignature = generateFunctionMethodSignature(context, targetType, literalParams)
+    override fun generateFunctionMethod(context: GenerationContext, targetType: Type?): FunctionMethodAST {
+        val functionMethodSignature = generateFunctionMethodSignature(context, targetType)
         return generateFunctionMethod(context, functionMethodSignature)
     }
 
@@ -307,17 +302,16 @@ class Generator(
     override fun generateFunctionMethodSignature(
         context: GenerationContext,
         targetType: Type?,
-        literalParams: Boolean,
     ): FunctionMethodSignatureAST {
         val name = functionMethodNameGenerator.newValue()
         val numberOfParameters = selectionManager.selectNumberOfParameters()
 
         val parameterNameGenerator = ParameterNameGenerator()
-        val returnType = targetType ?: generateType(context, literalOnly = true)
-        val parameters = (1..numberOfParameters).map {
+        val returnType = targetType ?: generateType(context.disableOnDemand())
+        var parameters = (1..numberOfParameters).map {
             IdentifierAST(
                 parameterNameGenerator.newValue(),
-                generateType(context, literalOnly = literalParams),
+                generateType(context.disableOnDemand()),
                 mutable = false,
                 initialised = true,
             )
@@ -609,7 +603,7 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): ExpressionAST = when (exprType) {
-        CONSTRUCTOR -> generateArrayInitialisation(context, targetType as ArrayType)
+        CONSTRUCTOR -> generateConstructorForType(context, targetType)
         UNARY -> generateUnaryExpression(context, targetType)
         BINARY -> generateBinaryExpression(context, targetType)
         TERNARY -> generateTernaryExpression(context, targetType)
@@ -691,7 +685,7 @@ class Generator(
 
     override fun generateSetDisplay(context: GenerationContext, targetType: Type): SetDisplayAST {
         val setType = targetType as SetType
-        val numberOfExpressions = selectionManager.selectNumberOfParameters()
+        val numberOfExpressions = selectionManager.selectNumberOfConstructorFields()
         val exprs =
             (1..numberOfExpressions).map { generateExpression(context.increaseExpressionDepth(), setType.innerType) }
         return SetDisplayAST(setType.innerType, exprs)
@@ -699,7 +693,7 @@ class Generator(
 
     override fun generateMapConstructor(context: GenerationContext, targetType: Type): MapConstructorAST {
         val mapType = targetType as MapType
-        val numberOfExpressions = selectionManager.selectNumberOfParameters()
+        val numberOfExpressions = selectionManager.selectNumberOfConstructorFields()
         val assigns = (1..numberOfExpressions).map {
             Pair(
                 generateExpression(context.increaseExpressionDepth(), mapType.keyType),
@@ -751,8 +745,8 @@ class Generator(
 
     override fun generateTernaryExpression(context: GenerationContext, targetType: Type): TernaryExpressionAST {
         val condition = generateExpression(context, BoolType)
-        val ifExpr = generateExpression(context, targetType)
-        val elseExpr = generateExpression(context, targetType)
+        val ifExpr = generateExpression(context.increaseExpressionDepth(), targetType)
+        val elseExpr = generateExpression(context.increaseExpressionDepth(), targetType)
 
         return TernaryExpressionAST(condition, ifExpr, elseExpr)
     }
@@ -763,9 +757,19 @@ class Generator(
     ): ExpressionAST = when (targetType) {
         is LiteralType -> generateLiteralForType(context, targetType)
         is ArrayType -> generateArrayInitialisation(context, targetType)
+        is MapType -> generateMapConstructor(context, targetType)
+        is SetType -> generateSetDisplay(context, targetType)
         // should not be possible to reach here
         else -> throw UnsupportedOperationException("Trying to generate base for non-base type $targetType")
     }
+
+    private fun generateConstructorForType(context: GenerationContext, targetType: Type): ExpressionAST =
+        when (targetType) {
+            is ArrayType -> generateArrayInitialisation(context, targetType)
+            is MapType -> generateMapConstructor(context, targetType)
+            is SetType -> generateSetDisplay(context, targetType)
+            else -> throw UnsupportedOperationException("Trying to generate constructor for non-constructor type")
+        }
 
     private fun generateLiteralForType(
         context: GenerationContext,
