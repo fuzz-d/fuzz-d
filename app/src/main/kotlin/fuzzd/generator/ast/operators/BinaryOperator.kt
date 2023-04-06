@@ -94,6 +94,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     object SubsetOperator : DataStructureComparisonOperator("<=")
     object SupersetOperator : DataStructureComparisonOperator(">=")
     object ProperSupersetOperator : DataStructureComparisonOperator(">")
+    object DisjointOperator : DataStructureComparisonOperator("!!")
 
     sealed class DataStructureMathematicalOperator(precedence: Int, symbol: String) :
         DataStructureBinaryOperator(precedence, symbol) {
@@ -101,7 +102,6 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
         override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && t1 is SetType
     }
 
-    object DisjointOperator : DataStructureMathematicalOperator(4, "!!")
     object UnionOperator : DataStructureMathematicalOperator(6, "+") {
         override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MapType)
     }

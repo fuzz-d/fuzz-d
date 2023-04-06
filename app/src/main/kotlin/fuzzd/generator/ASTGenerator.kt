@@ -103,9 +103,13 @@ interface ASTGenerator {
 
     fun generateArrayIndex(context: GenerationContext, targetType: Type): ArrayIndexAST
 
-    fun generateSetDisplay(context: GenerationContext, targetType: Type): SetDisplayAST
+    fun generateSetDisplay(context: GenerationContext, targetType: Type, baseExpression: Boolean = false): SetDisplayAST
 
-    fun generateMapConstructor(context: GenerationContext, targetType: Type): MapConstructorAST
+    fun generateMapConstructor(
+        context: GenerationContext,
+        targetType: Type,
+        baseExpression: Boolean = false,
+    ): MapConstructorAST
 
     fun generateMapIndexAssign(context: GenerationContext, targetType: Type): MapIndexAssignAST
 

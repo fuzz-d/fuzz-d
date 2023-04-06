@@ -683,7 +683,11 @@ class Generator(
         return ArrayIndexAST(identifier, index)
     }
 
-    override fun generateSetDisplay(context: GenerationContext, targetType: Type): SetDisplayAST {
+    override fun generateSetDisplay(
+        context: GenerationContext,
+        targetType: Type,
+        baseExpression: Boolean,
+    ): SetDisplayAST {
         val setType = targetType as SetType
         val numberOfExpressions = selectionManager.selectNumberOfConstructorFields()
         val exprs =
@@ -691,14 +695,26 @@ class Generator(
         return SetDisplayAST(setType.innerType, exprs)
     }
 
-    override fun generateMapConstructor(context: GenerationContext, targetType: Type): MapConstructorAST {
+    override fun generateMapConstructor(
+        context: GenerationContext,
+        targetType: Type,
+        baseExpression: Boolean,
+    ): MapConstructorAST {
         val mapType = targetType as MapType
         val numberOfExpressions = selectionManager.selectNumberOfConstructorFields()
+        val exprContext = context.increaseExpressionDepth()
         val assigns = (1..numberOfExpressions).map {
-            Pair(
-                generateExpression(context.increaseExpressionDepth(), mapType.keyType),
-                generateExpression(context.increaseExpressionDepth(), mapType.valueType),
-            )
+            if (baseExpression) {
+                Pair(
+                    generateBaseExpressionForType(exprContext, mapType.keyType),
+                    generateBaseExpressionForType(exprContext, mapType.valueType),
+                )
+            } else {
+                Pair(
+                    generateExpression(exprContext, mapType.keyType),
+                    generateExpression(exprContext, mapType.valueType),
+                )
+            }
         }
 
         return MapConstructorAST(mapType.keyType, mapType.valueType, assigns)
@@ -757,8 +773,8 @@ class Generator(
     ): ExpressionAST = when (targetType) {
         is LiteralType -> generateLiteralForType(context, targetType)
         is ArrayType -> generateArrayInitialisation(context, targetType)
-        is MapType -> generateMapConstructor(context, targetType)
-        is SetType -> generateSetDisplay(context, targetType)
+        is MapType -> generateMapConstructor(context, targetType, baseExpression = true)
+        is SetType -> generateSetDisplay(context, targetType, baseExpression = true)
         // should not be possible to reach here
         else -> throw UnsupportedOperationException("Trying to generate base for non-base type $targetType")
     }
