@@ -6,6 +6,8 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.MethodAST
+import fuzzd.generator.ast.SequenceAST
+import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.IntType
@@ -242,8 +244,19 @@ class FunctionSymbolTableTests {
         private val TRAIT_T1 = TraitAST.builder().withName("T1").build()
         private val TRAIT_T2 = TraitAST.builder().withName("T2").build()
 
-        private val METHOD_INT = MethodAST("m1", listOf(), listOf(IdentifierAST("r1", IntType)))
-        private val METHOD_BOOL = MethodAST("m2", listOf(), listOf(IdentifierAST("r1", BoolType)))
+        private val METHOD_INT = MethodAST(
+            "m1",
+            listOf(),
+            listOf(IdentifierAST("r1", IntType)),
+            SequenceAST(listOf(AssignmentAST(IdentifierAST("r1", IntType), IntegerLiteralAST(42)))),
+        )
+
+        private val METHOD_BOOL = MethodAST(
+            "m2",
+            listOf(),
+            listOf(IdentifierAST("r1", BoolType)),
+            SequenceAST(listOf(AssignmentAST(IdentifierAST("r1", BoolType), BooleanLiteralAST(true)))),
+        )
 
         private val FUNCTION_METHOD_INT = FunctionMethodAST("fm1", IntType, listOf(), IntegerLiteralAST(42))
         private val FUNCTION_METHOD_BOOL = FunctionMethodAST("fm2", BoolType, listOf(), BooleanLiteralAST(false))

@@ -343,7 +343,7 @@ class ExpressionASTTests {
         }
 
         @Test
-        fun givenBinaryExpressionWithIntBinaryChild_whenToString_expectNoParenWrap() {
+        fun givenBinaryExpressionWithIntBinaryChild_whenToString_expectParenWrap() {
             // given
             val lhs = BinaryExpressionAST(IntegerLiteralAST("123"), AdditionOperator, IntegerLiteralAST("124"))
             val operator = SubtractionOperator
@@ -355,7 +355,7 @@ class ExpressionASTTests {
             val str = bexp.toString()
 
             // expect
-            assertEquals("$lhs $operator $rhs", str)
+            assertEquals("($lhs) $operator $rhs", str)
         }
     }
 
