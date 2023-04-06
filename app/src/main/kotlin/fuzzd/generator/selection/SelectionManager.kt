@@ -272,7 +272,7 @@ class SelectionManager(
     fun selectNumberOfGlobalFields() = random.nextInt(0, MAX_GLOBAL_FIELDS)
 
     fun selectNumberOfConstructorFields() =
-        randomWeightedSelection(listOf(0 to 0.3, 1 to 0.2, 2 to 0.2, 3 to 0.1, 4 to 0.1, 5 to 0.1))
+        randomWeightedSelection(listOf(1 to 0.4, 2 to 0.2, 3 to 0.2, 4 to 0.1, 5 to 0.1))
 
     fun selectNumberOfFunctionMethods() = random.nextInt(0, MAX_FUNCTION_METHODS)
 
