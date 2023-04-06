@@ -17,7 +17,6 @@ data class GenerationContext(
     val loopCounterGenerator: LoopCounterGenerator = LoopCounterGenerator(),
     val methodContext: MethodSignatureAST? = null, // track if we are inside a method
     val onDemandIdentifiers: Boolean = true,
-    private val dependentStatements: MutableList<StatementAST.DeclarationAST> = mutableListOf(),
 ) {
     private lateinit var globalState: ClassAST
 
@@ -26,16 +25,6 @@ data class GenerationContext(
     fun setGlobalState(globalState: ClassAST): GenerationContext {
         this.globalState = globalState
         return this
-    }
-
-    fun addDependentStatement(statement: StatementAST.DeclarationAST) {
-        dependentStatements.add(statement)
-    }
-
-    fun clearDependentStatements(): List<StatementAST> {
-        val statements = dependentStatements.map { it }.toList()
-        dependentStatements.clear()
-        return statements
     }
 
     fun increaseExpressionDepth(): GenerationContext =
@@ -48,7 +37,6 @@ data class GenerationContext(
             loopCounterGenerator,
             methodContext,
             onDemandIdentifiers,
-            dependentStatements,
         ).setGlobalState(globalState)
 
     fun increaseStatementDepth(): GenerationContext =
@@ -72,7 +60,6 @@ data class GenerationContext(
             identifierNameGenerator,
             loopCounterGenerator,
             methodContext,
-            false,
-            dependentStatements,
+            false
         ).setGlobalState(globalState)
 }

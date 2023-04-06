@@ -25,11 +25,6 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
-import fuzzd.generator.ast.StatementAST.AssignmentAST
-import fuzzd.generator.ast.StatementAST.DeclarationAST
-import fuzzd.generator.ast.StatementAST.IfStatementAST
-import fuzzd.generator.ast.StatementAST.PrintAST
-import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
@@ -62,68 +57,93 @@ interface ASTGenerator {
 
     /* ========================================== STATEMENTS ========================================== */
 
-    fun generateStatement(context: GenerationContext): StatementAST
+    fun generateStatement(context: GenerationContext): List<StatementAST>
 
-    fun generateIfStatement(context: GenerationContext): IfStatementAST
+    fun generateIfStatement(context: GenerationContext): List<StatementAST>
 
-    fun generateWhileStatement(context: GenerationContext): WhileLoopAST
+    fun generateWhileStatement(context: GenerationContext): List<StatementAST>
 
-    fun generatePrintStatement(context: GenerationContext): PrintAST
+    fun generatePrintStatement(context: GenerationContext): List<StatementAST>
 
-    fun generateDeclarationStatement(context: GenerationContext): DeclarationAST
+    fun generateDeclarationStatement(context: GenerationContext): List<StatementAST>
 
-    fun generateAssignmentStatement(context: GenerationContext): AssignmentAST
+    fun generateAssignmentStatement(context: GenerationContext): List<StatementAST>
 
-    fun generateClassInstantiation(context: GenerationContext): DeclarationAST
+    fun generateClassInstantiation(context: GenerationContext): List<StatementAST>
 
-    fun generateMethodCall(context: GenerationContext): StatementAST
+    fun generateMethodCall(context: GenerationContext): List<StatementAST>
 
-    fun generateChecksum(context: GenerationContext): List<PrintAST>
+    fun generateChecksum(context: GenerationContext): List<StatementAST>
 
     /* ========================================== EXPRESSIONS ========================================== */
 
-    fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST
+    fun generateExpression(context: GenerationContext, targetType: Type): Pair<ExpressionAST, List<StatementAST>>
 
-    fun generateFunctionMethodCall(context: GenerationContext, targetType: Type): FunctionMethodCallAST
+    fun generateFunctionMethodCall(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<FunctionMethodCallAST, List<StatementAST>>
 
     fun generateIdentifier(
         context: GenerationContext,
         targetType: Type,
         mutableConstraint: Boolean = false,
         initialisedConstraint: Boolean = true,
-    ): IdentifierAST
+    ): Pair<IdentifierAST, List<StatementAST>>
 
-    fun generateUnaryExpression(context: GenerationContext, targetType: Type): UnaryExpressionAST
+    fun generateUnaryExpression(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<UnaryExpressionAST, List<StatementAST>>
 
-    fun generateBinaryExpression(context: GenerationContext, targetType: Type): BinaryExpressionAST
+    fun generateBinaryExpression(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<BinaryExpressionAST, List<StatementAST>>
 
-    fun generateTernaryExpression(context: GenerationContext, targetType: Type): TernaryExpressionAST
+    fun generateTernaryExpression(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<TernaryExpressionAST, List<StatementAST>>
 
-    fun generateArrayInitialisation(context: GenerationContext, targetType: ArrayType): ArrayInitAST
+    fun generateArrayInitialisation(
+        context: GenerationContext,
+        targetType: ArrayType,
+    ): Pair<ArrayInitAST, List<StatementAST>>
 
-    fun generateArrayIndex(context: GenerationContext, targetType: Type): ArrayIndexAST
+    fun generateArrayIndex(context: GenerationContext, targetType: Type): Pair<ArrayIndexAST, List<StatementAST>>
 
-    fun generateSetDisplay(context: GenerationContext, targetType: Type, baseExpression: Boolean = false): SetDisplayAST
+    fun generateSetDisplay(
+        context: GenerationContext,
+        targetType: Type,
+        baseExpression: Boolean = false,
+    ): Pair<SetDisplayAST, List<StatementAST>>
 
     fun generateMapConstructor(
         context: GenerationContext,
         targetType: Type,
         baseExpression: Boolean = false,
-    ): MapConstructorAST
+    ): Pair<MapConstructorAST, List<StatementAST>>
 
-    fun generateMapIndexAssign(context: GenerationContext, targetType: Type): MapIndexAssignAST
+    fun generateMapIndexAssign(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<MapIndexAssignAST, List<StatementAST>>
 
-    fun generateMapIndex(context: GenerationContext, targetType: Type): MapIndexAST
+    fun generateMapIndex(context: GenerationContext, targetType: Type): Pair<MapIndexAST, List<StatementAST>>
 
-    fun generateBaseExpressionForType(context: GenerationContext, targetType: Type): ExpressionAST
+    fun generateBaseExpressionForType(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<ExpressionAST, List<StatementAST>>
 
-    fun generateIntegerLiteral(context: GenerationContext): IntegerLiteralAST
+    fun generateIntegerLiteral(context: GenerationContext): Pair<IntegerLiteralAST, List<StatementAST>>
 
-    fun generateBooleanLiteral(context: GenerationContext): BooleanLiteralAST
+    fun generateBooleanLiteral(context: GenerationContext): Pair<BooleanLiteralAST, List<StatementAST>>
 
-    fun generateRealLiteral(context: GenerationContext): RealLiteralAST
+    fun generateRealLiteral(context: GenerationContext): Pair<RealLiteralAST, List<StatementAST>>
 
-    fun generateCharLiteral(context: GenerationContext): CharacterLiteralAST
+    fun generateCharLiteral(context: GenerationContext): Pair<CharacterLiteralAST, List<StatementAST>>
 
     /* ========================================== TYPE ========================================== */
 

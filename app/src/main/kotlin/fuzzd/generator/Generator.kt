@@ -38,7 +38,6 @@ import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
-import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
@@ -84,6 +83,8 @@ import fuzzd.generator.selection.StatementType.WHILE
 import fuzzd.generator.symbol_table.DependencyTable
 import fuzzd.generator.symbol_table.FunctionSymbolTable
 import fuzzd.generator.symbol_table.SymbolTable
+import fuzzd.utils.foldPair
+import fuzzd.utils.reduceLists
 import fuzzd.utils.unionAll
 
 // import fuzzd.utils.SAFE_ADDITION_REAL
@@ -148,21 +149,12 @@ class Generator(
 
     override fun generateMainFunction(context: GenerationContext): MainFunctionAST {
         val (globalStateParams, globalStateDeps) = context.globalState().fields.map {
-            val exprContext = context.increaseExpressionDepth().disableOnDemand()
             if (it.type() is LiteralType) {
-                Pair(generateLiteralForType(exprContext, it.type() as LiteralType), emptyList<StatementAST>())
+                generateLiteralForType(context, it.type() as LiteralType)
             } else {
-                val ident = IdentifierAST(context.identifierNameGenerator.newValue(), it.type())
-                val decl = DeclarationAST(
-                    ident,
-                    generateExpressionFromType(CONSTRUCTOR, context.disableOnDemand(), it.type()),
-                )
-                context.symbolTable.add(ident)
-                Pair(ident, listOf(decl))
+                generateExpression(context.increaseExpressionDepth(), it.type())
             }
-        }.fold(Pair(emptyList<ExpressionAST>(), emptyList<StatementAST>())) { acc, l ->
-            Pair(acc.first + l.first, acc.second + l.second)
-        }
+        }.foldPair()
 
         val globalStateIdentifier = ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE)
         val globalStateDecl =
@@ -291,7 +283,7 @@ class Generator(
         ).setGlobalState(context.globalState())
         signature.params.forEach { param -> functionContext.symbolTable.add(param) }
 
-        val body = generateExpression(functionContext, signature.returnType)
+        val (body, _) = generateExpression(functionContext, signature.returnType)
         val functionMethodAST = FunctionMethodAST(signature, body)
 
         context.functionSymbolTable.addFunctionMethod(functionMethodAST)
@@ -364,26 +356,22 @@ class Generator(
         val body = generateSequence(context, maxStatements = 10)
 
         val returnAssigns = method.returns().map { r ->
-            val expr = generateExpression(context.disableOnDemand(), r.type())
+            val (expr, _) = generateExpression(context.disableOnDemand(), r.type())
             AssignmentAST(r, expr)
         }
 
-        return body.addStatements(context.clearDependentStatements() + returnAssigns)
+        return body.addStatements(returnAssigns)
     }
 
     override fun generateSequence(context: GenerationContext, maxStatements: Int): SequenceAST {
         val n = selectionManager.selectSequenceLength(maxStatements)
-
-        val statements = (1..n).map { generateStatement(context) }
-
-        val allStatements = context.clearDependentStatements() + statements
-
-        return SequenceAST(allStatements)
+        val statements = (1..n).map { generateStatement(context) }.reduceLists()
+        return SequenceAST(statements)
     }
 
     /* ==================================== STATEMENTS ==================================== */
 
-    override fun generateStatement(context: GenerationContext): StatementAST = try {
+    override fun generateStatement(context: GenerationContext): List<StatementAST> = try {
         generateStatementFromType(selectionManager.selectStatementType(context), context)
     } catch (e: MethodOnDemandException) {
         generateStatementFromType(
@@ -395,7 +383,7 @@ class Generator(
     private fun generateStatementFromType(
         type: StatementType,
         context: GenerationContext,
-    ): StatementAST = when (type) {
+    ): List<StatementAST> = when (type) {
         ASSIGN -> generateAssignmentStatement(context)
         CLASS_INSTANTIATION -> generateClassInstantiation(context)
         DECLARATION -> generateDeclarationStatement(context)
@@ -405,8 +393,8 @@ class Generator(
         WHILE -> generateWhileStatement(context)
     }
 
-    override fun generateIfStatement(context: GenerationContext): IfStatementAST {
-        val condition = generateExpression(context, BoolType)
+    override fun generateIfStatement(context: GenerationContext): List<StatementAST> {
+        val (condition, conditionDeps) = generateExpression(context, BoolType)
 
         val ifPrint = PrintAST(StringLiteralAST(controlFlowGenerator.newValue()))
         val elsePrint = PrintAST(StringLiteralAST(controlFlowGenerator.newValue()))
@@ -414,22 +402,21 @@ class Generator(
         val ifBranch = generateSequence(context.increaseStatementDepth())
         val elseBranch = generateSequence(context.increaseStatementDepth())
 
-        return IfStatementAST(
+        val ifStatement = IfStatementAST(
             condition,
             SequenceAST((if (instrument) listOf(ifPrint) else emptyList<StatementAST>()) + ifBranch.statements),
             SequenceAST((if (instrument) listOf(elsePrint) else emptyList<StatementAST>()) + elseBranch.statements),
         )
+
+        return conditionDeps + ifStatement
     }
 
-    override fun generateWhileStatement(context: GenerationContext): WhileLoopAST {
+    override fun generateWhileStatement(context: GenerationContext): List<StatementAST> {
         val counterIdentifierName = context.loopCounterGenerator.newValue()
         val counterIdentifier = IdentifierAST(counterIdentifierName, IntType)
         val counterInitialisation = DeclarationAST(counterIdentifier, IntegerLiteralAST(0))
 
-        var condition: ExpressionAST
-        do {
-            condition = generateExpression(context, BoolType)
-        } while (condition == BooleanLiteralAST(false)) // we don't want while(false) explicitly
+        val (condition, conditionDeps) = generateExpression(context, BoolType)
 
         val counterTerminationCheck = IfStatementAST(
             BinaryExpressionAST(
@@ -449,39 +436,34 @@ class Generator(
         )
 
         val whileBody = generateSequence(context.increaseStatementDepth())
-
-        return CounterLimitedWhileLoopAST(
+        val whileLoop = CounterLimitedWhileLoopAST(
             counterInitialisation,
             counterTerminationCheck,
             counterUpdate,
             condition,
             whileBody,
         )
+        return conditionDeps + whileLoop
     }
 
-    override fun generatePrintStatement(context: GenerationContext): PrintAST {
+    override fun generatePrintStatement(context: GenerationContext): List<StatementAST> {
         val targetType = generateType(context.disableOnDemand())
-        val safeExpr = generateExpression(context, targetType)
-        return PrintAST(safeExpr)
+        val (expr, exprDeps) = generateExpression(context, targetType)
+        return exprDeps + PrintAST(expr)
     }
 
-    override fun generateDeclarationStatement(context: GenerationContext): DeclarationAST {
-        val targetType = generateType(context)
-        return generateDeclarationStatementForType(context, targetType, false)
-    }
+    override fun generateDeclarationStatement(context: GenerationContext): List<StatementAST> =
+        generateDeclarationStatementForType(context, generateType(context), false)
 
     private fun generateDeclarationStatementForType(
         context: GenerationContext,
         targetType: Type,
         baseExpression: Boolean,
-    ): DeclarationAST {
-        val expr = if (baseExpression) {
+    ): List<StatementAST> {
+        val (expr, exprDeps) = if (baseExpression) {
             generateBaseExpressionForType(context, targetType)
         } else {
-            generateExpression(
-                context,
-                targetType,
-            )
+            generateExpression(context, targetType)
         }
 
         val identifierName = context.identifierNameGenerator.newValue()
@@ -489,12 +471,12 @@ class Generator(
 
         context.symbolTable.add(identifier)
 
-        return DeclarationAST(identifier, expr)
+        return exprDeps + DeclarationAST(identifier, expr)
     }
 
-    override fun generateAssignmentStatement(context: GenerationContext): AssignmentAST {
+    override fun generateAssignmentStatement(context: GenerationContext): List<StatementAST> {
         val targetType = generateType(context, literalOnly = true)
-        val identifier = if (selectionManager.randomWeightedSelection(listOf(true to 0.8, false to 0.2))) {
+        val (identifier, identDeps) = if (selectionManager.randomWeightedSelection(listOf(true to 0.8, false to 0.2))) {
             generateIdentifier(context, targetType, mutableConstraint = true, initialisedConstraint = false)
         } else {
             generateArrayIndex(context, targetType)
@@ -502,14 +484,14 @@ class Generator(
 
         context.symbolTable.add(identifier)
 
-        val expr = generateExpression(context, targetType)
+        val (expr, exprDeps) = generateExpression(context, targetType)
 
         identifier.initialise()
 
-        return AssignmentAST(identifier, expr)
+        return identDeps + exprDeps + AssignmentAST(identifier, expr)
     }
 
-    override fun generateClassInstantiation(context: GenerationContext): DeclarationAST {
+    override fun generateClassInstantiation(context: GenerationContext): List<StatementAST> {
         // on demand create class if one doesn't exist
         if (!context.functionSymbolTable.hasClasses() || selectionManager.generateNewClass(context)) {
             generateClass(context)
@@ -518,21 +500,19 @@ class Generator(
         val selectedClass = selectionManager.randomSelection(context.functionSymbolTable.classes().toList())
         val requiredFields = selectedClass.constructorFields
 
-        val params = requiredFields.map { field ->
-            generateExpression(
-                context.increaseExpressionDepth(),
-                field.type(),
-            )
-        }
+        val (params, paramDeps) = requiredFields.map { field ->
+            generateExpression(context.increaseExpressionDepth(), field.type())
+        }.foldPair()
+
         val ident = ClassInstanceAST(selectedClass, context.identifierNameGenerator.newValue())
 
         context.symbolTable.add(ident)
 
-        return DeclarationAST(ident, ClassInstantiationAST(selectedClass, params))
+        return paramDeps + DeclarationAST(ident, ClassInstantiationAST(selectedClass, params))
     }
 
     @Throws(MethodOnDemandException::class)
-    override fun generateMethodCall(context: GenerationContext): StatementAST {
+    override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
             context.functionSymbolTable.methods().map { it.signature } +
@@ -551,15 +531,15 @@ class Generator(
         }
 
         // generate new method if a callable method doesn't exist
-        val method: MethodSignatureAST
-        if (methods.isEmpty() || selectionManager.generateNewMethod(context)) {
-            method = generateMethod(context).signature
+        val method = if (methods.isEmpty() || selectionManager.generateNewMethod(context)) {
+            generateMethod(context).signature
         } else {
-            method = selectionManager.randomSelection(methods)
+            selectionManager.randomSelection(methods)
         }
 
-        val params = method.params.subList(0, method.params.size - 1)
+        val (params, paramDeps) = method.params.subList(0, method.params.size - 1)
             .map { param -> generateExpression(context, param.type()) }
+            .foldPair()
 
         // add call for method context
         if (context.methodContext != null) {
@@ -569,7 +549,7 @@ class Generator(
         val returns = method.returns
         val stateParam = ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE)
 
-        return if (returns.isEmpty()) {
+        return paramDeps + if (returns.isEmpty()) {
             // void method type
             VoidMethodCallAST(method, params + stateParam)
         } else {
@@ -582,7 +562,10 @@ class Generator(
 
     /* ==================================== EXPRESSIONS ==================================== */
 
-    override fun generateExpression(context: GenerationContext, targetType: Type): ExpressionAST {
+    override fun generateExpression(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<ExpressionAST, List<StatementAST>> {
         return try {
             generateExpressionFromType(
                 selectionManager.selectExpressionType(targetType, context),
@@ -602,7 +585,7 @@ class Generator(
         exprType: ExpressionType,
         context: GenerationContext,
         targetType: Type,
-    ): ExpressionAST = when (exprType) {
+    ): Pair<ExpressionAST, List<StatementAST>> = when (exprType) {
         CONSTRUCTOR -> generateConstructorForType(context, targetType)
         UNARY -> generateUnaryExpression(context, targetType)
         BINARY -> generateBinaryExpression(context, targetType)
@@ -615,7 +598,7 @@ class Generator(
     override fun generateFunctionMethodCall(
         context: GenerationContext,
         targetType: Type,
-    ): FunctionMethodCallAST {
+    ): Pair<FunctionMethodCallAST, List<StatementAST>> {
         val callable = callableFunctionMethods(context, targetType)
         val functionMethod = if (callable.isEmpty()) {
             generateFunctionMethod(context, targetType).signature
@@ -623,14 +606,17 @@ class Generator(
             selectionManager.randomSelection(callable)
         }
 
-        val arguments = functionMethod.params.subList(0, functionMethod.params.size - 1).map { param ->
-            generateExpression(context.increaseExpressionDepth(), param.type())
-        }
+        val (arguments, deps) = functionMethod.params.subList(0, functionMethod.params.size - 1)
+            .map { param ->
+                generateExpression(context.increaseExpressionDepth(), param.type())
+            }
+            .foldPair()
 
-        return FunctionMethodCallAST(
+        val fmCall = FunctionMethodCallAST(
             functionMethod,
             arguments + ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE),
         )
+        return Pair(fmCall, deps)
     }
 
     private fun callableFunctionMethods(
@@ -658,119 +644,126 @@ class Generator(
         targetType: Type,
         mutableConstraint: Boolean,
         initialisedConstraint: Boolean,
-    ): IdentifierAST {
+    ): Pair<IdentifierAST, List<StatementAST>> {
         val withType = context.symbolTable.withType(targetType).filter {
             (!mutableConstraint || it.mutable) && (!initialisedConstraint || it.initialised())
         }
+
+        val deps = mutableListOf<StatementAST>()
 
         if (withType.isEmpty()) {
             if (!context.onDemandIdentifiers) throw IdentifierOnDemandException("Identifier of type $targetType not available")
 
             val decl = generateDeclarationStatementForType(context, targetType, true)
-            context.addDependentStatement(decl)
+            deps += decl
         }
 
-        return selectionManager.randomSelection(
+        val identifier = selectionManager.randomSelection(
             context.symbolTable.withType(targetType)
                 .filter { (!mutableConstraint || it.mutable) && (!initialisedConstraint || it.initialised()) },
         )
+        return Pair(identifier, deps)
     }
 
-    override fun generateArrayIndex(context: GenerationContext, targetType: Type): ArrayIndexAST {
-        val identifier = generateIdentifier(context, ArrayType(targetType), initialisedConstraint = true)
+    override fun generateArrayIndex(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<ArrayIndexAST, List<StatementAST>> {
+        val (identifier, deps) = generateIdentifier(context, ArrayType(targetType), initialisedConstraint = true)
         val index = IntegerLiteralAST(generateDecimalLiteralValue(false), false)
 
-        return ArrayIndexAST(identifier, index)
+        return Pair(ArrayIndexAST(identifier, index), deps)
     }
 
     override fun generateSetDisplay(
         context: GenerationContext,
         targetType: Type,
         baseExpression: Boolean,
-    ): SetDisplayAST {
+    ): Pair<SetDisplayAST, List<StatementAST>> {
         val setType = targetType as SetType
         val numberOfExpressions = selectionManager.selectNumberOfConstructorFields()
-        val exprs =
-            (1..numberOfExpressions).map { generateExpression(context.increaseExpressionDepth(), setType.innerType) }
-        return SetDisplayAST(setType.innerType, exprs)
+        val (exprs, exprDeps) = (1..numberOfExpressions)
+            .map { generateExpression(context.increaseExpressionDepth(), setType.innerType) }
+            .foldPair()
+        return Pair(SetDisplayAST(setType.innerType, exprs), exprDeps)
     }
 
     override fun generateMapConstructor(
         context: GenerationContext,
         targetType: Type,
         baseExpression: Boolean,
-    ): MapConstructorAST {
+    ): Pair<MapConstructorAST, List<StatementAST>> {
         val mapType = targetType as MapType
         val numberOfExpressions = selectionManager.selectNumberOfConstructorFields()
         val exprContext = context.increaseExpressionDepth()
-        val assigns = (1..numberOfExpressions).map {
-            if (baseExpression) {
-                Pair(
-                    generateBaseExpressionForType(exprContext, mapType.keyType),
-                    generateBaseExpressionForType(exprContext, mapType.valueType),
-                )
-            } else {
-                Pair(
-                    generateExpression(exprContext, mapType.keyType),
-                    generateExpression(exprContext, mapType.valueType),
-                )
+        val (assigns, assignDeps) = (1..numberOfExpressions)
+            .map {
+                val (key, keyDeps) = generateExpression(exprContext, mapType.keyType)
+                val (value, valueDeps) = generateExpression(exprContext, mapType.valueType)
+                Pair(Pair(key, value), keyDeps + valueDeps)
             }
-        }
+            .foldPair()
 
-        return MapConstructorAST(mapType.keyType, mapType.valueType, assigns)
+        return Pair(MapConstructorAST(mapType.keyType, mapType.valueType, assigns), assignDeps)
     }
 
-    override fun generateMapIndexAssign(context: GenerationContext, targetType: Type): MapIndexAssignAST {
+    override fun generateMapIndexAssign(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<MapIndexAssignAST, List<StatementAST>> {
         val mapType = targetType as MapType
-        val map = generateIdentifier(context, mapType)
-        val index = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
-        val newValue = generateExpression(context.increaseExpressionDepth(), targetType.valueType)
+        val (map, mapDeps) = generateIdentifier(context, mapType)
+        val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
+        val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), targetType.valueType)
 
-        return MapIndexAssignAST(map, index, newValue)
+        return Pair(MapIndexAssignAST(map, index, newValue), mapDeps + indexDeps + newValueDeps)
     }
 
-    override fun generateMapIndex(context: GenerationContext, targetType: Type): MapIndexAST {
+    override fun generateMapIndex(context: GenerationContext, targetType: Type): Pair<MapIndexAST, List<StatementAST>> {
         val mapType = targetType as MapType
-        val map = generateIdentifier(context, mapType)
-        val index = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
+        val (map, mapDeps) = generateIdentifier(context, mapType)
+        val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
 
-        return MapIndexAST(map, index)
+        return Pair(MapIndexAST(map, index), mapDeps + indexDeps)
     }
 
     override fun generateUnaryExpression(
         context: GenerationContext,
         targetType: Type,
-    ): UnaryExpressionAST {
-        val expr = generateExpression(context, targetType)
+    ): Pair<UnaryExpressionAST, List<StatementAST>> {
+        val (expr, exprDeps) = generateExpression(context, targetType)
         val operator = selectionManager.selectUnaryOperator(targetType)
 
-        return UnaryExpressionAST(expr, operator)
+        return Pair(UnaryExpressionAST(expr, operator), exprDeps)
     }
 
     override fun generateBinaryExpression(
         context: GenerationContext,
         targetType: Type,
-    ): BinaryExpressionAST {
+    ): Pair<BinaryExpressionAST, List<StatementAST>> {
         val nextDepthContext = context.increaseExpressionDepth()
         val (operator, type) = selectionManager.selectBinaryOperator(context, targetType)
-        val expr1 = generateExpression(nextDepthContext, type.first)
-        val expr2 = generateExpression(nextDepthContext, type.second)
+        val (expr1, expr1Deps) = generateExpression(nextDepthContext, type.first)
+        val (expr2, expr2Deps) = generateExpression(nextDepthContext, type.second)
 
-        return BinaryExpressionAST(expr1, operator, expr2)
+        return Pair(BinaryExpressionAST(expr1, operator, expr2), expr1Deps + expr2Deps)
     }
 
-    override fun generateTernaryExpression(context: GenerationContext, targetType: Type): TernaryExpressionAST {
-        val condition = generateExpression(context, BoolType)
-        val ifExpr = generateExpression(context.increaseExpressionDepth(), targetType)
-        val elseExpr = generateExpression(context.increaseExpressionDepth(), targetType)
+    override fun generateTernaryExpression(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<TernaryExpressionAST, List<StatementAST>> {
+        val (condition, conditionDeps) = generateExpression(context, BoolType)
+        val (ifExpr, ifExprDeps) = generateExpression(context.increaseExpressionDepth(), targetType)
+        val (elseExpr, elseExprDeps) = generateExpression(context.increaseExpressionDepth(), targetType)
 
-        return TernaryExpressionAST(condition, ifExpr, elseExpr)
+        return Pair(TernaryExpressionAST(condition, ifExpr, elseExpr), conditionDeps + ifExprDeps + elseExprDeps)
     }
 
     override fun generateBaseExpressionForType(
         context: GenerationContext,
         targetType: Type,
-    ): ExpressionAST = when (targetType) {
+    ): Pair<ExpressionAST, List<StatementAST>> = when (targetType) {
         is LiteralType -> generateLiteralForType(context, targetType)
         is ArrayType -> generateArrayInitialisation(context, targetType)
         is MapType -> generateMapConstructor(context, targetType, baseExpression = true)
@@ -779,7 +772,10 @@ class Generator(
         else -> throw UnsupportedOperationException("Trying to generate base for non-base type $targetType")
     }
 
-    private fun generateConstructorForType(context: GenerationContext, targetType: Type): ExpressionAST =
+    private fun generateConstructorForType(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<ExpressionAST, List<StatementAST>> =
         when (targetType) {
             is ArrayType -> generateArrayInitialisation(context, targetType)
             is MapType -> generateMapConstructor(context, targetType)
@@ -790,7 +786,7 @@ class Generator(
     private fun generateLiteralForType(
         context: GenerationContext,
         targetType: LiteralType,
-    ): LiteralAST = when (targetType) {
+    ): Pair<LiteralAST, List<StatementAST>> = when (targetType) {
         BoolType -> generateBooleanLiteral(context)
         CharType -> generateCharLiteral(context)
         IntType -> generateIntegerLiteral(context)
@@ -799,30 +795,31 @@ class Generator(
         else -> throw UnsupportedOperationException("Trying to generate literal for non-literal type $targetType")
     }
 
-    override fun generateIntegerLiteral(context: GenerationContext): IntegerLiteralAST {
+    override fun generateIntegerLiteral(context: GenerationContext): Pair<IntegerLiteralAST, List<StatementAST>> {
         val isHex = selectionManager.randomWeightedSelection(listOf(true to 0.7, false to 0.3))
         val value = generateDecimalLiteralValue(negative = true)
-        return IntegerLiteralAST(value, isHex)
+        return Pair(IntegerLiteralAST(value, isHex), emptyList())
     }
 
     override fun generateArrayInitialisation(
         context: GenerationContext,
         targetType: ArrayType,
-    ): ArrayInitAST = ArrayInitAST(selectionManager.selectArrayLength(), targetType)
+    ): Pair<ArrayInitAST, List<StatementAST>> =
+        Pair(ArrayInitAST(selectionManager.selectArrayLength(), targetType), emptyList())
 
-    override fun generateBooleanLiteral(context: GenerationContext): BooleanLiteralAST =
-        BooleanLiteralAST(selectionManager.selectBoolean())
+    override fun generateBooleanLiteral(context: GenerationContext): Pair<BooleanLiteralAST, List<StatementAST>> =
+        Pair(BooleanLiteralAST(selectionManager.selectBoolean()), emptyList())
 
-    override fun generateRealLiteral(context: GenerationContext): RealLiteralAST {
+    override fun generateRealLiteral(context: GenerationContext): Pair<RealLiteralAST, List<StatementAST>> {
         val beforePoint = generateDecimalLiteralValue(negative = true)
         val afterPoint = generateDecimalLiteralValue(negative = false)
 
-        return RealLiteralAST("$beforePoint.$afterPoint")
+        return Pair(RealLiteralAST("$beforePoint.$afterPoint"), emptyList())
     }
 
-    override fun generateCharLiteral(context: GenerationContext): CharacterLiteralAST {
+    override fun generateCharLiteral(context: GenerationContext): Pair<CharacterLiteralAST, List<StatementAST>> {
         val c = selectionManager.selectCharacter()
-        return CharacterLiteralAST(c)
+        return Pair(CharacterLiteralAST(c), emptyList())
     }
 
     override fun generateType(context: GenerationContext, literalOnly: Boolean): Type =
