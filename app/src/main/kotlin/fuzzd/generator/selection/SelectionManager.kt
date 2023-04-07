@@ -29,6 +29,7 @@ import fuzzd.generator.selection.ExpressionType.CONSTRUCTOR
 import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
+import fuzzd.generator.selection.ExpressionType.MAP_INDEX
 import fuzzd.generator.selection.ExpressionType.MAP_INDEX_ASSIGN
 import fuzzd.generator.selection.ExpressionType.TERNARY
 import fuzzd.generator.selection.ExpressionType.UNARY
@@ -247,7 +248,7 @@ class SelectionManager(
             FUNCTION_METHOD_CALL to functionMethodCallProbability,
             UNARY to unaryProbability,
             BINARY to binaryProbability,
-//            MAP_INDEX to mapIndexProbability, TODO()
+            MAP_INDEX to mapIndexProbability,
             MAP_INDEX_ASSIGN to mapAssignProbability,
         )
 

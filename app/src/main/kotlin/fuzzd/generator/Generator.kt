@@ -63,6 +63,7 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.ReturnsNameGenerat
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TraitNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
+import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.selection.AssignType
 import fuzzd.generator.selection.AssignType.ARRAY_INDEX
@@ -747,12 +748,16 @@ class Generator(
         return Pair(MapIndexAssignAST(map, index, newValue), mapDeps + indexDeps + newValueDeps)
     }
 
-    override fun generateMapIndex(context: GenerationContext, targetType: Type): Pair<MapIndexAST, List<StatementAST>> {
+    override fun generateMapIndex(context: GenerationContext, targetType: Type): Pair<TernaryExpressionAST, List<StatementAST>> {
         val mapType = MapType(selectionManager.selectType(context, true), targetType)
         val (map, mapDeps) = generateIdentifier(context, mapType)
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), mapType.keyType)
+        val (altExpr, altExprDeps) = generateExpression(context.increaseExpressionDepth(), mapType.valueType)
 
-        return Pair(MapIndexAST(map, index), mapDeps + indexDeps)
+        val mapIndex = MapIndexAST(map, index)
+        val ternaryExpression = TernaryExpressionAST(BinaryExpressionAST(index, MembershipOperator, map), mapIndex, altExpr)
+
+        return Pair(ternaryExpression, mapDeps + indexDeps + altExprDeps)
     }
 
     override fun generateUnaryExpression(
