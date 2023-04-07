@@ -73,6 +73,8 @@ interface ASTGenerator {
 
     fun generateMethodCall(context: GenerationContext): List<StatementAST>
 
+    fun generateMapAssign(context: GenerationContext): List<StatementAST>
+
     fun generateChecksum(context: GenerationContext): List<StatementAST>
 
     /* ========================================== EXPRESSIONS ========================================== */
@@ -113,16 +115,11 @@ interface ASTGenerator {
 
     fun generateArrayIndex(context: GenerationContext, targetType: Type): Pair<ArrayIndexAST, List<StatementAST>>
 
-    fun generateSetDisplay(
-        context: GenerationContext,
-        targetType: Type,
-        baseExpression: Boolean = false,
-    ): Pair<SetDisplayAST, List<StatementAST>>
+    fun generateSetDisplay(context: GenerationContext, targetType: Type): Pair<SetDisplayAST, List<StatementAST>>
 
     fun generateMapConstructor(
         context: GenerationContext,
         targetType: Type,
-        baseExpression: Boolean = false,
     ): Pair<MapConstructorAST, List<StatementAST>>
 
     fun generateMapIndexAssign(

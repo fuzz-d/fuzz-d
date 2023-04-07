@@ -2,7 +2,6 @@ package fuzzd.generator.context
 
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.MethodSignatureAST
-import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.LoopCounterGenerator
 import fuzzd.generator.symbol_table.FunctionSymbolTable
@@ -17,6 +16,7 @@ data class GenerationContext(
     val loopCounterGenerator: LoopCounterGenerator = LoopCounterGenerator(),
     val methodContext: MethodSignatureAST? = null, // track if we are inside a method
     val onDemandIdentifiers: Boolean = true,
+    val functionCalls: Boolean = true,
 ) {
     private lateinit var globalState: ClassAST
 
@@ -37,6 +37,7 @@ data class GenerationContext(
             loopCounterGenerator,
             methodContext,
             onDemandIdentifiers,
+            functionCalls,
         ).setGlobalState(globalState)
 
     fun increaseStatementDepth(): GenerationContext =
@@ -49,6 +50,7 @@ data class GenerationContext(
             loopCounterGenerator,
             methodContext,
             onDemandIdentifiers,
+            functionCalls,
         ).setGlobalState(globalState)
 
     fun disableOnDemand(): GenerationContext =
@@ -60,6 +62,20 @@ data class GenerationContext(
             identifierNameGenerator,
             loopCounterGenerator,
             methodContext,
-            false
+            false,
+            functionCalls,
+        ).setGlobalState(globalState)
+
+    fun disableFunctionCalls(): GenerationContext =
+        GenerationContext(
+            functionSymbolTable,
+            statementDepth,
+            expressionDepth,
+            symbolTable,
+            identifierNameGenerator,
+            loopCounterGenerator,
+            methodContext,
+            onDemandIdentifiers,
+            false,
         ).setGlobalState(globalState)
 }

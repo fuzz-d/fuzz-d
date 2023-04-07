@@ -60,10 +60,10 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
         return DafnyAST(
             reconditionedTraits +
-                    reconditionedClasses +
-                    reconditionedFunctionMethods +
-                    reconditionedMethods +
-                    reconditionedMain,
+                reconditionedClasses +
+                reconditionedFunctionMethods +
+                reconditionedMethods +
+                reconditionedMain,
         )
     }
 
@@ -242,12 +242,12 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is MapIndexAssignAST -> MapIndexAssignAST(
             reconditionIdentifier(identifierAST.map),
             reconditionExpression(identifierAST.key),
-            reconditionExpression(identifierAST.value)
+            reconditionExpression(identifierAST.value),
         )
 
         is MapIndexAST -> MapIndexAST(
             reconditionIdentifier(identifierAST.map),
-            reconditionExpression(identifierAST.key)
+            reconditionExpression(identifierAST.key),
         )
 
         is ClassInstanceFieldAST -> ClassInstanceFieldAST(
@@ -282,12 +282,12 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
     override fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): ExpressionAST = SetDisplayAST(
         setDisplayAST.innerType,
-        setDisplayAST.exprs.map(this::reconditionExpression)
+        setDisplayAST.exprs.map(this::reconditionExpression),
     )
 
     override fun reconditionMapConstructor(mapConstructorAST: MapConstructorAST): MapConstructorAST = MapConstructorAST(
         mapConstructorAST.keyType,
         mapConstructorAST.valueType,
-        mapConstructorAST.assignments.map { (k, v) -> Pair(reconditionExpression(k), reconditionExpression(v)) }
+        mapConstructorAST.assignments.map { (k, v) -> Pair(reconditionExpression(k), reconditionExpression(v)) },
     )
 }

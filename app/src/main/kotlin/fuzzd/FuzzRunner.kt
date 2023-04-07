@@ -17,7 +17,7 @@ class FuzzRunner(private val outputPath: String, private val outputDir: String, 
     private val reconditionRunner = ReconditionRunner(outputPath, outputDir, logger)
 
     fun run(seed: Long, advanced: Boolean, instrument: Boolean, run: Boolean) {
-        val generator = Generator(SelectionManager(Random(seed)), instrument)
+        val generator = Generator<Any?>(SelectionManager(Random(seed)), instrument)
 
         logger.log { "Fuzzing with seed: $seed" }
         println("Fuzzing with seed: $seed")

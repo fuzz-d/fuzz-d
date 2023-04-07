@@ -2,10 +2,16 @@ package fuzzd.generator.selection
 
 enum class StatementType {
     ASSIGN,
+    CLASS_INSTANTIATION,
     DECLARATION,
     IF,
+    MAP_ASSIGN,
     METHOD_CALL,
-    CLASS_INSTANTIATION,
     PRINT,
     WHILE,
+}
+
+enum class AssignType {
+    IDENTIFIER,
+    ARRAY_INDEX
 }
