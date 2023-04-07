@@ -19,7 +19,7 @@ abstract class AbstractExecutionHandler(
     protected abstract fun getExecuteCommand(fileDir: String, fileName: String): String
 
     override fun compile(): ExecutionResult {
-        val process = compileDafny(getCompileTarget(), fileDir, fileName)
+        val process = compileDafny(getCompileTarget(), fileDir, fileName, compileTimeout)
         val termination = process.waitFor(compileTimeout, TimeUnit.SECONDS)
 
         return ExecutionResult(
@@ -33,8 +33,9 @@ abstract class AbstractExecutionHandler(
     override fun compileResult(): ExecutionResult = compileResult
 
     override fun execute(): ExecutionResult {
-        val process = runCommand(getExecuteCommand(fileDir, fileName))
+        val process = runCommand("timeout $executeTimeout ${getExecuteCommand(fileDir, fileName)}")
         val termination = process.waitFor(executeTimeout, TimeUnit.SECONDS)
+
         return ExecutionResult(
             termination,
             if (termination) process.exitValue() else TIMEOUT_RETURN_CODE,

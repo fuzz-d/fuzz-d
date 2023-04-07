@@ -167,7 +167,7 @@ class SelectionManager(
 
     fun selectStatementType(context: GenerationContext, methodCalls: Boolean = true): StatementType {
         val ifStatementProbability =
-            if (context.statementDepth < MAX_STATEMENT_DEPTH) 0.1 / context.statementDepth else 0.0
+            if (context.statementDepth < MAX_STATEMENT_DEPTH) 0.07 / context.statementDepth else 0.0
         val whileStatementProbability = ifStatementProbability
 
         val methodCallProbability = if (methodCalls) {
@@ -215,7 +215,7 @@ class SelectionManager(
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
         val functionMethodCallProbability =
             if (!targetType.hasArrayType() && context.onDemandIdentifiers && context.functionCalls) {
-                0.15 / context.expressionDepth
+                0.1 / context.expressionDepth
             } else {
                 0.0
             }
