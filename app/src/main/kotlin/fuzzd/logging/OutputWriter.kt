@@ -7,17 +7,16 @@ import java.io.IOException
 import java.io.Writer
 import kotlin.system.exitProcess
 
-class OutputWriter(path: String, directory: String, fileName: String) {
+class OutputWriter(dir: File, fileName: String) {
     private val writer: Writer
     val dirPath: String
 
     init {
         // create directory if not exists and open file writer
-        val dir = File("$path/$directory")
         dir.mkdir()
 
         // create file in directory
-        val file = File("$path/$directory/$fileName")
+        val file = File("${dir.path}/$fileName")
 
         // open writer and store path
         writer = BufferedWriter(FileWriter(file.absoluteFile))

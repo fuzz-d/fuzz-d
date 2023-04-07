@@ -18,24 +18,25 @@ class OutputValidator {
      * @param mainFileName - the filename of the file the wrapper and body files should be combined into
      */
     fun validateFile(
-        fileDir: String,
+        fileDir: File,
         wrapperFileName: String,
         bodyFileName: String,
         mainFileName: String,
     ): ValidationResult {
-        val writer = OutputWriter(fileDir, "", "$mainFileName.dfy")
+        val writer = OutputWriter(fileDir, "$mainFileName.dfy")
+        val fileDirPath = fileDir.path
 
-        writer.write { File("$fileDir/$wrapperFileName.dfy").readText() }
-        writer.write { File("$fileDir/$bodyFileName.dfy").readText() }
+        writer.write { File("$fileDirPath/$wrapperFileName.dfy").readText() }
+        writer.write { File("$fileDirPath/$bodyFileName.dfy").readText() }
 
         writer.close()
 
         val handlers = listOf(
-            CsExecutionHandler(fileDir, mainFileName),
-            JsExecutionHandler(fileDir, mainFileName),
-            PyExecutionHandler(fileDir, mainFileName),
-            JavaExecutionHandler(fileDir, mainFileName),
-            GoExecutionHandler(fileDir, mainFileName),
+            CsExecutionHandler(fileDirPath, mainFileName),
+            JsExecutionHandler(fileDirPath, mainFileName),
+            PyExecutionHandler(fileDirPath, mainFileName),
+            JavaExecutionHandler(fileDirPath, mainFileName),
+            GoExecutionHandler(fileDirPath, mainFileName),
         )
 
         handlers.map { Thread(it) }

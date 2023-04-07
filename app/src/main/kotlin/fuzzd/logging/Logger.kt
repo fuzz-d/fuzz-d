@@ -1,7 +1,9 @@
 package fuzzd.logging
 
-class Logger(path: String, directory: String) {
-    private val writer = OutputWriter(path, directory, FUZZD_LOG_NAME)
+import java.io.File
+
+class Logger(dir: File, fileName: String = FUZZD_LOG_NAME) {
+    private val writer = OutputWriter(dir, fileName)
 
     fun <T> log(item: () -> T) {
         writer.write { item() }

@@ -10,18 +10,19 @@ import fuzzd.utils.DAFNY_MAIN
 import fuzzd.utils.DAFNY_TYPE
 import fuzzd.utils.DAFNY_WRAPPERS
 import fuzzd.validator.OutputValidator
+import java.io.File
 import kotlin.random.Random
 
-class FuzzRunner(private val outputPath: String, private val outputDir: String, private val logger: Logger) {
+class FuzzRunner(private val dir: File, private val logger: Logger) {
     private val validator = OutputValidator()
-    private val reconditionRunner = ReconditionRunner(outputPath, outputDir, logger)
+    private val reconditionRunner = ReconditionRunner(dir, logger)
 
     fun run(seed: Long, advanced: Boolean, instrument: Boolean, run: Boolean) {
         val generator = Generator(SelectionManager(Random(seed)), instrument)
 
         logger.log { "Fuzzing with seed: $seed" }
         println("Fuzzing with seed: $seed")
-        println("Output being written to directory: $outputDir")
+        println("Output being written to directory: ${dir.path}")
 
         // generate program
         try {
@@ -29,7 +30,7 @@ class FuzzRunner(private val outputPath: String, private val outputDir: String, 
 
             logger.log { "Generated ast" }
 
-            val originalWriter = OutputWriter(outputPath, outputDir, "$DAFNY_GENERATED.$DAFNY_TYPE")
+            val originalWriter = OutputWriter(dir, "$DAFNY_GENERATED.$DAFNY_TYPE")
             originalWriter.write { ast }
             originalWriter.close()
 
@@ -37,13 +38,7 @@ class FuzzRunner(private val outputPath: String, private val outputDir: String, 
                 reconditionRunner.run(ast, advanced)
 
                 // differential testing; log results
-                val validationResult = validator.validateFile(
-                    originalWriter.dirPath,
-                    DAFNY_WRAPPERS,
-                    DAFNY_BODY,
-                    DAFNY_MAIN,
-                )
-
+                val validationResult = validator.validateFile(dir, DAFNY_WRAPPERS, DAFNY_BODY, DAFNY_MAIN)
                 logger.log { validationResult }
             }
         } catch (e: Exception) {

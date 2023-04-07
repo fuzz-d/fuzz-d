@@ -5,15 +5,12 @@ import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.ExperimentalCli
 import kotlinx.cli.Subcommand
+import java.io.File
 import java.util.UUID
 import kotlin.random.Random
 
 @OptIn(ExperimentalCli::class)
-class Fuzz(
-    private val outputPath: String,
-    private val outputDir: String,
-    private val logger: Logger,
-) : Subcommand("fuzz", "Generate programs to test Dafny") {
+class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
     private val seed by option(ArgType.String, "seed", "s", "Generation Seed")
     private val advanced by option(
         ArgType.Boolean,
@@ -35,22 +32,29 @@ class Fuzz(
     )
 
     override fun execute() {
+        val path = "output"
+        val dir = UUID.randomUUID().toString()
+        val fileDir = File("$path/$dir")
+        val logger = Logger(fileDir)
         val generationSeed = seed?.toLong() ?: Random.Default.nextLong()
-        FuzzRunner(outputPath, outputDir, logger).run(
-            generationSeed,
-            advanced == true,
-            instrument == true,
-            noRun != true,
-        )
+
+        try {
+            FuzzRunner(fileDir, logger).run(
+                generationSeed,
+                advanced == true,
+                instrument == true,
+                noRun != true,
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            logger.close()
+        }
     }
 }
 
 @OptIn(ExperimentalCli::class)
-class Recondition(
-    private val outputPath: String,
-    private val outputDir: String,
-    private val logger: Logger,
-) : Subcommand("recondition", "Recondition a reduced test case") {
+class Recondition : Subcommand("recondition", "Recondition a reduced test case") {
     private val file by argument(ArgType.String, "file", "path to .dfy file to recondition")
     private val advanced by option(
         ArgType.Boolean,
@@ -59,30 +63,29 @@ class Recondition(
         "Use advanced reconditioning to reduce use of safety wrappers",
     )
 
-    override fun execute() = ReconditionRunner(outputPath, outputDir, logger).run(file, advanced == true)
+    override fun execute() {
+        val file = File(file)
+        val logger = Logger(file.parentFile, fileName = "recondition.log")
+        try {
+            ReconditionRunner(file.parentFile, logger).run(file, advanced == true)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            logger.close()
+        }
+    }
 }
 
 @OptIn(ExperimentalCli::class)
-fun createArgParser(path: String, dir: String, logger: Logger): ArgParser {
+fun createArgParser(): ArgParser {
     val parser = ArgParser("fuzzd")
-    val fuzz = Fuzz(path, dir, logger)
-    val recondition = Recondition(path, dir, logger)
+    val fuzz = Fuzz()
+    val recondition = Recondition()
     parser.subcommands(fuzz, recondition)
 
     return parser
 }
 
 fun main(args: Array<String>) {
-    val path = "output"
-    val dir = UUID.randomUUID().toString()
-    val logger = Logger(path, dir)
-    val parser = createArgParser(path, dir, logger)
-
-    try {
-        parser.parse(args)
-    } catch (e: Exception) {
-        e.printStackTrace()
-    } finally {
-        logger.close()
-    }
+    createArgParser().parse(args)
 }

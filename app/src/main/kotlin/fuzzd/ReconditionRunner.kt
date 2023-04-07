@@ -24,11 +24,11 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import java.io.File
 
-class ReconditionRunner(private val outputPath: String, private val outputDir: String, private val logger: Logger) {
+class ReconditionRunner(private val dir: File, private val logger: Logger) {
     private val validator = OutputValidator()
 
-    fun run(file: String, advanced: Boolean) {
-        val input = File(file).inputStream()
+    fun run(file: File, advanced: Boolean) {
+        val input = file.inputStream()
         val cs = CharStreams.fromStream(input)
         val tokens = CommonTokenStream(dafnyLexer(cs))
 
@@ -44,7 +44,7 @@ class ReconditionRunner(private val outputPath: String, private val outputDir: S
 
                 val advancedAST = advancedReconditioner.recondition(ast)
 
-                val writer = OutputWriter(outputPath, outputDir, "$DAFNY_ADVANCED.$DAFNY_TYPE")
+                val writer = OutputWriter(dir, "$DAFNY_ADVANCED.$DAFNY_TYPE")
                 writer.write { "$ADVANCED_RECONDITION_CLASS\n" }
                 writer.write { "$ADVANCED_ABSOLUTE\n" }
                 writer.write { "$ADVANCED_SAFE_ARRAY_INDEX\n" }
@@ -80,11 +80,11 @@ class ReconditionRunner(private val outputPath: String, private val outputDir: S
             val reconditioner = Reconditioner(logger, ids)
             val reconditionedAST = reconditioner.recondition(ast)
 
-            val reconditionedWriter = OutputWriter(outputPath, outputDir, "$DAFNY_BODY.$DAFNY_TYPE")
+            val reconditionedWriter = OutputWriter(dir, "$DAFNY_BODY.$DAFNY_TYPE")
             reconditionedWriter.write { reconditionedAST }
             reconditionedWriter.close()
 
-            val wrappersWriter = OutputWriter(outputPath, outputDir, "$DAFNY_WRAPPERS.$DAFNY_TYPE")
+            val wrappersWriter = OutputWriter(dir, "$DAFNY_WRAPPERS.$DAFNY_TYPE")
             WRAPPER_FUNCTIONS.forEach { wrapper -> wrappersWriter.write { "$wrapper\n" } }
             wrappersWriter.close()
         } catch (e: Exception) {
