@@ -6,16 +6,6 @@ import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.utils.indent
 import fuzzd.utils.unionAll
 
-// for top level visitor
-data class ClassTemplateAST(
-    val name: String,
-    val extends: Set<TraitAST>,
-    val functionMethods: Set<FunctionMethodSignatureAST>,
-    val methods: Set<MethodSignatureAST>,
-    val fields: Set<IdentifierAST>,
-    val inheritedFields: Set<IdentifierAST>,
-) : ASTElement
-
 class ClassAST(
     val name: String,
     val extends: Set<TraitAST>,
@@ -98,6 +88,14 @@ class ClassAST(
         sb.appendLine("}")
         return sb.toString()
     }
+
+    override fun equals(other: Any?): Boolean = other is ClassAST &&
+        other.name == name &&
+        other.extends == extends &&
+        other.fields == fields &&
+        other.functionMethods == functionMethods &&
+        other.methods == methods &&
+        other.inheritedFields == inheritedFields
 
     companion object {
         fun builder() = ClassASTBuilder()

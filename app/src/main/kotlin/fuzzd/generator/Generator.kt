@@ -876,7 +876,7 @@ class Generator(
 
     companion object {
         private const val DAFNY_MAX_LOOP_COUNTER = 100
-        private const val GLOBAL_STATE = "GlobalState"
+        const val GLOBAL_STATE = "GlobalState"
         private const val PARAM_GLOBAL_STATE = "globalState"
     }
 }

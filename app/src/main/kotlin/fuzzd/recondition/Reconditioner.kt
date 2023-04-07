@@ -157,7 +157,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         voidMethodCallAST.params.map(this::reconditionExpression),
     )
 
-    override fun reconditionPrintAST(printAST: PrintAST) = PrintAST(printAST.expr.map { reconditionExpression(it) })
+    override fun reconditionPrintAST(printAST: PrintAST) = PrintAST(printAST.expr.map(this::reconditionExpression))
 
     override fun reconditionExpression(expression: ExpressionAST): ExpressionAST = when (expression) {
         is BinaryExpressionAST -> reconditionBinaryExpression(expression)

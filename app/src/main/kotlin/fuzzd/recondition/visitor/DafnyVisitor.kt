@@ -2,6 +2,7 @@ package fuzzd.recondition.visitor
 
 import dafnyBaseVisitor
 import dafnyParser.* // ktlint-disable no-wildcard-imports
+import fuzzd.generator.Generator.Companion.GLOBAL_STATE
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.ClassInstanceFunctionMethodSignatureAST
@@ -26,6 +27,7 @@ import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
+import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
@@ -39,6 +41,7 @@ import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
+import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
@@ -51,9 +54,11 @@ import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
+import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
@@ -112,6 +117,12 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             SAFE_SUBTRACT_INT,
             ABSOLUTE,
         ).forEach { functionMethodsTable.addEntry(it.name(), it.signature) }
+
+        val globalStateCtx = ctx.topDecl().first {
+            it.classDecl() != null && visitIdentifierName(it.classDecl().identifier(0)) == GLOBAL_STATE
+        }
+
+        visitClassDecl(globalStateCtx.classDecl())
 
         val topLevelContexts = ctx.topDecl().filter { it.topDeclMember() != null }.map { it.topDeclMember() }
 
@@ -310,7 +321,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitBreakStatement(ctx: BreakStatementContext): BreakAST = BreakAST
 
-    override fun visitDeclaration(ctx: DeclarationContext): MultiDeclarationAST {
+    override fun visitDeclaration(ctx: DeclarationContext): StatementAST {
         val lhs = ctx.declarationLhs().declAssignLhs().map { declAssignLhs -> visitDeclAssignLhs(declAssignLhs) }
         val rhs = visitDeclAssignRhs(ctx.declAssignRhs())
 
@@ -332,7 +343,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
                 type.clazz.functionMethods.map { fm ->
                     ClassInstanceFunctionMethodSignatureAST(
                         identifier,
-                        fm.signature
+                        fm.signature,
                     )
                 }.forEach { functionMethodsTable.addEntry(it.name, it) }
 
@@ -343,7 +354,11 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             identifier
         }
 
-        return MultiDeclarationAST(identifiers, listOf(rhs))
+        return if (ctx.type() != null) {
+            MultiTypedDeclarationAST(identifiers, listOf(rhs))
+        } else {
+            MultiDeclarationAST(identifiers, listOf(rhs))
+        }
     }
 
     private fun visitDeclAssignLhsMethodCall(ctx: DeclAssignLhsContext): String {
@@ -351,11 +366,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         var currCtx: DeclAssignLhsContext? = ctx
 
         while (currCtx != null) {
-            val str = if (currCtx.identifier() != null) {
-                visitIdentifierName(currCtx.identifier())
-            } else {
-                visitIdentIndex(currCtx.identIndex()).toString()
-            }
+            val str = visitDeclIdentifier(currCtx.declIdentifier()).toString()
 
             strings.add(str)
             currCtx = currCtx.declAssignLhs()
@@ -364,12 +375,21 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return strings.joinToString(".")
     }
 
-    override fun visitDeclAssignLhs(ctx: DeclAssignLhsContext): IdentifierAST {
-        val identifier = if (ctx.identifier() != null) {
-            visitIdentifier(ctx.identifier())
+    override fun visitDeclIdentifier(ctx: DeclIdentifierContext): IdentifierAST {
+        val identifier = visitIdentifier(ctx.identifier())
+        return if (ctx.expression().size == 0) {
+            identifier
         } else {
-            visitIdentIndex(ctx.identIndex())
+            val index = visitExpression(ctx.expression(0))
+            when (identifier.type()) {
+                is ArrayType -> ArrayIndexAST(identifier, index)
+                else -> MapIndexAST(identifier, index)
+            }
         }
+    }
+
+    override fun visitDeclAssignLhs(ctx: DeclAssignLhsContext): IdentifierAST {
+        val identifier = visitDeclIdentifier(ctx.declIdentifier())
 
         return if (ctx.declAssignLhs() != null) {
             ClassInstanceFieldAST(identifier, visitDeclAssignLhs(ctx.declAssignLhs()))
@@ -390,7 +410,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitAssignmentLhs(ctx: AssignmentLhsContext): IdentifierAST = visitDeclAssignLhs(ctx.declAssignLhs())
 
-    override fun visitPrint(ctx: PrintContext): PrintAST = PrintAST(visitExpression(ctx.expression()))
+    override fun visitPrint(ctx: PrintContext): PrintAST = PrintAST(ctx.expression().subList(0, ctx.expression().size - 1).map(this::visitExpression))
 
     override fun visitIfStatement(ctx: IfStatementContext): IfStatementAST {
         val ifCondition = visitExpression(ctx.expression())
@@ -456,7 +476,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             visitExpression(ctx.expression(1)),
         )
 
-        ctx.DISJ() != null -> BinaryExpressionAST(
+        ctx.disj() != null -> BinaryExpressionAST(
             visitExpression(ctx.expression(0)),
             DisjointOperator,
             visitExpression(ctx.expression(1)),
@@ -472,7 +492,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             val expr1 = visitExpression(ctx.expression(0))
             val expr2 = visitExpression(ctx.expression(1))
             BinaryExpressionAST(
-                expr1, if (expr1.type() is LiteralType) EqualsOperator else DataStructureEqualityOperator, expr2
+                expr1,
+                if (expr1.type() is LiteralType) EqualsOperator else DataStructureEqualityOperator,
+                expr2,
             )
         }
 
@@ -480,7 +502,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             val expr1 = visitExpression(ctx.expression(0))
             val expr2 = visitExpression(ctx.expression(1))
             BinaryExpressionAST(
-                expr1, if (expr1.type() is LiteralType) GreaterThanEqualOperator else SupersetOperator, expr2
+                expr1,
+                if (expr1.type() is LiteralType) GreaterThanEqualOperator else SupersetOperator,
+                expr2,
             )
         }
 
@@ -488,7 +512,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             val expr1 = visitExpression(ctx.expression(0))
             val expr2 = visitExpression(ctx.expression(1))
             BinaryExpressionAST(
-                expr1, if (expr1.type() is LiteralType) GreaterThanOperator else ProperSupersetOperator, expr2
+                expr1,
+                if (expr1.type() is LiteralType) GreaterThanOperator else ProperSupersetOperator,
+                expr2,
             )
         }
 
@@ -514,7 +540,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             val expr1 = visitExpression(ctx.expression(0))
             val expr2 = visitExpression(ctx.expression(1))
             BinaryExpressionAST(
-                expr1, if (expr1.type() is LiteralType) LessThanEqualOperator else SubsetOperator, expr2
+                expr1,
+                if (expr1.type() is LiteralType) LessThanEqualOperator else SubsetOperator,
+                expr2,
             )
         }
 
@@ -522,7 +550,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             val expr1 = visitExpression(ctx.expression(0))
             val expr2 = visitExpression(ctx.expression(1))
             BinaryExpressionAST(
-                expr1, if (expr1.type() is LiteralType) LessThanOperator else ProperSubsetOperator, expr2
+                expr1,
+                if (expr1.type() is LiteralType) LessThanOperator else ProperSubsetOperator,
+                expr2,
             )
         }
 
@@ -536,7 +566,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             val expr1 = visitExpression(ctx.expression(0))
             val expr2 = visitExpression(ctx.expression(1))
             BinaryExpressionAST(
-                expr1, if (expr1.type() is LiteralType) MultiplicationOperator else IntersectionOperator, expr2
+                expr1,
+                if (expr1.type() is LiteralType) MultiplicationOperator else IntersectionOperator,
+                expr2,
             )
         }
 
@@ -544,7 +576,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             val expr1 = visitExpression(ctx.expression(0))
             val expr2 = visitExpression(ctx.expression(1))
             BinaryExpressionAST(
-                expr1, if (expr1.type() is LiteralType) SubtractionOperator else DifferenceOperator, expr2
+                expr1,
+                if (expr1.type() is LiteralType) SubtractionOperator else DifferenceOperator,
+                expr2,
             )
         }
 
@@ -552,7 +586,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             val expr1 = visitExpression(ctx.expression(0))
             val expr2 = visitExpression(ctx.expression(1))
             BinaryExpressionAST(
-                expr1, if (expr1.type() is LiteralType) NotEqualsOperator else DataStructureInequalityOperator, expr2
+                expr1,
+                if (expr1.type() is LiteralType) NotEqualsOperator else DataStructureInequalityOperator,
+                expr2,
             )
         }
 
@@ -644,19 +680,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return findIdentifier(name) // return actual identifier or one with dummy type
     }
 
-    override fun visitIdentIndex(ctx: IdentIndexContext): IdentifierAST {
-        val name = visitIdentifierName(ctx.identifier())
-        val identifier = findIdentifier(name)
-
-        val expression = visitExpression(ctx.expression(0))
-        return if (identifier.type() is ArrayType)
-            ArrayIndexAST(identifier, expression)
-        else
-            MapIndexAST(identifier, expression)
-    }
-
     override fun visitMapIndexAssign(ctx: MapIndexAssignContext): MapIndexAssignAST {
-        val map = visitIdentifier(ctx.identifier())
+        val map = visitDeclAssignLhs(ctx.declAssignLhs())
         val assign = visitMapElement(ctx.mapElem())
 
         return MapIndexAssignAST(map, assign.first, assign.second)
@@ -684,6 +709,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         CharacterLiteralAST(ctx.ESCAPED_CHAR().toString()[0])
     }
 
+    override fun visitStringToken(ctx: StringTokenContext): StringLiteralAST = StringLiteralAST(ctx.text)
+
     override fun visitRealLiteral(ctx: RealLiteralContext): RealLiteralAST =
         RealLiteralAST(ctx.REAL_LITERAL().toString())
 
@@ -701,11 +728,31 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.CHAR() != null -> CharType
         ctx.REAL() != null -> RealType
         ctx.arrayType() != null -> visitArrayType(ctx.arrayType())
+        ctx.identifier() != null -> visitIdentifierType(ctx.identifier())
+        ctx.mapType() != null -> visitMapType(ctx.mapType())
+        ctx.setType() != null -> visitSetType(ctx.setType())
         else -> throw UnsupportedOperationException("Visiting unrecognised type context $ctx")
     }
 
     override fun visitArrayType(ctx: ArrayTypeContext): ArrayType {
         val innerType = visitType(ctx.genericInstantiation().type(0))
         return ArrayType(innerType)
+    }
+
+    private fun visitIdentifierType(ctx: IdentifierContext): ClassType {
+        val name = visitIdentifierName(ctx)
+        return ClassType(classesTable.getEntry(name))
+    }
+
+    override fun visitMapType(ctx: MapTypeContext): MapType {
+        val keyType = visitType(ctx.genericInstantiation().type(0))
+        val valueType = visitType(ctx.genericInstantiation().type(1))
+
+        return MapType(keyType, valueType)
+    }
+
+    override fun visitSetType(ctx: SetTypeContext): SetType {
+        val innerType = visitType(ctx.genericInstantiation().type(0))
+        return SetType(innerType)
     }
 }

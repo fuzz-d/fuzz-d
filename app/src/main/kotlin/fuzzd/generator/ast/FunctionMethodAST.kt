@@ -2,14 +2,13 @@ package fuzzd.generator.ast
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.utils.indent
-import kotlin.math.sign
 
 open class FunctionMethodAST(
     val signature: FunctionMethodSignatureAST,
     val body: ExpressionAST,
 ) : TopLevelAST() {
     constructor(name: String, returnType: Type, params: List<IdentifierAST>, body: ExpressionAST) :
-            this(FunctionMethodSignatureAST(name, returnType, params), body)
+        this(FunctionMethodSignatureAST(name, returnType, params), body)
 
     fun params(): List<IdentifierAST> = signature.params
 
@@ -50,5 +49,5 @@ open class FunctionMethodSignatureAST(
 
 class ClassInstanceFunctionMethodSignatureAST(
     classInstance: IdentifierAST,
-    signature: FunctionMethodSignatureAST
+    signature: FunctionMethodSignatureAST,
 ) : FunctionMethodSignatureAST("$classInstance.${signature.name}", signature.returnType, signature.params)

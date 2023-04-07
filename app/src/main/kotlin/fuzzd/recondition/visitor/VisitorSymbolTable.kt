@@ -4,6 +4,8 @@ class VisitorSymbolTable<T>(private val parent: VisitorSymbolTable<T>? = null) {
     private val table = mutableMapOf<String, T>()
 
     fun addEntry(name: String, entry: T) {
+        if (name in table) return
+
         table[name] = entry
     }
 
