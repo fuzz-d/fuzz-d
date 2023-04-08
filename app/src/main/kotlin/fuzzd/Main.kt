@@ -65,9 +65,9 @@ class Recondition : Subcommand("recondition", "Recondition a reduced test case")
 
     override fun execute() {
         val file = File(file)
-        val logger = Logger(file.parentFile, fileName = "recondition.log")
+        val logger = Logger(file.absoluteFile.parentFile, fileName = "recondition.log")
         try {
-            ReconditionRunner(file.parentFile, logger).run(file, advanced == true)
+            ReconditionRunner(file.absoluteFile.parentFile, logger).run(file, advanced == true)
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
