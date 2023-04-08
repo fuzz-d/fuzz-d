@@ -188,7 +188,7 @@ sealed class ExpressionAST : ASTElement {
     class ClassInstanceFieldAST(
         val classInstance: IdentifierAST,
         val classField: IdentifierAST,
-    ) : IdentifierAST("${classInstance.name}.${classField.name}", classField.type(), initialised = true)
+    ) : IdentifierAST("${classInstance.name}.$classField", classField.type(), initialised = true)
 
     class ArrayIndexAST(
         val array: IdentifierAST,
