@@ -8,13 +8,7 @@ fun String.toHexInt(): Int {
     val rest = if (negative) this.substring(1 until length) else this
 
     val value = if (rest.startsWith("0x")) {
-        var sum = 0
-        var power = 1
-        for (i in (rest.length - 1 downTo 2)) {
-            sum += power * (rest[i] - '0')
-            power *= 16
-        }
-        sum
+        rest.substring(2).toInt(16)
     } else {
         rest.toInt()
     }
