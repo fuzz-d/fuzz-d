@@ -31,6 +31,7 @@ import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
 import fuzzd.generator.selection.ExpressionType.MAP_INDEX
 import fuzzd.generator.selection.ExpressionType.MAP_INDEX_ASSIGN
+import fuzzd.generator.selection.ExpressionType.MODULUS
 import fuzzd.generator.selection.ExpressionType.TERNARY
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.StatementType.ASSIGN
@@ -51,8 +52,8 @@ class SelectionManager(
 //            this::selectClassType to 0.0,
 //            this::selectTraitType to 0.0,
             this::selectArrayType to if (literalOnly || !context.onDemandIdentifiers) 0.0 else 0.1,
-            this::selectDataStructureType to 0.2,
-            this::selectLiteralType to if (literalOnly) 0.8 else 0.7,
+            this::selectDataStructureType to 0.15,
+            this::selectLiteralType to if (literalOnly) 0.85 else 0.75,
         )
 
         return randomWeightedSelection(normaliseWeights(selection)).invoke(context, literalOnly)
@@ -64,7 +65,7 @@ class SelectionManager(
     private fun selectTraitType(context: GenerationContext): TraitType =
         TraitType(randomSelection(context.functionSymbolTable.traits().toList()))
 
-    private fun selectDataStructureType(context: GenerationContext, literalOnly: Boolean): Type =
+    fun selectDataStructureType(context: GenerationContext, literalOnly: Boolean): Type =
         randomWeightedSelection(
             listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
                 this::selectSetType to 0.5,
@@ -213,7 +214,8 @@ class SelectionManager(
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
-        val functionMethodCallProbability =
+        val modulusProbability = if (targetType == IntType) 0.03 else 0.0
+        val functionCallProbability =
             if (!targetType.hasArrayType() && context.onDemandIdentifiers && context.functionCalls) {
                 0.1 / context.expressionDepth
             } else {
@@ -224,7 +226,7 @@ class SelectionManager(
         val mapIndexProbability = if (identifier) 0.15 / context.expressionDepth else 0.0
 
         val remainingProbability =
-            (1 - binaryProbability - unaryProbability - functionMethodCallProbability - ternaryProbability)
+            1 - listOf(binaryProbability, unaryProbability, modulusProbability, functionCallProbability, ternaryProbability, mapAssignProbability, mapIndexProbability).sum()
         val identifierProbability = if (identifier) 2 * remainingProbability / 3 else 0.0
         val literalProbability =
             if (isLiteralType(targetType)) {
@@ -245,9 +247,10 @@ class SelectionManager(
             LITERAL to literalProbability,
             TERNARY to ternaryProbability,
             IDENTIFIER to identifierProbability,
-            FUNCTION_METHOD_CALL to functionMethodCallProbability,
+            FUNCTION_METHOD_CALL to functionCallProbability,
             UNARY to unaryProbability,
             BINARY to binaryProbability,
+            MODULUS to modulusProbability,
             MAP_INDEX to mapIndexProbability,
             MAP_INDEX_ASSIGN to mapAssignProbability,
         )

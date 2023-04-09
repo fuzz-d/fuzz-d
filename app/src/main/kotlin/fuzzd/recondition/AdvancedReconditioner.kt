@@ -18,6 +18,7 @@ import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
@@ -217,7 +218,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
         return identifierDependents + exprDependents +
-                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+            MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMultiTypedDeclaration(multiTypedDeclarationAST: MultiTypedDeclarationAST): List<StatementAST> {
@@ -235,7 +236,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
 
         return identifierDependents + exprDependents +
-                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+            MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionIfStatement(ifStatementAST: IfStatementAST): List<StatementAST> {
@@ -290,6 +291,7 @@ class AdvancedReconditioner {
         when (expressionAST) {
             is BinaryExpressionAST -> reconditionBinaryExpression(expressionAST)
             is UnaryExpressionAST -> reconditionUnaryExpression(expressionAST)
+            is ModulusExpressionAST -> reconditionModulusExpression(expressionAST)
             is TernaryExpressionAST -> reconditionTernaryExpression(expressionAST)
             is IdentifierAST -> reconditionIdentifier(expressionAST)
             is LiteralAST, is ArrayInitAST -> Pair(expressionAST, emptyList()) // do nothing
@@ -329,6 +331,11 @@ class AdvancedReconditioner {
         val (reconditionedExpression, dependents) = reconditionExpression(unaryExpressionAST.expr)
 
         return Pair(UnaryExpressionAST(reconditionedExpression, unaryExpressionAST.operator), dependents)
+    }
+
+    fun reconditionModulusExpression(modulusExpressionAST: ModulusExpressionAST): Pair<ModulusExpressionAST, List<StatementAST>> {
+        val (reconditionedExpression, dependents) = reconditionExpression(modulusExpressionAST.expr)
+        return Pair(ModulusExpressionAST(reconditionedExpression), dependents)
     }
 
     fun reconditionTernaryExpression(ternaryExpressionAST: TernaryExpressionAST): Pair<TernaryExpressionAST, List<StatementAST>> {
@@ -443,7 +450,7 @@ class AdvancedReconditioner {
         }
         return Pair(
             MapConstructorAST(mapConstructorAST.keyType, mapConstructorAST.valueType, assigns),
-            assignDependents
+            assignDependents,
         )
     }
 

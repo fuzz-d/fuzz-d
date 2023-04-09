@@ -3,15 +3,13 @@ package fuzzd.recondition
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
-import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
-import fuzzd.generator.ast.ExpressionAST.MapIndexAST
-import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -26,7 +24,6 @@ import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
-import fuzzd.generator.ast.StatementAST.TypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
@@ -71,6 +68,8 @@ interface ASTReconditioner {
 
     fun reconditionUnaryExpression(expression: UnaryExpressionAST): ExpressionAST
 
+    fun reconditionModulusExpression(modulus: ModulusExpressionAST): ModulusExpressionAST
+
     fun reconditionFunctionMethodCall(functionMethodCall: FunctionMethodCallAST): ExpressionAST
 
     fun reconditionIdentifier(identifierAST: IdentifierAST): ExpressionAST
@@ -83,7 +82,7 @@ interface ASTReconditioner {
 
     fun reconditionNonVoidMethodCallAST(nonVoidMethodCall: NonVoidMethodCallAST): ExpressionAST
 
-    fun reconditionSetDisplay(setDisplayAST: SetDisplayAST) : ExpressionAST
+    fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): ExpressionAST
 
     fun reconditionMapConstructor(mapConstructorAST: MapConstructorAST): MapConstructorAST
 }

@@ -13,6 +13,7 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -96,6 +97,8 @@ interface ASTGenerator {
         context: GenerationContext,
         targetType: Type,
     ): Pair<UnaryExpressionAST, List<StatementAST>>
+
+    fun generateModulus(context: GenerationContext, targetType: Type): Pair<ModulusExpressionAST, List<StatementAST>>
 
     fun generateBinaryExpression(
         context: GenerationContext,

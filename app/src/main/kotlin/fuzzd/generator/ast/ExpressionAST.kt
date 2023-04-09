@@ -119,6 +119,19 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
+    class ModulusExpressionAST(val expr: ExpressionAST) : ExpressionAST() {
+        init {
+            val type = expr.type()
+            if (type !is MapType && type !is SetType) {
+                throw InvalidInputException("Invalid expression type for modulus. Got $type, expected map or set")
+            }
+        }
+
+        override fun type(): Type = IntType
+
+        override fun toString(): String = "|$expr|"
+    }
+
     class BinaryExpressionAST(
         val expr1: ExpressionAST,
         val operator: BinaryOperator,

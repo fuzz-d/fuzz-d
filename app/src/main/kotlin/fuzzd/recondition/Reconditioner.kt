@@ -16,6 +16,7 @@ import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -162,6 +163,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
     override fun reconditionExpression(expression: ExpressionAST): ExpressionAST = when (expression) {
         is BinaryExpressionAST -> reconditionBinaryExpression(expression)
         is UnaryExpressionAST -> reconditionUnaryExpression(expression)
+        is ModulusExpressionAST -> reconditionModulusExpression(expression)
         is TernaryExpressionAST -> reconditionTernaryExpression(expression)
         is IdentifierAST -> reconditionIdentifier(expression)
         is LiteralAST, is ArrayInitAST -> expression // don't need to do anything
@@ -210,6 +212,9 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             reconditionExpression(expression.expr),
             expression.operator,
         )
+
+    override fun reconditionModulusExpression(modulus: ModulusExpressionAST): ModulusExpressionAST =
+            ModulusExpressionAST(reconditionExpression(modulus.expr))
 
     override fun reconditionFunctionMethodCall(functionMethodCall: FunctionMethodCallAST): ExpressionAST =
         FunctionMethodCallAST(

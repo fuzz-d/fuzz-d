@@ -17,6 +17,7 @@ import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -75,6 +76,7 @@ import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.LITERAL
 import fuzzd.generator.selection.ExpressionType.MAP_INDEX
 import fuzzd.generator.selection.ExpressionType.MAP_INDEX_ASSIGN
+import fuzzd.generator.selection.ExpressionType.MODULUS
 import fuzzd.generator.selection.ExpressionType.TERNARY
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.SelectionManager
@@ -617,6 +619,7 @@ class Generator(
     ): Pair<ExpressionAST, List<StatementAST>> = when (exprType) {
         CONSTRUCTOR -> generateConstructorForType(context, targetType)
         UNARY -> generateUnaryExpression(context, targetType)
+        MODULUS -> generateModulus(context, targetType)
         BINARY -> generateBinaryExpression(context, targetType)
         TERNARY -> generateTernaryExpression(context, targetType)
         FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
@@ -768,6 +771,12 @@ class Generator(
         val operator = selectionManager.selectUnaryOperator(targetType)
 
         return Pair(UnaryExpressionAST(expr, operator), exprDeps)
+    }
+
+    override fun generateModulus(context: GenerationContext, targetType: Type): Pair<ModulusExpressionAST, List<StatementAST>> {
+        val innerType = selectionManager.selectDataStructureType(context, literalOnly = false)
+        val (expr, exprDeps) = generateExpression(context, innerType)
+        return Pair(ModulusExpressionAST(expr), exprDeps)
     }
 
     override fun generateBinaryExpression(

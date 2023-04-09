@@ -24,6 +24,7 @@ import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -457,6 +458,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             visitUnaryOperator(ctx.unaryOperator()),
         )
 
+        ctx.modulus() != null -> visitModulus(ctx.modulus())
+
         ctx.classInstantiation() != null -> visitClassInstantiation(ctx.classInstantiation())
         ctx.ternaryExpression() != null -> visitTernaryExpression(ctx.ternaryExpression())
         ctx.arrayLength() != null -> visitArrayLength(ctx.arrayLength())
@@ -719,6 +722,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.NOT() != null -> NotOperator
         else -> throw UnsupportedOperationException("Visiting unsupported unary operator $ctx")
     }
+
+    override fun visitModulus(ctx: ModulusContext): ModulusExpressionAST = ModulusExpressionAST(visitExpression(ctx.expression()))
 
     /* ============================================== TYPE ============================================= */
 
