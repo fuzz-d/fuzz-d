@@ -15,8 +15,8 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
-import fuzzd.generator.ast.ExpressionAST.MapIndexAST
-import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.IndexAST
+import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
@@ -588,7 +588,7 @@ class Generator(
         val (key, keyDeps) = generateExpression(context.increaseExpressionDepth(), keyType)
         val (value, valueDeps) = generateExpression(context.increaseExpressionDepth(), valueType)
 
-        return mapDeps + keyDeps + valueDeps + AssignmentAST(map, MapIndexAssignAST(map, key, value))
+        return mapDeps + keyDeps + valueDeps + AssignmentAST(map, IndexAssignAST(map, key, value))
     }
 
     /* ==================================== EXPRESSIONS ==================================== */
@@ -742,13 +742,13 @@ class Generator(
     override fun generateMapIndexAssign(
         context: GenerationContext,
         targetType: Type,
-    ): Pair<MapIndexAssignAST, List<StatementAST>> {
+    ): Pair<IndexAssignAST, List<StatementAST>> {
         val mapType = targetType as MapType
         val (map, mapDeps) = generateIdentifier(context, mapType)
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
         val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), targetType.valueType)
 
-        return Pair(MapIndexAssignAST(map, index, newValue), mapDeps + indexDeps + newValueDeps)
+        return Pair(IndexAssignAST(map, index, newValue), mapDeps + indexDeps + newValueDeps)
     }
 
     override fun generateMapIndex(context: GenerationContext, targetType: Type): Pair<TernaryExpressionAST, List<StatementAST>> {
@@ -757,7 +757,7 @@ class Generator(
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), mapType.keyType)
         val (altExpr, altExprDeps) = generateExpression(context.increaseExpressionDepth(), mapType.valueType)
 
-        val mapIndex = MapIndexAST(map, index)
+        val mapIndex = IndexAST(map, index)
         val ternaryExpression = TernaryExpressionAST(BinaryExpressionAST(index, MembershipOperator, map), mapIndex, altExpr)
 
         return Pair(ternaryExpression, mapDeps + indexDeps + altExprDeps)

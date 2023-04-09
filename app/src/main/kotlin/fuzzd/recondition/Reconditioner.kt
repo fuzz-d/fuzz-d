@@ -12,10 +12,10 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.IndexAST
+import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
-import fuzzd.generator.ast.ExpressionAST.MapIndexAST
-import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -214,7 +214,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         )
 
     override fun reconditionModulusExpression(modulus: ModulusExpressionAST): ModulusExpressionAST =
-            ModulusExpressionAST(reconditionExpression(modulus.expr))
+        ModulusExpressionAST(reconditionExpression(modulus.expr))
 
     override fun reconditionFunctionMethodCall(functionMethodCall: FunctionMethodCallAST): ExpressionAST =
         FunctionMethodCallAST(
@@ -244,14 +244,14 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             }
         }
 
-        is MapIndexAssignAST -> MapIndexAssignAST(
-            reconditionIdentifier(identifierAST.map),
+        is IndexAssignAST -> IndexAssignAST(
+            reconditionIdentifier(identifierAST.ident),
             reconditionExpression(identifierAST.key),
             reconditionExpression(identifierAST.value),
         )
 
-        is MapIndexAST -> MapIndexAST(
-            reconditionIdentifier(identifierAST.map),
+        is IndexAST -> IndexAST(
+            reconditionIdentifier(identifierAST.ident),
             reconditionExpression(identifierAST.key),
         )
 
@@ -288,6 +288,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
     override fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): ExpressionAST = SetDisplayAST(
         setDisplayAST.innerType,
         setDisplayAST.exprs.map(this::reconditionExpression),
+        setDisplayAST.isMultiset,
     )
 
     override fun reconditionMapConstructor(mapConstructorAST: MapConstructorAST): MapConstructorAST = MapConstructorAST(

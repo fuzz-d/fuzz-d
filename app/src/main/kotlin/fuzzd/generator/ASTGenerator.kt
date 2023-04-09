@@ -12,7 +12,7 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
-import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -127,7 +127,7 @@ interface ASTGenerator {
     fun generateMapIndexAssign(
         context: GenerationContext,
         targetType: Type,
-    ): Pair<MapIndexAssignAST, List<StatementAST>>
+    ): Pair<IndexAssignAST, List<StatementAST>>
 
     fun generateMapIndex(context: GenerationContext, targetType: Type): Pair<TernaryExpressionAST, List<StatementAST>>
 

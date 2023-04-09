@@ -19,11 +19,11 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.IndexAST
+import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
-import fuzzd.generator.ast.ExpressionAST.MapIndexAST
-import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
@@ -385,7 +385,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             val index = visitExpression(ctx.expression(0))
             when (identifier.type()) {
                 is ArrayType -> ArrayIndexAST(identifier, index)
-                else -> MapIndexAST(identifier, index)
+                else -> IndexAST(identifier, index)
             }
         }
     }
@@ -466,7 +466,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.arrayLength() != null -> visitArrayLength(ctx.arrayLength())
         ctx.setDisplay() != null -> visitSetDisplay(ctx.setDisplay())
         ctx.mapConstructor() != null -> visitMapConstructor(ctx.mapConstructor())
-        ctx.mapIndexAssign() != null -> visitMapIndexAssign(ctx.mapIndexAssign())
+        ctx.indexAssign() != null -> visitIndexAssign(ctx.indexAssign())
 
         ctx.ADD() != null -> {
             val expr1 = visitExpression(ctx.expression(0))
@@ -665,13 +665,13 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     }
 
     override fun visitMapConstructor(ctx: MapConstructorContext): MapConstructorAST {
-        val assigns = ctx.mapElem().map(this::visitMapElement)
+        val assigns = ctx.indexElem().map(this::visitIndexElement)
         val keyType = assigns[0].first.type()
         val valueType = assigns[0].second.type()
         return MapConstructorAST(keyType, valueType, assigns)
     }
 
-    private fun visitMapElement(ctx: MapElemContext): Pair<ExpressionAST, ExpressionAST> = Pair(
+    private fun visitIndexElement(ctx: IndexElemContext): Pair<ExpressionAST, ExpressionAST> = Pair(
         visitExpression(ctx.expression(0)),
         visitExpression(ctx.expression(1)),
     )
@@ -684,11 +684,11 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return findIdentifier(name) // return actual identifier or one with dummy type
     }
 
-    override fun visitMapIndexAssign(ctx: MapIndexAssignContext): MapIndexAssignAST {
-        val map = visitDeclAssignLhs(ctx.declAssignLhs())
-        val assign = visitMapElement(ctx.mapElem())
+    override fun visitIndexAssign(ctx: IndexAssignContext): IndexAssignAST {
+        val ident = visitDeclAssignLhs(ctx.declAssignLhs())
+        val assign = visitIndexElement(ctx.indexElem())
 
-        return MapIndexAssignAST(map, assign.first, assign.second)
+        return IndexAssignAST(ident, assign.first, assign.second)
     }
 
     private fun findIdentifier(name: String): IdentifierAST = if (identifiersTable.hasEntry(name)) {

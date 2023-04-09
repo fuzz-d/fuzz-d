@@ -16,8 +16,8 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
-import fuzzd.generator.ast.ExpressionAST.MapIndexAST
-import fuzzd.generator.ast.ExpressionAST.MapIndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.IndexAST
+import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -380,17 +380,17 @@ class AdvancedReconditioner {
                 Pair(ArrayIndexAST(arr, temp), arrDependents + exprDependents + decl)
             }
 
-            is MapIndexAssignAST -> {
-                val (map, mapDependents) = reconditionIdentifier(identifierAST.map)
+            is IndexAssignAST -> {
+                val (map, mapDependents) = reconditionIdentifier(identifierAST.ident)
                 val (key, keyDependents) = reconditionExpression(identifierAST.key)
                 val (value, valueDependents) = reconditionExpression(identifierAST.value)
-                Pair(MapIndexAssignAST(map, key, value), mapDependents + keyDependents + valueDependents)
+                Pair(IndexAssignAST(map, key, value), mapDependents + keyDependents + valueDependents)
             }
 
-            is MapIndexAST -> {
-                val (map, mapDependents) = reconditionIdentifier(identifierAST.map)
+            is IndexAST -> {
+                val (map, mapDependents) = reconditionIdentifier(identifierAST.ident)
                 val (key, keyDependents) = reconditionExpression(identifierAST.key)
-                Pair(MapIndexAST(map, key), mapDependents + keyDependents)
+                Pair(IndexAST(map, key), mapDependents + keyDependents)
             }
 
             is ClassInstanceAST -> Pair(
@@ -437,7 +437,7 @@ class AdvancedReconditioner {
 
     fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): Pair<ExpressionAST, List<StatementAST>> {
         val (exprs, exprDependents) = reconditionExpressionList(setDisplayAST.exprs)
-        return Pair(SetDisplayAST(setDisplayAST.innerType, exprs), exprDependents)
+        return Pair(SetDisplayAST(setDisplayAST.innerType, exprs, setDisplayAST.isMultiset), exprDependents)
     }
 
     fun reconditionMapConstructor(mapConstructorAST: MapConstructorAST): Pair<ExpressionAST, List<StatementAST>> {
