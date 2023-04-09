@@ -62,6 +62,16 @@ sealed class Type : ASTElement {
         override fun hashCode(): Int = innerType.hashCode()
     }
 
+    class MultisetType(val innerType: Type) : Type() {
+        override fun hasArrayType(): Boolean = innerType.hasArrayType()
+
+        override fun toString(): String = "multiset<$innerType>"
+
+        override fun equals(other: Any?): Boolean = other is MultisetType && other.innerType == innerType
+
+        override fun hashCode(): Int = innerType.hashCode()
+    }
+
     class MethodReturnType(val types: List<Type>) : Type() {
         override fun toString(): String = "(${types.joinToString(", ")})"
     }

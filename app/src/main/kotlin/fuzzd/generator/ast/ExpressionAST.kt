@@ -8,6 +8,7 @@ import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MethodReturnType
+import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.StringType
@@ -298,7 +299,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "$map[$key := $value]"
     }
 
-    class SetDisplayAST(val innerType: Type, val exprs: List<ExpressionAST>) : ExpressionAST() {
+    class SetDisplayAST(val innerType: Type, val exprs: List<ExpressionAST>, val isMultiset: Boolean) : ExpressionAST() {
         init {
             exprs.indices.forEach { i ->
                 if (exprs[i].type() != innerType) {
@@ -307,9 +308,9 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
-        override fun type(): Type = SetType(innerType)
+        override fun type(): Type = if (isMultiset) MultisetType(innerType) else SetType(innerType)
 
-        override fun toString(): String = "{${exprs.joinToString(", ")}}"
+        override fun toString(): String = "${if (isMultiset) "multiset" else ""}{${exprs.joinToString(", ")}}"
     }
 
     class ArrayLengthAST(val array: IdentifierAST) : ExpressionAST() {

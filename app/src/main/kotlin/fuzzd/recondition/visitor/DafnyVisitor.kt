@@ -57,6 +57,7 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MethodReturnType
+import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.Type.SetType
@@ -660,7 +661,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitSetDisplay(ctx: SetDisplayContext): SetDisplayAST {
         val exprs = ctx.expression().map(this::visitExpression)
         val innerType = exprs[0].type()
-        return SetDisplayAST(innerType, exprs)
+        return SetDisplayAST(innerType, exprs, ctx.MULTISET() != null)
     }
 
     override fun visitMapConstructor(ctx: MapConstructorContext): MapConstructorAST {
@@ -736,6 +737,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.identifier() != null -> visitIdentifierType(ctx.identifier())
         ctx.mapType() != null -> visitMapType(ctx.mapType())
         ctx.setType() != null -> visitSetType(ctx.setType())
+        ctx.multisetType() != null -> visitMultisetType(ctx.multisetType())
         else -> throw UnsupportedOperationException("Visiting unrecognised type context $ctx")
     }
 
@@ -759,5 +761,10 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitSetType(ctx: SetTypeContext): SetType {
         val innerType = visitType(ctx.genericInstantiation().type(0))
         return SetType(innerType)
+    }
+
+    override fun visitMultisetType(ctx: MultisetTypeContext): MultisetType {
+        val innerType = visitType(ctx.genericInstantiation().type(0))
+        return MultisetType(innerType)
     }
 }
