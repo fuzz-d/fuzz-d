@@ -186,12 +186,12 @@ class SelectionManager(
             WHILE to whileStatementProbability,
             METHOD_CALL to methodCallProbability,
             MAP_ASSIGN to remainingProbability / 6,
-            DECLARATION to 2 * remainingProbability / 6,
-            ASSIGN to 2 * remainingProbability / 6,
+            DECLARATION to 0 * remainingProbability / 6,
+            ASSIGN to 4 * remainingProbability / 6,
             CLASS_INSTANTIATION to remainingProbability / 6,
         )
 
-        return randomWeightedSelection(selection)
+        return randomWeightedSelection(normaliseWeights(selection))
     }
 
     fun selectAssignType(context: GenerationContext): AssignType =
