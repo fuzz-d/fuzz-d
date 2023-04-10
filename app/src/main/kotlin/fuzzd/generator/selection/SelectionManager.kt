@@ -76,13 +76,13 @@ class SelectionManager(
         ).invoke(context, literalOnly)
 
     private fun selectSetType(context: GenerationContext, literalOnly: Boolean): SetType =
-        SetType(selectType(context.increaseExpressionDepth(), literalOnly))
+        SetType(selectType(context, literalOnly))
 
     private fun selectMultisetType(context: GenerationContext, literalOnly: Boolean): MultisetType =
-        MultisetType(selectType(context.increaseExpressionDepth(), literalOnly))
+        MultisetType(selectType(context, literalOnly))
 
     private fun selectMapType(context: GenerationContext, literalOnly: Boolean): MapType =
-        MapType(selectType(context.increaseExpressionDepth(), literalOnly), selectType(context, literalOnly))
+        MapType(selectType(context, literalOnly), selectType(context, literalOnly))
 
     private fun selectArrayType(context: GenerationContext, literalOnly: Boolean): ArrayType =
         selectArrayTypeWithDepth(context, 1)
