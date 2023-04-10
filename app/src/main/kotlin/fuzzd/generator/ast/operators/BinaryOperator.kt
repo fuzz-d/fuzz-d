@@ -6,6 +6,7 @@ import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
+import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.SetType
 
 /**
@@ -70,7 +71,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
 
     sealed class DataStructureBinaryOperator(precedence: Int, symbol: String) : BinaryOperator(precedence, symbol) {
         override fun outputType(t1: Type, t2: Type): Type = BoolType
-        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MapType)
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MultisetType || t1 is MapType)
     }
 
     object DataStructureEqualityOperator : DataStructureBinaryOperator(4, "==")
@@ -79,7 +80,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     sealed class DataStructureMembershipOperator(symbol: String) : BinaryOperator(4, symbol) {
         override fun outputType(t1: Type, t2: Type): Type = BoolType
         override fun supportsInput(t1: Type, t2: Type) =
-            t2 is SetType && t1 == t2.innerType || t2 is MapType && t1 == t2.keyType
+            t2 is SetType && t1 == t2.innerType || t2 is MultisetType && t1 == t2.innerType || t2 is MapType && t1 == t2.keyType
     }
 
     object MembershipOperator : DataStructureMembershipOperator("in")
@@ -87,7 +88,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
 
     sealed class DataStructureComparisonOperator(symbol: String) : DataStructureBinaryOperator(4, symbol) {
         override fun outputType(t1: Type, t2: Type): Type = BoolType
-        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && t1 is SetType
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MultisetType)
     }
 
     object ProperSubsetOperator : DataStructureComparisonOperator("<")
@@ -99,11 +100,11 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     sealed class DataStructureMathematicalOperator(precedence: Int, symbol: String) :
         DataStructureBinaryOperator(precedence, symbol) {
         override fun outputType(t1: Type, t2: Type): Type = t1
-        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && t1 is SetType
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MultisetType)
     }
 
     object UnionOperator : DataStructureMathematicalOperator(6, "+") {
-        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MapType)
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MultisetType || t1 is MapType)
     }
 
     object DifferenceOperator : DataStructureMathematicalOperator(6, "-")

@@ -124,12 +124,12 @@ interface ASTGenerator {
         targetType: Type,
     ): Pair<MapConstructorAST, List<StatementAST>>
 
-    fun generateMapIndexAssign(
+    fun generateIndexAssign(
         context: GenerationContext,
         targetType: Type,
     ): Pair<IndexAssignAST, List<StatementAST>>
 
-    fun generateMapIndex(context: GenerationContext, targetType: Type): Pair<TernaryExpressionAST, List<StatementAST>>
+    fun generateIndex(context: GenerationContext, targetType: Type): Pair<ExpressionAST, List<StatementAST>>
 
     fun generateBaseExpressionForType(
         context: GenerationContext,

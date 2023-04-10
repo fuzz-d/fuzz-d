@@ -123,7 +123,7 @@ sealed class ExpressionAST : ASTElement {
     class ModulusExpressionAST(val expr: ExpressionAST) : ExpressionAST() {
         init {
             val type = expr.type()
-            if (type !is MapType && type !is SetType) {
+            if (type !is MapType && type !is SetType && type !is MultisetType) {
                 throw InvalidInputException("Invalid expression type for modulus. Got $type, expected map or set")
             }
         }
@@ -255,7 +255,7 @@ sealed class ExpressionAST : ASTElement {
         val key: ExpressionAST,
     ) : IdentifierAST(
         ident.name,
-        if (ident.type() is MapType) (ident.type() as MapType).valueType else (ident.type() as MultisetType).innerType,
+        if (ident.type() is MapType) (ident.type() as MapType).valueType else IntType,
     ) {
         init {
             when (val identType = ident.type()) {

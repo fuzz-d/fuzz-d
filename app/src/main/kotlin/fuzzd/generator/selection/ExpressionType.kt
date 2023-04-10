@@ -8,7 +8,7 @@ enum class ExpressionType {
     TERNARY,
     FUNCTION_METHOD_CALL,
     IDENTIFIER,
-    MAP_INDEX,
-    MAP_INDEX_ASSIGN,
+    INDEX,
+    INDEX_ASSIGN,
     LITERAL,
 }

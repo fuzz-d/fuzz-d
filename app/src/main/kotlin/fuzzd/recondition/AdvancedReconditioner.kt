@@ -14,10 +14,10 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.ExpressionListAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
-import fuzzd.generator.ast.ExpressionAST.LiteralAST
-import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.LiteralAST
+import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -47,11 +47,13 @@ import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MapType
+import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.StringType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
+import fuzzd.utils.ADVANCED_ABSOLUTE
 import fuzzd.utils.ADVANCED_RECONDITION_CLASS
 import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
@@ -380,12 +382,7 @@ class AdvancedReconditioner {
                 Pair(ArrayIndexAST(arr, temp), arrDependents + exprDependents + decl)
             }
 
-            is IndexAssignAST -> {
-                val (map, mapDependents) = reconditionIdentifier(identifierAST.ident)
-                val (key, keyDependents) = reconditionExpression(identifierAST.key)
-                val (value, valueDependents) = reconditionExpression(identifierAST.value)
-                Pair(IndexAssignAST(map, key, value), mapDependents + keyDependents + valueDependents)
-            }
+            is IndexAssignAST -> reconditionIndexAssign(identifierAST)
 
             is IndexAST -> {
                 val (map, mapDependents) = reconditionIdentifier(identifierAST.ident)
@@ -407,6 +404,24 @@ class AdvancedReconditioner {
 
             else -> Pair(identifierAST, emptyList())
         }
+
+    fun reconditionIndexAssign(indexAssignAST: IndexAssignAST): Pair<IndexAssignAST, List<StatementAST>> {
+        val (ident, identDependents) = reconditionIdentifier(indexAssignAST.ident)
+        val (key, keyDependents) = reconditionExpression(indexAssignAST.key)
+        val (value, valueDependents) = reconditionExpression(indexAssignAST.value)
+
+        return if (ident.type() is MultisetType) {
+            val temp = IdentifierAST(tempGenerator.newValue(), IntType)
+            val safetyId = safetyIdGenerator.newValue()
+            idsMap[safetyId] = indexAssignAST
+
+            val methodCall = NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(value, state, StringLiteralAST(safetyId)))
+            val decl = DeclarationAST(temp, methodCall)
+            Pair(IndexAssignAST(ident, key, temp), identDependents + keyDependents + valueDependents + decl)
+        } else {
+            Pair(IndexAssignAST(ident, key, value), identDependents + keyDependents + valueDependents)
+        }
+    }
 
     fun reconditionNonVoidMethodCall(nonVoidMethodCallAST: NonVoidMethodCallAST): Pair<ExpressionListAST, List<StatementAST>> {
         val reconditionedMethod = getReconditionedMethodSignature(nonVoidMethodCallAST.method)

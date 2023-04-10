@@ -37,9 +37,11 @@ import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
+import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.MathematicalBinaryOperator
 import fuzzd.logging.Logger
+import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.SAFE_ARRAY_INDEX
 import fuzzd.utils.safetyMap
 
@@ -244,11 +246,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             }
         }
 
-        is IndexAssignAST -> IndexAssignAST(
-            reconditionIdentifier(identifierAST.ident),
-            reconditionExpression(identifierAST.key),
-            reconditionExpression(identifierAST.value),
-        )
+        is IndexAssignAST -> reconditionIndexAssign(identifierAST)
 
         is IndexAST -> IndexAST(
             reconditionIdentifier(identifierAST.ident),
@@ -261,6 +259,18 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         )
 
         else -> identifierAST
+    }
+
+    private fun reconditionIndexAssign(indexAssign: IndexAssignAST): IndexAssignAST {
+        val ident = reconditionIdentifier(indexAssign.ident)
+        val key = reconditionExpression(indexAssign.key)
+        val value = reconditionExpression(indexAssign.value)
+
+        return IndexAssignAST(
+            ident,
+            key,
+            if (ident.type() is MultisetType) FunctionMethodCallAST(ABSOLUTE.signature, listOf(value)) else value,
+        )
     }
 
     override fun reconditionTernaryExpression(ternaryExpression: TernaryExpressionAST): ExpressionAST =

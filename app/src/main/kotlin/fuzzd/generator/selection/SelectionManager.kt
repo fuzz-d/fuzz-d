@@ -7,6 +7,7 @@ import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
+import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.TraitType
@@ -28,9 +29,9 @@ import fuzzd.generator.selection.ExpressionType.BINARY
 import fuzzd.generator.selection.ExpressionType.CONSTRUCTOR
 import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
+import fuzzd.generator.selection.ExpressionType.INDEX
+import fuzzd.generator.selection.ExpressionType.INDEX_ASSIGN
 import fuzzd.generator.selection.ExpressionType.LITERAL
-import fuzzd.generator.selection.ExpressionType.MAP_INDEX
-import fuzzd.generator.selection.ExpressionType.MAP_INDEX_ASSIGN
 import fuzzd.generator.selection.ExpressionType.MODULUS
 import fuzzd.generator.selection.ExpressionType.TERNARY
 import fuzzd.generator.selection.ExpressionType.UNARY
@@ -68,13 +69,17 @@ class SelectionManager(
     fun selectDataStructureType(context: GenerationContext, literalOnly: Boolean): Type =
         randomWeightedSelection(
             listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
-                this::selectSetType to 0.5,
+                this::selectSetType to 0.25,
+                this::selectMultisetType to 0.25,
                 this::selectMapType to 0.5,
             ),
         ).invoke(context, literalOnly)
 
     private fun selectSetType(context: GenerationContext, literalOnly: Boolean): SetType =
         SetType(selectType(context, literalOnly))
+
+    private fun selectMultisetType(context: GenerationContext, literalOnly: Boolean): MultisetType =
+        MultisetType(selectType(context, literalOnly))
 
     private fun selectMapType(context: GenerationContext, literalOnly: Boolean): MapType =
         MapType(selectType(context, literalOnly), selectType(context, literalOnly))
@@ -117,17 +122,14 @@ class SelectionManager(
                     is ComparisonBinaryOperator -> Pair(selectedSubclass, Pair(IntType, IntType))
                     is DataStructureMembershipOperator -> {
                         val dataStructureType = selectDataStructureType(context, false)
-                        Pair(
-                            selectedSubclass,
-                            if (dataStructureType is SetType) {
-                                Pair(
-                                    dataStructureType.innerType,
-                                    dataStructureType,
-                                )
-                            } else {
-                                Pair((dataStructureType as MapType).keyType, dataStructureType)
-                            },
-                        )
+                        val keyType = when (dataStructureType) {
+                            is SetType -> dataStructureType.innerType
+                            is MultisetType -> dataStructureType.innerType
+                            is MapType -> dataStructureType.keyType
+                            else -> throw UnsupportedOperationException()
+                        }
+
+                        Pair(selectedSubclass, Pair(keyType, dataStructureType))
                     }
 
                     is DataStructureBinaryOperator -> {
@@ -139,7 +141,7 @@ class SelectionManager(
                 }
             }
 
-            is SetType -> {
+            is SetType, is MultisetType -> {
                 val subclassInstances = BinaryOperator.DataStructureMathematicalOperator::class.sealedSubclasses
                     .mapNotNull { it.objectInstance }
                 val selectedIndex = random.nextInt(subclassInstances.size)
@@ -222,11 +224,11 @@ class SelectionManager(
                 0.0
             }
         val ternaryProbability = 0.07 / context.expressionDepth
-        val mapAssignProbability = if (targetType is MapType && identifier) 0.3 / context.expressionDepth else 0.0
-        val mapIndexProbability = if (identifier) 0.15 / context.expressionDepth else 0.0
+        val assignProbability = if ((targetType is MapType || targetType is MultisetType) && identifier) 0.3 / context.expressionDepth else 0.0
+        val indexProbability = if (identifier) 0.15 / context.expressionDepth else 0.0
 
         val remainingProbability =
-            1 - listOf(binaryProbability, unaryProbability, modulusProbability, functionCallProbability, ternaryProbability, mapAssignProbability, mapIndexProbability).sum()
+            1 - listOf(binaryProbability, unaryProbability, modulusProbability, functionCallProbability, ternaryProbability, assignProbability, indexProbability).sum()
         val identifierProbability = if (identifier) 2 * remainingProbability / 3 else 0.0
         val literalProbability =
             if (isLiteralType(targetType)) {
@@ -251,8 +253,8 @@ class SelectionManager(
             UNARY to unaryProbability,
             BINARY to binaryProbability,
             MODULUS to modulusProbability,
-            MAP_INDEX to mapIndexProbability,
-            MAP_INDEX_ASSIGN to mapAssignProbability,
+            INDEX to indexProbability,
+            INDEX_ASSIGN to assignProbability,
         )
 
         return randomWeightedSelection(normaliseWeights(selection))

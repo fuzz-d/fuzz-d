@@ -12,11 +12,11 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.IndexAST
+import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
-import fuzzd.generator.ast.ExpressionAST.IndexAST
-import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
@@ -50,6 +50,7 @@ import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
+import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
@@ -73,9 +74,9 @@ import fuzzd.generator.selection.ExpressionType.BINARY
 import fuzzd.generator.selection.ExpressionType.CONSTRUCTOR
 import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
+import fuzzd.generator.selection.ExpressionType.INDEX
+import fuzzd.generator.selection.ExpressionType.INDEX_ASSIGN
 import fuzzd.generator.selection.ExpressionType.LITERAL
-import fuzzd.generator.selection.ExpressionType.MAP_INDEX
-import fuzzd.generator.selection.ExpressionType.MAP_INDEX_ASSIGN
 import fuzzd.generator.selection.ExpressionType.MODULUS
 import fuzzd.generator.selection.ExpressionType.TERNARY
 import fuzzd.generator.selection.ExpressionType.UNARY
@@ -625,8 +626,8 @@ class Generator(
         FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
         IDENTIFIER -> generateIdentifier(context, targetType, initialisedConstraint = true)
         LITERAL -> generateLiteralForType(context, targetType as LiteralType)
-        MAP_INDEX -> generateMapIndex(context, targetType)
-        MAP_INDEX_ASSIGN -> generateMapIndexAssign(context, targetType)
+        INDEX_ASSIGN -> generateIndexAssign(context, targetType)
+        INDEX -> generateIndex(context, targetType)
     }
 
     override fun generateFunctionMethodCall(
@@ -713,12 +714,17 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): Pair<SetDisplayAST, List<StatementAST>> {
-        val setType = targetType as SetType
+        val (isMultiset, innerType) = if (targetType is MultisetType) {
+            Pair(true, targetType.innerType)
+        } else {
+            Pair(false, (targetType as SetType).innerType)
+        }
+
         val numberOfExpressions = selectionManager.selectNumberOfConstructorFields()
         val (exprs, exprDeps) = (1..numberOfExpressions)
-            .map { generateExpression(context.increaseExpressionDepth(), setType.innerType) }
+            .map { generateExpression(context.increaseExpressionDepth(), innerType) }
             .foldPair()
-        return Pair(SetDisplayAST(setType.innerType, exprs), exprDeps)
+        return Pair(SetDisplayAST(innerType, exprs, isMultiset), exprDeps)
     }
 
     override fun generateMapConstructor(
@@ -739,28 +745,62 @@ class Generator(
         return Pair(MapConstructorAST(mapType.keyType, mapType.valueType, assigns), assignDeps)
     }
 
-    override fun generateMapIndexAssign(
+    override fun generateIndexAssign(
         context: GenerationContext,
         targetType: Type,
-    ): Pair<IndexAssignAST, List<StatementAST>> {
-        val mapType = targetType as MapType
-        val (map, mapDeps) = generateIdentifier(context, mapType)
+    ): Pair<IndexAssignAST, List<StatementAST>> =
+        if (targetType is MapType) {
+            generateMapIndexAssign(context, targetType)
+        } else {
+            generateMultisetIndexAssign(context, targetType as MultisetType)
+        }
+
+    private fun generateMapIndexAssign(context: GenerationContext, targetType: MapType): Pair<IndexAssignAST, List<StatementAST>> {
+        val (ident, identDeps) = generateIdentifier(context, targetType)
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
         val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), targetType.valueType)
 
-        return Pair(IndexAssignAST(map, index, newValue), mapDeps + indexDeps + newValueDeps)
+        return Pair(IndexAssignAST(ident, index, newValue), identDeps + indexDeps + newValueDeps)
     }
 
-    override fun generateMapIndex(context: GenerationContext, targetType: Type): Pair<TernaryExpressionAST, List<StatementAST>> {
-        val mapType = MapType(selectionManager.selectType(context, true), targetType)
-        val (map, mapDeps) = generateIdentifier(context, mapType)
-        val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), mapType.keyType)
-        val (altExpr, altExprDeps) = generateExpression(context.increaseExpressionDepth(), mapType.valueType)
+    private fun generateMultisetIndexAssign(context: GenerationContext, targetType: MultisetType): Pair<IndexAssignAST, List<StatementAST>> {
+        val (ident, identDeps) = generateIdentifier(context, targetType)
+        val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), targetType.innerType)
+        val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
 
-        val mapIndex = IndexAST(map, index)
-        val ternaryExpression = TernaryExpressionAST(BinaryExpressionAST(index, MembershipOperator, map), mapIndex, altExpr)
+        val (typeSafeIndex, deps) = if (targetType.innerType !is LiteralType) {
+            val keyIdent = IdentifierAST(context.identifierNameGenerator.newValue(), targetType.innerType)
+            Pair(keyIdent, listOf(DeclarationAST(keyIdent, index)))
+        } else {
+            Pair(index, emptyList())
+        }
+        return Pair(IndexAssignAST(ident, typeSafeIndex, newValue), identDeps + indexDeps + newValueDeps + deps)
+    }
 
-        return Pair(ternaryExpression, mapDeps + indexDeps + altExprDeps)
+    override fun generateIndex(context: GenerationContext, targetType: Type): Pair<ExpressionAST, List<StatementAST>> {
+        val keyType = selectionManager.selectType(context, true)
+        return if (targetType == IntType && selectionManager.selectBoolean()) {
+            generateMultisetIndex(context, MultisetType(keyType))
+        } else {
+            generateMapIndex(context, MapType(keyType, targetType))
+        }
+    }
+
+    private fun generateMapIndex(context: GenerationContext, targetType: MapType): Pair<TernaryExpressionAST, List<StatementAST>> {
+        val (ident, identDeps) = generateIdentifier(context, targetType)
+        val (indexKey, indexKeyDeps) = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
+        val (altExpr, altExprDeps) = generateExpression(context.increaseExpressionDepth(), targetType.valueType)
+
+        val index = IndexAST(ident, indexKey)
+        val ternaryExpression = TernaryExpressionAST(BinaryExpressionAST(indexKey, MembershipOperator, ident), index, altExpr)
+
+        return Pair(ternaryExpression, identDeps + indexKeyDeps + altExprDeps)
+    }
+
+    private fun generateMultisetIndex(context: GenerationContext, targetType: MultisetType): Pair<IndexAST, List<StatementAST>> {
+        val (ident, identDeps) = generateIdentifier(context, targetType)
+        val (indexKey, indexKeyDeps) = generateExpression(context.increaseExpressionDepth(), targetType.innerType)
+        return Pair(IndexAST(ident, indexKey), identDeps + indexKeyDeps)
     }
 
     override fun generateUnaryExpression(
@@ -809,7 +849,7 @@ class Generator(
         is LiteralType -> generateLiteralForType(context, targetType)
         is ArrayType -> generateArrayInitialisation(context, targetType)
         is MapType -> generateMapConstructor(context, targetType)
-        is SetType -> generateSetDisplay(context, targetType)
+        is SetType, is MultisetType -> generateSetDisplay(context, targetType)
         // should not be possible to reach here
         else -> throw UnsupportedOperationException("Trying to generate base for non-base type $targetType")
     }
@@ -821,7 +861,7 @@ class Generator(
         when (targetType) {
             is ArrayType -> generateArrayInitialisation(context, targetType)
             is MapType -> generateMapConstructor(context, targetType)
-            is SetType -> generateSetDisplay(context, targetType)
+            is SetType, is MultisetType -> generateSetDisplay(context, targetType)
             else -> throw UnsupportedOperationException("Trying to generate constructor for non-constructor type")
         }
 
