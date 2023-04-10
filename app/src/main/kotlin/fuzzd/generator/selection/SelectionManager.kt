@@ -53,7 +53,7 @@ class SelectionManager(
 //            this::selectClassType to 0.0,
 //            this::selectTraitType to 0.0,
             this::selectArrayType to if (literalOnly || !context.onDemandIdentifiers) 0.0 else 0.1,
-            this::selectDataStructureType to 0.15,
+            this::selectDataStructureType to 0.15 / context.expressionDepth,
             this::selectLiteralType to if (literalOnly) 0.85 else 0.75,
         )
 
@@ -76,13 +76,13 @@ class SelectionManager(
         ).invoke(context, literalOnly)
 
     private fun selectSetType(context: GenerationContext, literalOnly: Boolean): SetType =
-        SetType(selectType(context, literalOnly))
+        SetType(selectType(context.increaseExpressionDepth(), literalOnly))
 
     private fun selectMultisetType(context: GenerationContext, literalOnly: Boolean): MultisetType =
-        MultisetType(selectType(context, literalOnly))
+        MultisetType(selectType(context.increaseExpressionDepth(), literalOnly))
 
     private fun selectMapType(context: GenerationContext, literalOnly: Boolean): MapType =
-        MapType(selectType(context, literalOnly), selectType(context, literalOnly))
+        MapType(selectType(context.increaseExpressionDepth(), literalOnly), selectType(context, literalOnly))
 
     private fun selectArrayType(context: GenerationContext, literalOnly: Boolean): ArrayType =
         selectArrayTypeWithDepth(context, 1)
@@ -224,8 +224,8 @@ class SelectionManager(
                 0.0
             }
         val ternaryProbability = 0.07 / context.expressionDepth
-        val assignProbability = if ((targetType is MapType || targetType is MultisetType) && identifier) 0.3 / context.expressionDepth else 0.0
-        val indexProbability = if (identifier) 0.15 / context.expressionDepth else 0.0
+        val assignProbability = if ((targetType is MapType || targetType is MultisetType) && identifier) 0.1 / context.expressionDepth else 0.0
+        val indexProbability = if (identifier) 0.1 / context.expressionDepth else 0.0
 
         val remainingProbability =
             1 - listOf(binaryProbability, unaryProbability, modulusProbability, functionCallProbability, ternaryProbability, assignProbability, indexProbability).sum()
@@ -297,8 +297,8 @@ class SelectionManager(
 
     fun selectNumberOfGlobalFields() = random.nextInt(0, MAX_GLOBAL_FIELDS)
 
-    fun selectNumberOfConstructorFields() =
-        randomWeightedSelection(listOf(1 to 0.4, 2 to 0.2, 3 to 0.2, 4 to 0.1, 5 to 0.1))
+    fun selectNumberOfConstructorFields(context: GenerationContext) =
+        randomWeightedSelection(normaliseWeights(listOf(1 to 0.4, 2 to 0.2, 3 to 0.2 / context.expressionDepth, 4 to 0.1 / context.expressionDepth, 5 to 0.1 / context.expressionDepth)))
 
     fun selectNumberOfFunctionMethods() = random.nextInt(0, MAX_FUNCTION_METHODS)
 

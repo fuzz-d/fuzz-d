@@ -720,7 +720,7 @@ class Generator(
             Pair(false, (targetType as SetType).innerType)
         }
 
-        val numberOfExpressions = selectionManager.selectNumberOfConstructorFields()
+        val numberOfExpressions = selectionManager.selectNumberOfConstructorFields(context)
         val (exprs, exprDeps) = (1..numberOfExpressions)
             .map { generateExpression(context.increaseExpressionDepth(), innerType) }
             .foldPair()
@@ -732,7 +732,7 @@ class Generator(
         targetType: Type,
     ): Pair<MapConstructorAST, List<StatementAST>> {
         val mapType = targetType as MapType
-        val numberOfExpressions = selectionManager.selectNumberOfConstructorFields()
+        val numberOfExpressions = selectionManager.selectNumberOfConstructorFields(context)
         val exprContext = context.increaseExpressionDepth()
         val (assigns, assignDeps) = (1..numberOfExpressions)
             .map {
