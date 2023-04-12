@@ -19,6 +19,7 @@ import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.DataStructureMemberDeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
@@ -46,6 +47,8 @@ interface ASTReconditioner {
 
     /* ========================================== STATEMENTS =========================================== */
     fun reconditionStatement(statement: StatementAST): StatementAST
+
+    fun reconditionDataStructureMemberDeclaration(declarationAST: DataStructureMemberDeclarationAST): DataStructureMemberDeclarationAST
 
     fun reconditionMultiAssignmentAST(multiAssignmentAST: MultiAssignmentAST): MultiAssignmentAST
 

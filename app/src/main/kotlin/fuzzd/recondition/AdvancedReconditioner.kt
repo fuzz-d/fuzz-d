@@ -34,6 +34,7 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
+import fuzzd.generator.ast.StatementAST.DataStructureMemberDeclarationAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
@@ -205,6 +206,7 @@ class AdvancedReconditioner {
 
     fun reconditionStatement(statementAST: StatementAST): List<StatementAST> = when (statementAST) {
         is BreakAST -> listOf(statementAST)
+        is DataStructureMemberDeclarationAST -> reconditionDataStructureMemberDeclaration(statementAST)
         is MultiAssignmentAST -> reconditionMultiAssignment(statementAST)
         is MultiTypedDeclarationAST -> reconditionMultiTypedDeclaration(statementAST)
         is MultiDeclarationAST -> reconditionMultiDeclaration(statementAST)
@@ -213,6 +215,13 @@ class AdvancedReconditioner {
         is WhileLoopAST -> reconditionWhileLoop(statementAST)
         is PrintAST -> reconditionPrint(statementAST)
         is VoidMethodCallAST -> reconditionVoidMethodCall(statementAST)
+    }
+
+    fun reconditionDataStructureMemberDeclaration(declaration: DataStructureMemberDeclarationAST): List<StatementAST> {
+        val (reconditionedIdentifier, identifierDependents) = reconditionIdentifier(declaration.identifier)
+        val (reconditionedDataStructure, dataStructureDependents) = reconditionIdentifier(declaration.dataStructure)
+        return identifierDependents + dataStructureDependents +
+            DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
     }
 
     fun reconditionMultiAssignment(multiAssignmentAST: MultiAssignmentAST): List<StatementAST> {
@@ -415,7 +424,8 @@ class AdvancedReconditioner {
             val safetyId = safetyIdGenerator.newValue()
             idsMap[safetyId] = indexAssignAST
 
-            val methodCall = NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(value, state, StringLiteralAST(safetyId)))
+            val methodCall =
+                NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(value, state, StringLiteralAST(safetyId)))
             val decl = DeclarationAST(temp, methodCall)
             Pair(IndexAssignAST(ident, key, temp), identDependents + keyDependents + valueDependents + decl)
         } else {

@@ -9,6 +9,7 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
@@ -34,17 +35,20 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
+import fuzzd.generator.ast.StatementAST.DataStructureMemberDeclarationAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.TypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
+import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
+import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
@@ -53,6 +57,7 @@ import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.Type.SetType
+import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
 import fuzzd.generator.ast.error.MethodOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ClassNameGenerator
@@ -64,6 +69,8 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.ParameterNameGener
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ReturnsNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TraitNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DataStructureInequalityOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DifferenceOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.context.GenerationContext
@@ -177,9 +184,104 @@ class Generator(
         return MainFunctionAST(SequenceAST(globalStateDeps + globalStateDecl + body.statements + prints))
     }
 
-    override fun generateChecksum(context: GenerationContext): List<PrintAST> {
-        val fields = context.symbolTable.withType(IntType) + context.symbolTable.withType(BoolType)
-        return fields.map { field -> PrintAST(field) }
+    override fun generateChecksum(context: GenerationContext): List<StatementAST> = context.symbolTable.symbolTable.map {
+        generateChecksum(context, it.key)
+    }.reduceLists()
+
+    fun generateChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
+        return when (identifier.type()) {
+            is ArrayType -> emptyList()
+            is MapType -> generateMapTypeChecksum(context, identifier)
+            is SetType -> generateSetTypeChecksum(context, identifier)
+            is MultisetType -> generateMultisetTypeChecksum(context, identifier)
+            is ClassType -> generateClassTypeChecksum(context, identifier)
+            is TraitType -> generateTraitTypeChecksum(context, identifier)
+            else -> listOf(PrintAST(identifier))
+        }
+    }
+
+    fun generateMapTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
+        val mapType = identifier.type() as MapType
+        val condition =
+            BinaryExpressionAST(
+                identifier,
+                DataStructureInequalityOperator,
+                MapConstructorAST(mapType.keyType, mapType.valueType),
+            )
+
+        val key = IdentifierAST(context.identifierNameGenerator.newValue(), mapType.keyType)
+        val keyDecl = DataStructureMemberDeclarationAST(key, identifier)
+
+        val keyDup = IdentifierAST(context.identifierNameGenerator.newValue(), mapType.keyType)
+        val keyDupDecl = DeclarationAST(keyDup, key)
+        val keyChecksum = generateChecksum(context, keyDup)
+
+        val value = IdentifierAST(context.identifierNameGenerator.newValue(), mapType.valueType)
+        val valueDecl = DeclarationAST(value, IndexAST(identifier, key))
+        val valueChecksum = generateChecksum(context, value)
+
+        val update = AssignmentAST(
+            identifier,
+            BinaryExpressionAST(identifier, DifferenceOperator, SetDisplayAST(mapType.keyType, listOf(key), false)),
+        )
+        return listOf(
+            WhileLoopAST(
+                condition,
+                SequenceAST(listOf(keyDecl, keyDupDecl, valueDecl) + keyChecksum + valueChecksum + update),
+            ),
+        )
+    }
+
+    fun generateSetTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
+        val setType = identifier.type() as SetType
+        val condition =
+            BinaryExpressionAST(
+                identifier,
+                DataStructureInequalityOperator,
+                SetDisplayAST(setType.innerType, emptyList(), false),
+            )
+        val value = IdentifierAST(context.identifierNameGenerator.newValue(), setType.innerType)
+
+        val valueDecl = DataStructureMemberDeclarationAST(value, identifier)
+        val update = AssignmentAST(
+            identifier,
+            BinaryExpressionAST(identifier, DifferenceOperator, SetDisplayAST(setType.innerType, listOf(value), false)),
+        )
+        val valueChecksum = generateChecksum(context, value)
+        return listOf(WhileLoopAST(condition, SequenceAST(listOf(valueDecl) + valueChecksum + update)))
+    }
+
+    fun generateMultisetTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
+        val multisetType = identifier.type() as MultisetType
+        val condition =
+            BinaryExpressionAST(
+                identifier,
+                DataStructureInequalityOperator,
+                SetDisplayAST(multisetType.innerType, emptyList(), true),
+            )
+        val key = IdentifierAST(context.identifierNameGenerator.newValue(), multisetType.innerType)
+
+        val keyDecl = DataStructureMemberDeclarationAST(key, identifier)
+        val update = AssignmentAST(identifier, IndexAssignAST(identifier, key, IntegerLiteralAST(0)))
+        val keyChecksum = generateChecksum(context, key)
+        val valueChecksum = generateChecksum(context, IndexAST(identifier, key))
+
+        return listOf(WhileLoopAST(condition, SequenceAST(listOf(keyDecl) + keyChecksum + valueChecksum + update)))
+    }
+
+    fun generateClassTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
+        val classType = identifier.type() as ClassType
+        val clazz = classType.clazz
+
+        return clazz.constructorFields.map { generateChecksum(context, ClassInstanceFieldAST(identifier, it)) }
+            .reduceLists()
+    }
+
+    fun generateTraitTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
+        val traitType = identifier.type() as TraitType
+        val trait = traitType.trait
+
+        return trait.fields.map { generateChecksum(context, ClassInstanceFieldAST(identifier, it)) }.reduceLists()
     }
 
     override fun generateTrait(context: GenerationContext): TraitAST {
@@ -585,7 +687,12 @@ class Generator(
         val valueType = selectionManager.selectType(context)
         val mapType = MapType(keyType, valueType)
 
-        val (map, mapDeps) = generateIdentifier(context, mapType, mutableConstraint = true, initialisedConstraint = true)
+        val (map, mapDeps) = generateIdentifier(
+            context,
+            mapType,
+            mutableConstraint = true,
+            initialisedConstraint = true,
+        )
         val (key, keyDeps) = generateExpression(context.increaseExpressionDepth(), keyType)
         val (value, valueDeps) = generateExpression(context.increaseExpressionDepth(), valueType)
 
@@ -755,7 +862,10 @@ class Generator(
             generateMultisetIndexAssign(context, targetType as MultisetType)
         }
 
-    private fun generateMapIndexAssign(context: GenerationContext, targetType: MapType): Pair<IndexAssignAST, List<StatementAST>> {
+    private fun generateMapIndexAssign(
+        context: GenerationContext,
+        targetType: MapType,
+    ): Pair<IndexAssignAST, List<StatementAST>> {
         val (ident, identDeps) = generateIdentifier(context, targetType)
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
         val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), targetType.valueType)
@@ -763,13 +873,17 @@ class Generator(
         return Pair(IndexAssignAST(ident, index, newValue), identDeps + indexDeps + newValueDeps)
     }
 
-    private fun generateMultisetIndexAssign(context: GenerationContext, targetType: MultisetType): Pair<IndexAssignAST, List<StatementAST>> {
+    private fun generateMultisetIndexAssign(
+        context: GenerationContext,
+        targetType: MultisetType,
+    ): Pair<IndexAssignAST, List<StatementAST>> {
         val (ident, identDeps) = generateIdentifier(context, targetType)
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), targetType.innerType)
         val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
 
         val (typeSafeIndex, deps) = if (targetType.innerType !is LiteralType) {
             val keyIdent = IdentifierAST(context.identifierNameGenerator.newValue(), targetType.innerType)
+            context.symbolTable.add(keyIdent)
             Pair(keyIdent, listOf(DeclarationAST(keyIdent, index)))
         } else {
             Pair(index, emptyList())
@@ -786,18 +900,25 @@ class Generator(
         }
     }
 
-    private fun generateMapIndex(context: GenerationContext, targetType: MapType): Pair<TernaryExpressionAST, List<StatementAST>> {
+    private fun generateMapIndex(
+        context: GenerationContext,
+        targetType: MapType,
+    ): Pair<TernaryExpressionAST, List<StatementAST>> {
         val (ident, identDeps) = generateIdentifier(context, targetType)
         val (indexKey, indexKeyDeps) = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
         val (altExpr, altExprDeps) = generateExpression(context.increaseExpressionDepth(), targetType.valueType)
 
         val index = IndexAST(ident, indexKey)
-        val ternaryExpression = TernaryExpressionAST(BinaryExpressionAST(indexKey, MembershipOperator, ident), index, altExpr)
+        val ternaryExpression =
+            TernaryExpressionAST(BinaryExpressionAST(indexKey, MembershipOperator, ident), index, altExpr)
 
         return Pair(ternaryExpression, identDeps + indexKeyDeps + altExprDeps)
     }
 
-    private fun generateMultisetIndex(context: GenerationContext, targetType: MultisetType): Pair<IndexAST, List<StatementAST>> {
+    private fun generateMultisetIndex(
+        context: GenerationContext,
+        targetType: MultisetType,
+    ): Pair<IndexAST, List<StatementAST>> {
         val (ident, identDeps) = generateIdentifier(context, targetType)
         val (indexKey, indexKeyDeps) = generateExpression(context.increaseExpressionDepth(), targetType.innerType)
         return Pair(IndexAST(ident, indexKey), identDeps + indexKeyDeps)
@@ -813,7 +934,10 @@ class Generator(
         return Pair(UnaryExpressionAST(expr, operator), exprDeps)
     }
 
-    override fun generateModulus(context: GenerationContext, targetType: Type): Pair<ModulusExpressionAST, List<StatementAST>> {
+    override fun generateModulus(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<ModulusExpressionAST, List<StatementAST>> {
         val innerType = selectionManager.selectDataStructureType(context, literalOnly = false)
         val (expr, exprDeps) = generateExpression(context, innerType)
         return Pair(ModulusExpressionAST(expr), exprDeps)

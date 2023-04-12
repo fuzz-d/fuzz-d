@@ -170,8 +170,8 @@ class SelectionManager(
 
     fun selectStatementType(context: GenerationContext, methodCalls: Boolean = true): StatementType {
         val ifStatementProbability =
-            if (context.statementDepth < MAX_STATEMENT_DEPTH) 0.07 / context.statementDepth else 0.0
-        val whileStatementProbability = ifStatementProbability
+            if (context.statementDepth < MAX_STATEMENT_DEPTH) 0.1 / context.statementDepth else 0.0
+        val whileStatementProbability = if (context.statementDepth == 1) 0.07 else 0.0
 
         val methodCallProbability = if (methodCalls) {
             if (context.methodContext == null) 0.2 else 0.05

@@ -71,7 +71,8 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
 
     sealed class DataStructureBinaryOperator(precedence: Int, symbol: String) : BinaryOperator(precedence, symbol) {
         override fun outputType(t1: Type, t2: Type): Type = BoolType
-        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MultisetType || t1 is MapType)
+        override fun supportsInput(t1: Type, t2: Type): Boolean =
+            t1 == t2 && (t1 is SetType || t1 is MultisetType || t1 is MapType)
     }
 
     object DataStructureEqualityOperator : DataStructureBinaryOperator(4, "==")
@@ -104,10 +105,16 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     }
 
     object UnionOperator : DataStructureMathematicalOperator(6, "+") {
-        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MultisetType || t1 is MapType)
+        override fun supportsInput(t1: Type, t2: Type): Boolean =
+            t1 == t2 && (t1 is SetType || t1 is MultisetType || t1 is MapType)
     }
 
-    object DifferenceOperator : DataStructureMathematicalOperator(6, "-")
+    object DifferenceOperator : DataStructureMathematicalOperator(6, "-") {
+        override fun supportsInput(t1: Type, t2: Type): Boolean =
+            (t1 == t2 && (t1 is SetType || t1 is MultisetType || t1 is MapType)) ||
+                ((t1 is MapType || t1 is MultisetType) && t2 is SetType)
+    }
+
     object IntersectionOperator : DataStructureMathematicalOperator(7, "*")
 
     companion object {

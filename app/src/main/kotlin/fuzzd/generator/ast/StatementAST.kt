@@ -56,6 +56,10 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "$counterInitialisation\n${super.toString()}"
     }
 
+    class DataStructureMemberDeclarationAST(val identifier: IdentifierAST, val dataStructure: IdentifierAST) : StatementAST() {
+        override fun toString(): String = "var $identifier :| $identifier in $dataStructure;"
+    }
+
     open class MultiDeclarationAST(
         val identifiers: List<IdentifierAST>,
         val exprs: List<ExpressionAST>,
