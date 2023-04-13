@@ -314,6 +314,16 @@ sealed class ExpressionAST : ASTElement {
                     }
                 }
 
+                is SequenceType -> {
+                    if (key.type() != IntType) {
+                        throw InvalidInputException("Invalid key type for sequence IndexAssignAST. Expected int, got ${key.type()}")
+                    }
+
+                    if (value.type() != identType.innerType) {
+                        throw InvalidInputException("Invalid value type for sequence IndexAssignAST. Expected ${identType.innerType}, got ${value.type()}")
+                    }
+                }
+
                 else -> throw InvalidInputException("Invalid identifier type for IndexAssignAST. Expected map or multiset, got $identType")
             }
         }

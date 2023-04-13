@@ -53,6 +53,7 @@ import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MultisetType
+import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.StringType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
@@ -447,17 +448,32 @@ class AdvancedReconditioner {
         val (key, keyDependents) = reconditionExpression(indexAssignAST.key)
         val (value, valueDependents) = reconditionExpression(indexAssignAST.value)
 
-        return if (ident.type() is MultisetType) {
-            val temp = IdentifierAST(tempGenerator.newValue(), IntType)
-            val safetyId = safetyIdGenerator.newValue()
-            idsMap[safetyId] = indexAssignAST
+        return when (ident.type()) {
+            is MultisetType -> {
+                val temp = IdentifierAST(tempGenerator.newValue(), IntType)
+                val safetyId = safetyIdGenerator.newValue()
+                idsMap[safetyId] = indexAssignAST
 
-            val methodCall =
-                NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(value, state, StringLiteralAST(safetyId)))
-            val decl = DeclarationAST(temp, methodCall)
-            Pair(IndexAssignAST(ident, key, temp), identDependents + keyDependents + valueDependents + decl)
-        } else {
-            Pair(IndexAssignAST(ident, key, value), identDependents + keyDependents + valueDependents)
+                val methodCall =
+                    NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(value, state, StringLiteralAST(safetyId)))
+                val decl = DeclarationAST(temp, methodCall)
+                Pair(IndexAssignAST(ident, key, temp), identDependents + keyDependents + valueDependents + decl)
+            }
+
+            is SequenceType -> {
+                val temp = IdentifierAST(tempGenerator.newValue(), IntType)
+                val safetyId = safetyIdGenerator.newValue()
+                idsMap[safetyId] = indexAssignAST
+
+                val methodCall = NonVoidMethodCallAST(
+                    ADVANCED_SAFE_ARRAY_INDEX.signature,
+                    listOf(key, ModulusExpressionAST(ident), state, StringLiteralAST(safetyId))
+                )
+                val decl = DeclarationAST(temp, methodCall)
+                Pair(IndexAssignAST(ident, temp, value), identDependents + keyDependents + valueDependents + decl)
+            }
+
+            else -> Pair(IndexAssignAST(ident, key, value), identDependents + keyDependents + valueDependents)
         }
     }
 

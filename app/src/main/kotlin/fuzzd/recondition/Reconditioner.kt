@@ -42,7 +42,9 @@ import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
+import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MultisetType
+import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.MathematicalBinaryOperator
 import fuzzd.logging.Logger
@@ -310,11 +312,44 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         val key = reconditionExpression(indexAssign.key)
         val value = reconditionExpression(indexAssign.value)
 
-        return IndexAssignAST(
-            ident,
-            key,
-            if (ident.type() is MultisetType) FunctionMethodCallAST(ABSOLUTE.signature, listOf(value)) else value,
-        )
+        return when (indexAssign.type()) {
+            is MapType -> IndexAssignAST(ident, key, value)
+            is MultisetType -> {
+                val safetyId = safetyIdGenerator.newValue()
+                idsMap[safetyId] = indexAssign
+
+                if (requiresSafety(safetyId)) {
+                    if (ids != null) {
+                        logger.log { "$safetyId: Advanced reconditioning requires safety for multiset index assign $indexAssign" }
+                    }
+
+                    IndexAssignAST(ident, key, FunctionMethodCallAST(ABSOLUTE.signature, listOf(value)))
+                } else {
+                    IndexAssignAST(ident, key, value)
+                }
+            }
+
+            is SequenceType -> {
+                val safetyId = safetyIdGenerator.newValue()
+                idsMap[safetyId] = indexAssign
+
+                if (requiresSafety(safetyId)) {
+                    if (ids != null) {
+                        logger.log { "$safetyId: Advanced reconditioning requires safety for seqeunce index assign $indexAssign" }
+                    }
+
+                    IndexAssignAST(
+                        ident,
+                        FunctionMethodCallAST(SAFE_ARRAY_INDEX.signature, listOf(key, ModulusExpressionAST(ident))),
+                        value
+                    )
+                } else {
+                    IndexAssignAST(ident, key, value)
+                }
+            }
+
+            else -> throw UnsupportedOperationException()
+        }
     }
 
     override fun reconditionTernaryExpression(ternaryExpression: TernaryExpressionAST): ExpressionAST =

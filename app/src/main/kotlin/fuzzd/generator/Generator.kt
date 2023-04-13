@@ -892,12 +892,12 @@ class Generator(
     override fun generateIndexAssign(
         context: GenerationContext,
         targetType: Type,
-    ): Pair<IndexAssignAST, List<StatementAST>> =
-        if (targetType is MapType) {
-            generateMapIndexAssign(context, targetType)
-        } else {
-            generateMultisetIndexAssign(context, targetType as MultisetType)
-        }
+    ): Pair<IndexAssignAST, List<StatementAST>> = when (targetType) {
+        is MapType -> generateMapIndexAssign(context, targetType)
+        is MultisetType -> generateMultisetIndexAssign(context, targetType)
+        is SequenceType -> generateSequenceIndexAssign(context, targetType)
+        else -> throw UnsupportedOperationException()
+    }
 
     private fun generateMapIndexAssign(
         context: GenerationContext,
@@ -926,6 +926,17 @@ class Generator(
             Pair(index, emptyList())
         }
         return Pair(IndexAssignAST(ident, typeSafeIndex, newValue), identDeps + indexDeps + newValueDeps + deps)
+    }
+
+    private fun generateSequenceIndexAssign(
+        context: GenerationContext,
+        targetType: SequenceType
+    ): Pair<IndexAssignAST, List<StatementAST>> {
+        val (ident, identDeps) = generateIdentifier(context, targetType)
+        val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
+        val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), targetType.innerType)
+
+        return Pair(IndexAssignAST(ident, index, newValue), identDeps + indexDeps + newValueDeps)
     }
 
     override fun generateIndex(context: GenerationContext, targetType: Type): Pair<ExpressionAST, List<StatementAST>> {
