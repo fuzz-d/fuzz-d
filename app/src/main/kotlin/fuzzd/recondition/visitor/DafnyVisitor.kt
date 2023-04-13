@@ -418,8 +418,14 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitAssignmentLhs(ctx: AssignmentLhsContext): IdentifierAST = visitDeclAssignLhs(ctx.declAssignLhs())
 
-    override fun visitPrint(ctx: PrintContext): PrintAST =
-        PrintAST(ctx.expression().subList(0, ctx.expression().size - 1).map(this::visitExpression))
+    override fun visitPrint(ctx: PrintContext): PrintAST {
+        val exprs = ctx.expression().map(this::visitExpression)
+        return if (exprs.last() == StringLiteralAST("\\n")) {
+            PrintAST(exprs.subList(0, exprs.size - 1), true)
+        } else {
+            PrintAST(exprs, false)
+        }
+    }
 
     override fun visitIfStatement(ctx: IfStatementContext): IfStatementAST {
         val ifCondition = visitExpression(ctx.expression())
@@ -725,7 +731,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         CharacterLiteralAST(ctx.ESCAPED_CHAR().toString()[0])
     }
 
-    override fun visitStringToken(ctx: StringTokenContext): StringLiteralAST = StringLiteralAST(ctx.text)
+    override fun visitStringToken(ctx: StringTokenContext): StringLiteralAST =
+        StringLiteralAST(ctx.text.substring(1, ctx.text.length - 1))
 
     override fun visitRealLiteral(ctx: RealLiteralContext): RealLiteralAST =
         RealLiteralAST(ctx.REAL_LITERAL().toString())

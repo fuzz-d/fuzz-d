@@ -56,7 +56,8 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "$counterInitialisation\n${super.toString()}"
     }
 
-    class DataStructureMemberDeclarationAST(val identifier: IdentifierAST, val dataStructure: IdentifierAST) : StatementAST() {
+    class DataStructureMemberDeclarationAST(val identifier: IdentifierAST, val dataStructure: IdentifierAST) :
+        StatementAST() {
         override fun toString(): String = "var $identifier :| $identifier in $dataStructure;"
     }
 
@@ -96,10 +97,10 @@ sealed class StatementAST : ASTElement {
     class AssignmentAST(identifier: IdentifierAST, expr: ExpressionAST) :
         MultiAssignmentAST(listOf(identifier), listOf(expr))
 
-    class PrintAST(val expr: List<ExpressionAST>) : StatementAST() {
+    class PrintAST(val expr: List<ExpressionAST>, private val newLine: Boolean = true) : StatementAST() {
         constructor(expr: ExpressionAST) : this(listOf(expr))
 
-        override fun toString(): String = "print ${expr.joinToString(", ")}, \"\\n\";"
+        override fun toString(): String = "print ${expr.joinToString(", ")}${if (newLine) ", \"\\n\"" else ""};"
     }
 
     open class VoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) : StatementAST() {
