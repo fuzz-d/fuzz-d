@@ -10,6 +10,7 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
+import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -73,6 +74,8 @@ interface ASTReconditioner {
     fun reconditionUnaryExpression(expression: UnaryExpressionAST): ExpressionAST
 
     fun reconditionModulusExpression(modulus: ModulusExpressionAST): ModulusExpressionAST
+
+    fun reconditionMultisetConversion(multisetConversion: MultisetConversionAST): MultisetConversionAST
 
     fun reconditionFunctionMethodCall(functionMethodCall: FunctionMethodCallAST): ExpressionAST
 

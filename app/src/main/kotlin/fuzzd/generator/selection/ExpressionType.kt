@@ -4,6 +4,7 @@ enum class ExpressionType {
     CONSTRUCTOR,
     UNARY,
     MODULUS,
+    MULTISET_CONVERSION,
     BINARY,
     TERNARY,
     FUNCTION_METHOD_CALL,

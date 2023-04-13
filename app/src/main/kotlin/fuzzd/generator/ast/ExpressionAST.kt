@@ -135,6 +135,19 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "|$expr|"
     }
 
+    class MultisetConversionAST(val expr: ExpressionAST) : ExpressionAST() {
+        init {
+            val type = expr.type()
+            if (type !is SequenceType) {
+                throw InvalidInputException("Conversion to multiset requires sequence type. Got $type")
+            }
+        }
+
+        override fun type(): Type = MultisetType((expr.type() as SequenceType).innerType)
+
+        override fun toString(): String = "multiset($expr)"
+    }
+
     class BinaryExpressionAST(
         val expr1: ExpressionAST,
         val operator: BinaryOperator,

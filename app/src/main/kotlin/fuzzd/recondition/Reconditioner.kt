@@ -1,5 +1,6 @@
 package fuzzd.recondition
 
+import com.google.common.collect.Multiset
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
@@ -17,6 +18,7 @@ import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
+import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
@@ -66,10 +68,10 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
         return DafnyAST(
             reconditionedTraits +
-                reconditionedClasses +
-                reconditionedFunctionMethods +
-                reconditionedMethods +
-                reconditionedMain,
+                    reconditionedClasses +
+                    reconditionedFunctionMethods +
+                    reconditionedMethods +
+                    reconditionedMain,
         )
     }
 
@@ -176,6 +178,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is BinaryExpressionAST -> reconditionBinaryExpression(expression)
         is UnaryExpressionAST -> reconditionUnaryExpression(expression)
         is ModulusExpressionAST -> reconditionModulusExpression(expression)
+        is MultisetConversionAST -> reconditionMultisetConversion(expression)
         is TernaryExpressionAST -> reconditionTernaryExpression(expression)
         is IdentifierAST -> reconditionIdentifier(expression)
         is LiteralAST, is ArrayInitAST -> expression // don't need to do anything
@@ -228,6 +231,9 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
     override fun reconditionModulusExpression(modulus: ModulusExpressionAST): ModulusExpressionAST =
         ModulusExpressionAST(reconditionExpression(modulus.expr))
+
+    override fun reconditionMultisetConversion(multisetConversion: MultisetConversionAST): MultisetConversionAST =
+        MultisetConversionAST(reconditionExpression(multisetConversion.expr))
 
     override fun reconditionFunctionMethodCall(functionMethodCall: FunctionMethodCallAST): ExpressionAST =
         FunctionMethodCallAST(

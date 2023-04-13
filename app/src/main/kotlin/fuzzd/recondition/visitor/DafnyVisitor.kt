@@ -25,6 +25,7 @@ import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
+import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
@@ -473,6 +474,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         )
 
         ctx.modulus() != null -> visitModulus(ctx.modulus())
+        ctx.multisetConversion() != null -> visitMultisetConversion(ctx.multisetConversion())
 
         ctx.classInstantiation() != null -> visitClassInstantiation(ctx.classInstantiation())
         ctx.ternaryExpression() != null -> visitTernaryExpression(ctx.ternaryExpression())
@@ -745,6 +747,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitModulus(ctx: ModulusContext): ModulusExpressionAST =
         ModulusExpressionAST(visitExpression(ctx.expression()))
+
+    override fun visitMultisetConversion(ctx: MultisetConversionContext): MultisetConversionAST =
+        MultisetConversionAST(visitExpression(ctx.expression()))
 
     /* ============================================== TYPE ============================================= */
 

@@ -1,5 +1,6 @@
 package fuzzd.recondition
 
+import com.google.common.collect.Multiset
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
@@ -19,6 +20,7 @@ import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
+import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
@@ -223,7 +225,7 @@ class AdvancedReconditioner {
         val (reconditionedIdentifier, identifierDependents) = reconditionIdentifier(declaration.identifier)
         val (reconditionedDataStructure, dataStructureDependents) = reconditionIdentifier(declaration.dataStructure)
         return identifierDependents + dataStructureDependents +
-            DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
+                DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
     }
 
     fun reconditionMultiAssignment(multiAssignmentAST: MultiAssignmentAST): List<StatementAST> {
@@ -231,7 +233,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
         return identifierDependents + exprDependents +
-            MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMultiTypedDeclaration(multiTypedDeclarationAST: MultiTypedDeclarationAST): List<StatementAST> {
@@ -249,7 +251,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
 
         return identifierDependents + exprDependents +
-            MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionIfStatement(ifStatementAST: IfStatementAST): List<StatementAST> {
@@ -305,6 +307,7 @@ class AdvancedReconditioner {
             is BinaryExpressionAST -> reconditionBinaryExpression(expressionAST)
             is UnaryExpressionAST -> reconditionUnaryExpression(expressionAST)
             is ModulusExpressionAST -> reconditionModulusExpression(expressionAST)
+            is MultisetConversionAST -> reconditionMultisetConversion(expressionAST)
             is TernaryExpressionAST -> reconditionTernaryExpression(expressionAST)
             is IdentifierAST -> reconditionIdentifier(expressionAST)
             is LiteralAST, is ArrayInitAST -> Pair(expressionAST, emptyList()) // do nothing
@@ -350,6 +353,11 @@ class AdvancedReconditioner {
     fun reconditionModulusExpression(modulusExpressionAST: ModulusExpressionAST): Pair<ModulusExpressionAST, List<StatementAST>> {
         val (reconditionedExpression, dependents) = reconditionExpression(modulusExpressionAST.expr)
         return Pair(ModulusExpressionAST(reconditionedExpression), dependents)
+    }
+
+    fun reconditionMultisetConversion(multisetConversionAST: MultisetConversionAST): Pair<MultisetConversionAST, List<StatementAST>> {
+        val (reconditionedExpression, dependents) = reconditionExpression(multisetConversionAST.expr)
+        return Pair(MultisetConversionAST(reconditionedExpression), dependents)
     }
 
     fun reconditionTernaryExpression(ternaryExpressionAST: TernaryExpressionAST): Pair<TernaryExpressionAST, List<StatementAST>> {

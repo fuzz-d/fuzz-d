@@ -19,6 +19,7 @@ import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
+import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
@@ -89,6 +90,7 @@ import fuzzd.generator.selection.ExpressionType.INDEX
 import fuzzd.generator.selection.ExpressionType.INDEX_ASSIGN
 import fuzzd.generator.selection.ExpressionType.LITERAL
 import fuzzd.generator.selection.ExpressionType.MODULUS
+import fuzzd.generator.selection.ExpressionType.MULTISET_CONVERSION
 import fuzzd.generator.selection.ExpressionType.TERNARY
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.SelectionManager
@@ -749,6 +751,7 @@ class Generator(
         CONSTRUCTOR -> generateConstructorForType(context, targetType)
         UNARY -> generateUnaryExpression(context, targetType)
         MODULUS -> generateModulus(context, targetType)
+        MULTISET_CONVERSION -> generateMultisetConversion(context, targetType)
         BINARY -> generateBinaryExpression(context, targetType)
         TERNARY -> generateTernaryExpression(context, targetType)
         FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
@@ -975,6 +978,16 @@ class Generator(
         val innerType = selectionManager.selectDataStructureType(context, literalOnly = false)
         val (expr, exprDeps) = generateExpression(context, innerType)
         return Pair(ModulusExpressionAST(expr), exprDeps)
+    }
+
+    override fun generateMultisetConversion(
+        context: GenerationContext,
+        targetType: Type
+    ): Pair<MultisetConversionAST, List<StatementAST>> {
+        val multisetType = targetType as MultisetType
+        val (expr, exprDeps) = generateExpression(context, SetType(multisetType.innerType))
+
+        return Pair(MultisetConversionAST(expr), exprDeps)
     }
 
     override fun generateBinaryExpression(
