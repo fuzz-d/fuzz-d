@@ -334,7 +334,6 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         )
 
     override fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): ExpressionAST = SetDisplayAST(
-        setDisplayAST.innerType,
         setDisplayAST.exprs.map(this::reconditionExpression),
         setDisplayAST.isMultiset,
     )
@@ -346,5 +345,5 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
     )
 
     override fun reconditionSequenceDisplay(sequenceDisplayAST: SequenceDisplayAST): SequenceDisplayAST =
-        SequenceDisplayAST(sequenceDisplayAST.innerType, sequenceDisplayAST.exprs.map(this::reconditionExpression))
+        SequenceDisplayAST(sequenceDisplayAST.exprs.map(this::reconditionExpression))
 }

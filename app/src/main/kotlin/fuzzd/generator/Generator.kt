@@ -243,7 +243,7 @@ class Generator(
 
         val update = AssignmentAST(
             identifier,
-            BinaryExpressionAST(identifier, DifferenceOperator, SetDisplayAST(mapType.keyType, listOf(key), false)),
+            BinaryExpressionAST(identifier, DifferenceOperator, SetDisplayAST(listOf(key), false)),
         )
         return listOf(
             WhileLoopAST(
@@ -259,14 +259,14 @@ class Generator(
             BinaryExpressionAST(
                 identifier,
                 DataStructureInequalityOperator,
-                SetDisplayAST(setType.innerType, emptyList(), false),
+                SetDisplayAST(emptyList(), false),
             )
         val value = IdentifierAST(context.identifierNameGenerator.newValue(), setType.innerType)
 
         val valueDecl = DataStructureMemberDeclarationAST(value, identifier)
         val update = AssignmentAST(
             identifier,
-            BinaryExpressionAST(identifier, DifferenceOperator, SetDisplayAST(setType.innerType, listOf(value), false)),
+            BinaryExpressionAST(identifier, DifferenceOperator, SetDisplayAST(listOf(value), false)),
         )
         val valueChecksum = generateChecksum(context, value)
         return listOf(WhileLoopAST(condition, SequenceAST(listOf(valueDecl) + valueChecksum + update)))
@@ -278,7 +278,7 @@ class Generator(
             BinaryExpressionAST(
                 identifier,
                 DataStructureInequalityOperator,
-                SetDisplayAST(multisetType.innerType, emptyList(), true),
+                SetDisplayAST(emptyList(), true),
             )
         val key = IdentifierAST(context.identifierNameGenerator.newValue(), multisetType.innerType)
 
@@ -605,7 +605,7 @@ class Generator(
 
         context.symbolTable.add(identifier)
 
-        return exprDeps + if (targetType is MapType || targetType is SetType) {
+        return exprDeps + if (targetType is MapType || targetType is SetType || targetType is MultisetType || targetType is SequenceType) {
             TypedDeclarationAST(identifier, expr)
         } else {
             DeclarationAST(identifier, expr)
@@ -658,9 +658,9 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-            context.functionSymbolTable.methods().map { it.signature } +
-                context.symbolTable.classInstances().map { it.methods }.unionAll()
-            )
+                context.functionSymbolTable.methods().map { it.signature } +
+                        context.symbolTable.classInstances().map { it.methods }.unionAll()
+                )
             .filter { method ->
                 context.methodContext == null || methodCallTable.canUseDependency(
                     context.methodContext,
@@ -798,8 +798,8 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-            context.symbolTable.classInstances().map { it.functionMethods }.unionAll()
-                .filter { it.returnType == targetType }
+                context.symbolTable.classInstances().map { it.functionMethods }.unionAll()
+                    .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
     override fun generateIdentifier(
@@ -852,7 +852,7 @@ class Generator(
         val (exprs, exprDeps) = (1..numberOfExpressions)
             .map { generateExpression(context.increaseExpressionDepth(), innerType) }
             .foldPair()
-        return Pair(SetDisplayAST(innerType, exprs, isMultiset), exprDeps)
+        return Pair(SetDisplayAST(exprs, isMultiset), exprDeps)
     }
 
     override fun generateSequenceDisplay(
@@ -865,7 +865,7 @@ class Generator(
             .map { generateExpression(context.increaseExpressionDepth(), targetType.innerType) }
             .foldPair()
 
-        return Pair(SequenceDisplayAST(targetType.innerType, exprs), exprDeps)
+        return Pair(SequenceDisplayAST(exprs), exprDeps)
     }
 
     override fun generateMapConstructor(

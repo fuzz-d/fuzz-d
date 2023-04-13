@@ -9,6 +9,7 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.MultisetType
+import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
@@ -331,31 +332,19 @@ sealed class ExpressionAST : ASTElement {
         override fun toString() = "map[${assignments.joinToString(", ") { "${it.first} := ${it.second}" }}]"
     }
 
-    class SetDisplayAST(val innerType: Type, val exprs: List<ExpressionAST>, val isMultiset: Boolean) :
-        ExpressionAST() {
-        init {
-            exprs.indices.forEach { i ->
-                if (exprs[i].type() != innerType) {
-                    throw InvalidInputException("Invalid expression type at elem $i for set display. Expected $innerType, got ${exprs[i].type()}")
-                }
+    class SetDisplayAST(val exprs: List<ExpressionAST>, val isMultiset: Boolean) : ExpressionAST() {
+        override fun type(): Type =
+            if (exprs.isEmpty()) {
+                PlaceholderType
+            } else {
+                if (isMultiset) MultisetType(exprs[0].type()) else SetType(exprs[0].type())
             }
-        }
-
-        override fun type(): Type = if (isMultiset) MultisetType(innerType) else SetType(innerType)
 
         override fun toString(): String = "${if (isMultiset) "multiset" else ""}{${exprs.joinToString(", ")}}"
     }
 
-    class SequenceDisplayAST(val innerType: Type, val exprs: List<ExpressionAST>) : ExpressionAST() {
-        init {
-            exprs.indices.forEach { i ->
-                if (exprs[i].type() != innerType) {
-                    throw InvalidInputException("Invalid expression type at elem $i for seq display. Expected $innerType, got ${exprs[i].type()}")
-                }
-            }
-        }
-
-        override fun type(): Type = SequenceType(innerType)
+    class SequenceDisplayAST(val exprs: List<ExpressionAST>) : ExpressionAST() {
+        override fun type(): Type = if (exprs.isEmpty()) PlaceholderType else SequenceType(exprs[0].type())
 
         override fun toString(): String = "[${exprs.joinToString(", ")}]"
     }

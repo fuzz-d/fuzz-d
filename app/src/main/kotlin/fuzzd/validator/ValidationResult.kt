@@ -27,8 +27,7 @@ class ValidationResult(handlers: List<ExecutionHandler>) {
         }
     }
 
-    private fun bugFound(): Boolean =
-        failedCompile.isNotEmpty() || failedExecute.isNotEmpty() ||
+    private fun differentOutput(): Boolean =
             succeededExecute.any { h -> h.executeResult().stdOut != succeededExecute[0].executeResult().stdOut }
 
     override fun toString(): String {
@@ -43,7 +42,9 @@ class ValidationResult(handlers: List<ExecutionHandler>) {
         sb.appendLine("--------------------------------- EXECUTE SUCCEEDED -------------------------------")
         succeededExecute.forEach { h -> sb.append("${h.getCompileTarget()}:\n${indent(h.executeResult())}\n") }
 
-        sb.appendLine("Bug found: ${bugFound()}")
+        sb.appendLine("Compiler crash: ${failedCompile.isNotEmpty()}")
+        sb.appendLine("Execute crash: ${failedExecute.isNotEmpty()}")
+        sb.appendLine("Different output: ${differentOutput()}")
 
         return sb.toString()
     }

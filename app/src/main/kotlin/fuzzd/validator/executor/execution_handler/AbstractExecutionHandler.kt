@@ -55,7 +55,7 @@ abstract class AbstractExecutionHandler(
     }
 
     companion object {
-        const val TIMEOUT_SECONDS = 15L
+        const val TIMEOUT_SECONDS = 60L
         private const val TIMEOUT_RETURN_CODE = 2
     }
 }

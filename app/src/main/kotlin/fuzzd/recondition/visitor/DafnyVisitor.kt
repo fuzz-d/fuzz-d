@@ -27,6 +27,8 @@ import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
+import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
+import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -60,6 +62,7 @@ import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
@@ -327,7 +330,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val lhs = ctx.declarationLhs().declAssignLhs().map { declAssignLhs -> visitDeclAssignLhs(declAssignLhs) }
         val rhs = visitDeclAssignRhs(ctx.declAssignRhs())
 
-        val rhsTypes = if (rhs.type() is MethodReturnType) {
+        val rhsTypes = if (ctx.type() != null) {
+            listOf(visitType(ctx.type()))
+        } else if (rhs.type() is MethodReturnType) {
             (rhs.type() as MethodReturnType).types
         } else {
             listOf(rhs.type())
@@ -385,6 +390,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             val index = visitExpression(ctx.expression(0))
             when (identifier.type()) {
                 is ArrayType -> ArrayIndexAST(identifier, index)
+                is SequenceType -> SequenceIndexAST(identifier, index)
                 else -> IndexAST(identifier, index)
             }
         }
@@ -412,7 +418,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitAssignmentLhs(ctx: AssignmentLhsContext): IdentifierAST = visitDeclAssignLhs(ctx.declAssignLhs())
 
-    override fun visitPrint(ctx: PrintContext): PrintAST = PrintAST(ctx.expression().subList(0, ctx.expression().size - 1).map(this::visitExpression))
+    override fun visitPrint(ctx: PrintContext): PrintAST =
+        PrintAST(ctx.expression().subList(0, ctx.expression().size - 1).map(this::visitExpression))
 
     override fun visitIfStatement(ctx: IfStatementContext): IfStatementAST {
         val ifCondition = visitExpression(ctx.expression())
@@ -465,6 +472,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.ternaryExpression() != null -> visitTernaryExpression(ctx.ternaryExpression())
         ctx.arrayLength() != null -> visitArrayLength(ctx.arrayLength())
         ctx.setDisplay() != null -> visitSetDisplay(ctx.setDisplay())
+        ctx.sequenceDisplay() != null -> visitSequenceDisplay(ctx.sequenceDisplay())
         ctx.mapConstructor() != null -> visitMapConstructor(ctx.mapConstructor())
         ctx.indexAssign() != null -> visitIndexAssign(ctx.indexAssign())
 
@@ -660,8 +668,12 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitSetDisplay(ctx: SetDisplayContext): SetDisplayAST {
         val exprs = ctx.expression().map(this::visitExpression)
-        val innerType = exprs[0].type()
-        return SetDisplayAST(innerType, exprs, ctx.MULTISET() != null)
+        return SetDisplayAST(exprs, ctx.MULTISET() != null)
+    }
+
+    override fun visitSequenceDisplay(ctx: SequenceDisplayContext): SequenceDisplayAST {
+        val exprs = ctx.expression().map(this::visitExpression)
+        return SequenceDisplayAST(exprs)
     }
 
     override fun visitMapConstructor(ctx: MapConstructorContext): MapConstructorAST {
@@ -724,7 +736,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         else -> throw UnsupportedOperationException("Visiting unsupported unary operator $ctx")
     }
 
-    override fun visitModulus(ctx: ModulusContext): ModulusExpressionAST = ModulusExpressionAST(visitExpression(ctx.expression()))
+    override fun visitModulus(ctx: ModulusContext): ModulusExpressionAST =
+        ModulusExpressionAST(visitExpression(ctx.expression()))
 
     /* ============================================== TYPE ============================================= */
 
@@ -738,6 +751,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.mapType() != null -> visitMapType(ctx.mapType())
         ctx.setType() != null -> visitSetType(ctx.setType())
         ctx.multisetType() != null -> visitMultisetType(ctx.multisetType())
+        ctx.sequenceType() != null -> visitSequenceType(ctx.sequenceType())
         else -> throw UnsupportedOperationException("Visiting unrecognised type context $ctx")
     }
 
@@ -766,5 +780,10 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitMultisetType(ctx: MultisetTypeContext): MultisetType {
         val innerType = visitType(ctx.genericInstantiation().type(0))
         return MultisetType(innerType)
+    }
+
+    override fun visitSequenceType(ctx: SequenceTypeContext): SequenceType {
+        val innerType = visitType(ctx.genericInstantiation().type(0))
+        return SequenceType(innerType)
     }
 }

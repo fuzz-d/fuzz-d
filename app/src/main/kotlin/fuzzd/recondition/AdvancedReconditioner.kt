@@ -482,7 +482,7 @@ class AdvancedReconditioner {
 
     fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): Pair<ExpressionAST, List<StatementAST>> {
         val (exprs, exprDependents) = reconditionExpressionList(setDisplayAST.exprs)
-        return Pair(SetDisplayAST(setDisplayAST.innerType, exprs, setDisplayAST.isMultiset), exprDependents)
+        return Pair(SetDisplayAST(exprs, setDisplayAST.isMultiset), exprDependents)
     }
 
     fun reconditionMapConstructor(mapConstructorAST: MapConstructorAST): Pair<ExpressionAST, List<StatementAST>> {
@@ -501,7 +501,7 @@ class AdvancedReconditioner {
 
     fun reconditionSequenceDisplay(sequenceDisplayAST: SequenceDisplayAST): Pair<SequenceDisplayAST, List<StatementAST>> {
         val (exprs, exprDependents) = reconditionExpressionList(sequenceDisplayAST.exprs)
-        return Pair(SequenceDisplayAST(sequenceDisplayAST.innerType, exprs), exprDependents)
+        return Pair(SequenceDisplayAST(exprs), exprDependents)
     }
 
     companion object {

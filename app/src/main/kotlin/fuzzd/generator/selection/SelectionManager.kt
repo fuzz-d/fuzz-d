@@ -132,6 +132,7 @@ class SelectionManager(
                         val keyType = when (dataStructureType) {
                             is SetType -> dataStructureType.innerType
                             is MultisetType -> dataStructureType.innerType
+                            is SequenceType -> dataStructureType.innerType
                             is MapType -> dataStructureType.keyType
                             else -> throw UnsupportedOperationException()
                         }
@@ -155,7 +156,7 @@ class SelectionManager(
                 Pair(subclassInstances[selectedIndex], Pair(targetType, targetType))
             }
 
-            is MapType -> Pair(UnionOperator, Pair(targetType, targetType))
+            is MapType, is SequenceType -> Pair(UnionOperator, Pair(targetType, targetType))
 
             IntType -> {
                 val subclassInstances = BinaryOperator.MathematicalBinaryOperator::class.sealedSubclasses
@@ -209,16 +210,17 @@ class SelectionManager(
             ),
         )
 
-    fun generateNewMethod(context: GenerationContext): Boolean {
-        val trueWeighting =
-            0.2 / maxOf(context.statementDepth, context.expressionDepth, context.functionSymbolTable.methods().size)
+    fun generateNewMethod(context: GenerationContext): Boolean = false
+//    {
+//        val trueWeighting =
+//            0.2 / maxOf(context.statementDepth, context.expressionDepth, context.functionSymbolTable.methods().size)
+//
+//        return context.methodContext == null &&
+//            randomWeightedSelection(listOf(true to trueWeighting, false to 1 - trueWeighting))
+//    }
 
-        return context.methodContext == null &&
-            randomWeightedSelection(listOf(true to trueWeighting, false to 1 - trueWeighting))
-    }
-
-    fun generateNewClass(context: GenerationContext): Boolean =
-        random.nextFloat() < (0.1 / context.functionSymbolTable.classes().size)
+    fun generateNewClass(context: GenerationContext): Boolean = false
+//        random.nextFloat() < (0.1 / context.functionSymbolTable.classes().size)
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0
