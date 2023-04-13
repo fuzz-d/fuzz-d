@@ -226,6 +226,7 @@ class SelectionManager(
         val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
         val modulusProbability = if (targetType == IntType) 0.03 else 0.0
+        val multisetConversionProbability = if (targetType is MultisetType) 0.03 else 0.0
         val functionCallProbability =
             if (!targetType.hasArrayType() && context.onDemandIdentifiers && context.functionCalls) {
                 0.1 / context.expressionDepth
@@ -242,6 +243,7 @@ class SelectionManager(
                 binaryProbability,
                 unaryProbability,
                 modulusProbability,
+                multisetConversionProbability,
                 functionCallProbability,
                 ternaryProbability,
                 assignProbability,
