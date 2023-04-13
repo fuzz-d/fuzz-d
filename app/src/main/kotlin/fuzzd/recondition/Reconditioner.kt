@@ -18,6 +18,8 @@ import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
+import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
@@ -183,6 +185,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is FunctionMethodCallAST -> reconditionFunctionMethodCall(expression)
         is SetDisplayAST -> reconditionSetDisplay(expression)
         is MapConstructorAST -> reconditionMapConstructor(expression)
+        is SequenceDisplayAST -> reconditionSequenceDisplay(expression)
         else -> throw UnsupportedOperationException() // TODO ??
     }
 
@@ -234,6 +237,9 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
     override fun reconditionIdentifier(identifierAST: IdentifierAST): IdentifierAST = when (identifierAST) {
         is ArrayIndexAST -> {
+            val reconditionedArray = reconditionIdentifier(identifierAST.array)
+            val reconditionedIndex = reconditionExpression(identifierAST.index)
+
             val safetyId = safetyIdGenerator.newValue()
             idsMap[safetyId] = identifierAST
             if (requiresSafety(safetyId)) {
@@ -243,14 +249,38 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
                 }
 
                 ArrayIndexAST(
-                    identifierAST.array,
+                    reconditionedArray,
                     FunctionMethodCallAST(
                         SAFE_ARRAY_INDEX.signature,
-                        listOf(identifierAST.index, ArrayLengthAST(identifierAST.array)),
+                        listOf(reconditionedIndex, ArrayLengthAST(identifierAST.array)),
                     ),
                 )
             } else {
-                identifierAST
+                ArrayIndexAST(reconditionedArray, reconditionedIndex)
+            }
+        }
+
+        is SequenceIndexAST -> {
+            val reconditionedSequence = reconditionIdentifier(identifierAST.sequence)
+            val reconditionedIndex = reconditionExpression(identifierAST.index)
+
+            val safetyId = safetyIdGenerator.newValue()
+            idsMap[safetyId] = identifierAST
+
+            if (requiresSafety(safetyId)) {
+                if (ids != null) {
+                    logger.log { "$safetyId: Advanced reconditioning requires safety for array index $identifierAST" }
+                }
+
+                SequenceIndexAST(
+                    reconditionedSequence,
+                    FunctionMethodCallAST(
+                        SAFE_ARRAY_INDEX.signature,
+                        listOf(reconditionedIndex, ModulusExpressionAST(reconditionedSequence)),
+                    ),
+                )
+            } else {
+                SequenceIndexAST(reconditionedSequence, reconditionedIndex)
             }
         }
 
@@ -314,4 +344,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         mapConstructorAST.valueType,
         mapConstructorAST.assignments.map { (k, v) -> Pair(reconditionExpression(k), reconditionExpression(v)) },
     )
+
+    override fun reconditionSequenceDisplay(sequenceDisplayAST: SequenceDisplayAST): SequenceDisplayAST =
+        SequenceDisplayAST(sequenceDisplayAST.innerType, sequenceDisplayAST.exprs.map(this::reconditionExpression))
 }

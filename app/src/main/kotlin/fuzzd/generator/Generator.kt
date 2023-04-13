@@ -21,6 +21,8 @@ import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
+import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
+import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -56,6 +58,7 @@ import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
@@ -72,6 +75,7 @@ import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DataStructureInequalityOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DifferenceOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
+import fuzzd.generator.ast.operators.BinaryOperator.LessThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.selection.AssignType
@@ -184,9 +188,10 @@ class Generator(
         return MainFunctionAST(SequenceAST(globalStateDeps + globalStateDecl + body.statements + prints))
     }
 
-    override fun generateChecksum(context: GenerationContext): List<StatementAST> = context.symbolTable.symbolTable.map {
-        generateChecksum(context, it.key)
-    }.reduceLists()
+    override fun generateChecksum(context: GenerationContext): List<StatementAST> =
+        context.symbolTable.symbolTable.map {
+            generateChecksum(context, it.key)
+        }.reduceLists()
 
     fun generateChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
         return when (identifier.type()) {
@@ -194,10 +199,26 @@ class Generator(
             is MapType -> generateMapTypeChecksum(context, identifier)
             is SetType -> generateSetTypeChecksum(context, identifier)
             is MultisetType -> generateMultisetTypeChecksum(context, identifier)
+            is SequenceType -> generateSequenceTypeChecksum(context, identifier)
             is ClassType -> generateClassTypeChecksum(context, identifier)
             is TraitType -> generateTraitTypeChecksum(context, identifier)
             else -> listOf(PrintAST(identifier))
         }
+    }
+
+    fun generateSequenceTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
+        val sequenceType = identifier.type() as SequenceType
+        val counter = IdentifierAST(context.loopCounterGenerator.newValue(), IntType)
+        val counterDecl = DeclarationAST(counter, IntegerLiteralAST(0))
+        val condition = BinaryExpressionAST(counter, LessThanEqualOperator, ModulusExpressionAST(identifier))
+
+        val value = IdentifierAST(context.identifierNameGenerator.newValue(), sequenceType.innerType)
+        val valueDecl = DeclarationAST(value, SequenceIndexAST(identifier, counter))
+        val valueChecksum = generateChecksum(context, value)
+
+        val update = AssignmentAST(counter, BinaryExpressionAST(counter, AdditionOperator, IntegerLiteralAST(1)))
+
+        return listOf(counterDecl, WhileLoopAST(condition, SequenceAST(listOf(valueDecl) + valueChecksum + update)))
     }
 
     fun generateMapTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
@@ -834,6 +855,19 @@ class Generator(
         return Pair(SetDisplayAST(innerType, exprs, isMultiset), exprDeps)
     }
 
+    override fun generateSequenceDisplay(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<SequenceDisplayAST, List<StatementAST>> {
+        val seqType = targetType as SequenceType
+        val numberOfExpressions = selectionManager.selectNumberOfConstructorFields(context)
+        val (exprs, exprDeps) = (1..numberOfExpressions)
+            .map { generateExpression(context.increaseExpressionDepth(), targetType.innerType) }
+            .foldPair()
+
+        return Pair(SequenceDisplayAST(targetType.innerType, exprs), exprDeps)
+    }
+
     override fun generateMapConstructor(
         context: GenerationContext,
         targetType: Type,
@@ -974,6 +1008,7 @@ class Generator(
         is ArrayType -> generateArrayInitialisation(context, targetType)
         is MapType -> generateMapConstructor(context, targetType)
         is SetType, is MultisetType -> generateSetDisplay(context, targetType)
+        is SequenceType -> generateSequenceDisplay(context, targetType)
         // should not be possible to reach here
         else -> throw UnsupportedOperationException("Trying to generate base for non-base type $targetType")
     }
@@ -986,6 +1021,7 @@ class Generator(
             is ArrayType -> generateArrayInitialisation(context, targetType)
             is MapType -> generateMapConstructor(context, targetType)
             is SetType, is MultisetType -> generateSetDisplay(context, targetType)
+            is SequenceType -> generateSequenceDisplay(context, targetType)
             else -> throw UnsupportedOperationException("Trying to generate constructor for non-constructor type")
         }
 

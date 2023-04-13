@@ -72,6 +72,16 @@ sealed class Type : ASTElement {
         override fun hashCode(): Int = innerType.hashCode()
     }
 
+    class SequenceType(val innerType: Type) : Type() {
+        override fun hasArrayType(): Boolean = innerType.hasArrayType()
+
+        override fun toString(): String = "seq<$innerType>"
+
+        override fun equals(other: Any?): Boolean = other is SequenceType && other.innerType == innerType
+
+        override fun hashCode(): Int = innerType.hashCode()
+    }
+
     class MethodReturnType(val types: List<Type>) : Type() {
         override fun toString(): String = "(${types.joinToString(", ")})"
     }

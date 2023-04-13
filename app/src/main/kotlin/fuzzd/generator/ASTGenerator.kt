@@ -10,11 +10,12 @@ import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
-import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
+import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
@@ -118,6 +119,11 @@ interface ASTGenerator {
     fun generateArrayIndex(context: GenerationContext, targetType: Type): Pair<ArrayIndexAST, List<StatementAST>>
 
     fun generateSetDisplay(context: GenerationContext, targetType: Type): Pair<SetDisplayAST, List<StatementAST>>
+
+    fun generateSequenceDisplay(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<SequenceDisplayAST, List<StatementAST>>
 
     fun generateMapConstructor(
         context: GenerationContext,

@@ -10,6 +10,7 @@ import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.StringType
 import fuzzd.generator.ast.error.InvalidFormatException
@@ -123,8 +124,8 @@ sealed class ExpressionAST : ASTElement {
     class ModulusExpressionAST(val expr: ExpressionAST) : ExpressionAST() {
         init {
             val type = expr.type()
-            if (type !is MapType && type !is SetType && type !is MultisetType) {
-                throw InvalidInputException("Invalid expression type for modulus. Got $type, expected map or set")
+            if (type !is MapType && type !is SetType && type !is MultisetType && type !is SequenceType) {
+                throw InvalidInputException("Invalid expression type for modulus. Got $type, expected map, set or seq")
             }
         }
 
@@ -195,8 +196,12 @@ sealed class ExpressionAST : ASTElement {
         name: String,
     ) : IdentifierAST(name, ClassType(clazz)) {
         val fields = clazz.fields.map { ClassInstanceFieldAST(this, it) }
-        val functionMethods = clazz.functionMethods.map { ClassInstanceFunctionMethodSignatureAST(this, it.signature) }
-        val methods = clazz.methods.map { ClassInstanceMethodSignatureAST(this, it.signature) }
+
+        val functionMethods =
+            clazz.functionMethods.map { ClassInstanceFunctionMethodSignatureAST(this, it.signature) }
+
+        val methods =
+            clazz.methods.map { ClassInstanceMethodSignatureAST(this, it.signature) }
     }
 
     class ClassInstanceFieldAST(
@@ -221,33 +226,20 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
-        override fun toString(): String {
-            return "$array[$index]"
-        }
+        override fun toString(): String = "$array[$index]"
     }
 
-    class MapConstructorAST(
-        val keyType: Type,
-        val valueType: Type,
-        val assignments: List<Pair<ExpressionAST, ExpressionAST>> = emptyList(),
-    ) : ExpressionAST() {
+    class SequenceIndexAST(
+        val sequence: IdentifierAST,
+        val index: ExpressionAST,
+    ) : IdentifierAST(sequence.name, (sequence.type() as SequenceType).innerType) {
         init {
-            assignments.indices.forEach { i ->
-                val pair = assignments[i]
-
-                if (pair.first.type() != keyType) {
-                    throw InvalidInputException("Invalid key type for index $i of map constructor. Expected $keyType, got ${pair.first.type()}")
-                }
-
-                if (pair.second.type() != valueType) {
-                    throw InvalidInputException("Invalid value type for index $i of map constructor. Expected $valueType, got ${pair.second.type()}")
-                }
+            if (index.type() != IntType) {
+                throw InvalidInputException("Got invalid type for sequence index. Got ${index.type()}, expected int")
             }
         }
 
-        override fun type(): Type = MapType(keyType, valueType)
-
-        override fun toString() = "map[${assignments.joinToString(", ") { "${it.first} := ${it.second}" }}]"
+        override fun toString(): String = "$sequence[$index]"
     }
 
     class IndexAST(
@@ -315,7 +307,32 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "$ident[$key := $value]"
     }
 
-    class SetDisplayAST(val innerType: Type, val exprs: List<ExpressionAST>, val isMultiset: Boolean) : ExpressionAST() {
+    class MapConstructorAST(
+        val keyType: Type,
+        val valueType: Type,
+        val assignments: List<Pair<ExpressionAST, ExpressionAST>> = emptyList(),
+    ) : ExpressionAST() {
+        init {
+            assignments.indices.forEach { i ->
+                val pair = assignments[i]
+
+                if (pair.first.type() != keyType) {
+                    throw InvalidInputException("Invalid key type for index $i of map constructor. Expected $keyType, got ${pair.first.type()}")
+                }
+
+                if (pair.second.type() != valueType) {
+                    throw InvalidInputException("Invalid value type for index $i of map constructor. Expected $valueType, got ${pair.second.type()}")
+                }
+            }
+        }
+
+        override fun type(): Type = MapType(keyType, valueType)
+
+        override fun toString() = "map[${assignments.joinToString(", ") { "${it.first} := ${it.second}" }}]"
+    }
+
+    class SetDisplayAST(val innerType: Type, val exprs: List<ExpressionAST>, val isMultiset: Boolean) :
+        ExpressionAST() {
         init {
             exprs.indices.forEach { i ->
                 if (exprs[i].type() != innerType) {
@@ -327,6 +344,20 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): Type = if (isMultiset) MultisetType(innerType) else SetType(innerType)
 
         override fun toString(): String = "${if (isMultiset) "multiset" else ""}{${exprs.joinToString(", ")}}"
+    }
+
+    class SequenceDisplayAST(val innerType: Type, val exprs: List<ExpressionAST>) : ExpressionAST() {
+        init {
+            exprs.indices.forEach { i ->
+                if (exprs[i].type() != innerType) {
+                    throw InvalidInputException("Invalid expression type at elem $i for seq display. Expected $innerType, got ${exprs[i].type()}")
+                }
+            }
+        }
+
+        override fun type(): Type = SequenceType(innerType)
+
+        override fun toString(): String = "[${exprs.joinToString(", ")}]"
     }
 
     class ArrayLengthAST(val array: IdentifierAST) : ExpressionAST() {

@@ -9,6 +9,7 @@ import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.RealType
+import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidInputException
@@ -68,10 +69,13 @@ class SelectionManager(
 
     fun selectDataStructureType(context: GenerationContext, literalOnly: Boolean): Type =
         randomWeightedSelection(
-            listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
-                this::selectSetType to 0.25,
-                this::selectMultisetType to 0.25,
-                this::selectMapType to 0.5,
+            normaliseWeights(
+                listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
+                    this::selectSetType to 0.17,
+                    this::selectMultisetType to 0.17,
+                    this::selectMapType to 0.33,
+                    this::selectSequenceType to 0.33,
+                ),
             ),
         ).invoke(context, literalOnly)
 
@@ -83,6 +87,9 @@ class SelectionManager(
 
     private fun selectMapType(context: GenerationContext, literalOnly: Boolean): MapType =
         MapType(selectType(context, literalOnly), selectType(context, literalOnly))
+
+    private fun selectSequenceType(context: GenerationContext, literalOnly: Boolean): SequenceType =
+        SequenceType(selectType(context, literalOnly))
 
     private fun selectArrayType(context: GenerationContext, literalOnly: Boolean): ArrayType =
         selectArrayTypeWithDepth(context, 1)
@@ -224,11 +231,20 @@ class SelectionManager(
                 0.0
             }
         val ternaryProbability = 0.07 / context.expressionDepth
-        val assignProbability = if ((targetType is MapType || targetType is MultisetType) && identifier) 0.1 / context.expressionDepth else 0.0
+        val assignProbability =
+            if ((targetType is MapType || targetType is MultisetType) && identifier) 0.1 / context.expressionDepth else 0.0
         val indexProbability = if (identifier) 0.1 / context.expressionDepth else 0.0
 
         val remainingProbability =
-            1 - listOf(binaryProbability, unaryProbability, modulusProbability, functionCallProbability, ternaryProbability, assignProbability, indexProbability).sum()
+            1 - listOf(
+                binaryProbability,
+                unaryProbability,
+                modulusProbability,
+                functionCallProbability,
+                ternaryProbability,
+                assignProbability,
+                indexProbability,
+            ).sum()
         val identifierProbability = if (identifier) 2 * remainingProbability / 3 else 0.0
         val literalProbability =
             if (isLiteralType(targetType)) {
@@ -298,7 +314,17 @@ class SelectionManager(
     fun selectNumberOfGlobalFields() = random.nextInt(0, MAX_GLOBAL_FIELDS)
 
     fun selectNumberOfConstructorFields(context: GenerationContext) =
-        randomWeightedSelection(normaliseWeights(listOf(1 to 0.4, 2 to 0.2, 3 to 0.2 / context.expressionDepth, 4 to 0.1 / context.expressionDepth, 5 to 0.1 / context.expressionDepth)))
+        randomWeightedSelection(
+            normaliseWeights(
+                listOf(
+                    1 to 0.4,
+                    2 to 0.2,
+                    3 to 0.2 / context.expressionDepth,
+                    4 to 0.1 / context.expressionDepth,
+                    5 to 0.1 / context.expressionDepth,
+                ),
+            ),
+        )
 
     fun selectNumberOfFunctionMethods() = random.nextInt(0, MAX_FUNCTION_METHODS)
 

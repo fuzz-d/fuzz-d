@@ -20,6 +20,8 @@ import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
+import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -312,6 +314,7 @@ class AdvancedReconditioner {
             is FunctionMethodCallAST -> reconditionFunctionMethodCall(expressionAST)
             is SetDisplayAST -> reconditionSetDisplay(expressionAST)
             is MapConstructorAST -> reconditionMapConstructor(expressionAST)
+            is SequenceDisplayAST -> reconditionSequenceDisplay(expressionAST)
             else -> throw UnsupportedOperationException()
         }
 
@@ -389,6 +392,23 @@ class AdvancedReconditioner {
 
                 val decl = DeclarationAST(temp, methodCall)
                 Pair(ArrayIndexAST(arr, temp), arrDependents + exprDependents + decl)
+            }
+
+            is SequenceIndexAST -> {
+                val (seq, seqDependents) = reconditionIdentifier(identifierAST.sequence)
+                val (rexpr, exprDependents) = reconditionExpression(identifierAST.index)
+
+                val temp = IdentifierAST(tempGenerator.newValue(), IntType)
+                val safetyId = safetyIdGenerator.newValue()
+                idsMap[safetyId] = identifierAST
+
+                val methodCall = NonVoidMethodCallAST(
+                    ADVANCED_SAFE_ARRAY_INDEX.signature,
+                    listOf(rexpr, ModulusExpressionAST(seq), state, StringLiteralAST(safetyId)),
+                )
+
+                val decl = DeclarationAST(temp, methodCall)
+                Pair(SequenceIndexAST(seq, temp), seqDependents + exprDependents + decl)
             }
 
             is IndexAssignAST -> reconditionIndexAssign(identifierAST)
@@ -477,6 +497,11 @@ class AdvancedReconditioner {
             MapConstructorAST(mapConstructorAST.keyType, mapConstructorAST.valueType, assigns),
             assignDependents,
         )
+    }
+
+    fun reconditionSequenceDisplay(sequenceDisplayAST: SequenceDisplayAST): Pair<SequenceDisplayAST, List<StatementAST>> {
+        val (exprs, exprDependents) = reconditionExpressionList(sequenceDisplayAST.exprs)
+        return Pair(SequenceDisplayAST(sequenceDisplayAST.innerType, exprs), exprDependents)
     }
 
     companion object {
