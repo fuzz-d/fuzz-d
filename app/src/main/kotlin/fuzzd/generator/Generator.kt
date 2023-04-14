@@ -198,9 +198,9 @@ class Generator(
     fun generateChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
         return when (identifier.type()) {
             is ArrayType -> emptyList()
-            is MapType -> generateMapTypeChecksum(context, identifier)
-            is SetType -> generateSetTypeChecksum(context, identifier)
-            is MultisetType -> generateMultisetTypeChecksum(context, identifier)
+            is MapType -> emptyList() // generateMapTypeChecksum(context, identifier)
+            is SetType -> emptyList() // generateSetTypeChecksum(context, identifier)
+            is MultisetType -> emptyList() // generateMultisetTypeChecksum(context, identifier)
             is SequenceType -> generateSequenceTypeChecksum(context, identifier)
             is ClassType -> generateClassTypeChecksum(context, identifier)
             is TraitType -> generateTraitTypeChecksum(context, identifier)
