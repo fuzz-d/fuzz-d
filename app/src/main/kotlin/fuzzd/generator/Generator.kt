@@ -865,7 +865,7 @@ class Generator(
         val seqType = targetType as SequenceType
         val numberOfExpressions = selectionManager.selectNumberOfConstructorFields(context)
         val (exprs, exprDeps) = (1..numberOfExpressions)
-            .map { generateExpression(context.increaseExpressionDepth(), targetType.innerType) }
+            .map { generateExpression(context.increaseExpressionDepth(), seqType.innerType) }
             .foldPair()
 
         return Pair(SequenceDisplayAST(exprs), exprDeps)

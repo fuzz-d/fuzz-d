@@ -157,7 +157,7 @@ sealed class ExpressionAST : ASTElement {
         private val type2: Type = expr2.type()
 
         init {
-            if (!operator.supportsInput(type1, type2)) {
+            if (type1 != PlaceholderType && type2 != PlaceholderType && !operator.supportsInput(type1, type2)) {
                 println("=================")
                 println(this.operator::class)
                 throw InvalidInputException("Operator $operator does not support input types ($type1, $type2)")
