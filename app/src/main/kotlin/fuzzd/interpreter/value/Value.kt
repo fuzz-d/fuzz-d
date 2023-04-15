@@ -28,7 +28,7 @@ fun <T> multisetIntersect(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
 sealed class Value {
     data class MultiValue(val values: List<Value>) : Value()
 
-    data class ClassValue(val fields: Map<IdentifierAST, Value>)
+    data class ClassValue(val fields: Map<IdentifierAST, Value>) : Value()
 
     class ArrayValue(length: Int) : Value() {
         val arr = Array<Value?>(length) { null }

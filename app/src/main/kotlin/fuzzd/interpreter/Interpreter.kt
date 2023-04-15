@@ -65,6 +65,7 @@ import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.interpreter.value.Value
 import fuzzd.interpreter.value.Value.ArrayValue
 import fuzzd.interpreter.value.Value.BoolValue
+import fuzzd.interpreter.value.Value.ClassValue
 import fuzzd.interpreter.value.Value.DataStructureValue
 import fuzzd.interpreter.value.Value.IntValue
 import fuzzd.interpreter.value.Value.MapValue
@@ -172,10 +173,56 @@ class Interpreter : ASTInterpreter {
         values.forEach { emitOutput(it) }
     }
 
-    private fun emitOutput(value: Value) = when (value) {
-        else -> throw UnsupportedOperationException()
+    private fun emitOutput(value: Value) {
+        when (value) {
+            is ClassValue -> emitClassValue(value)
+            is ArrayValue -> emitArrayValue(value)
+            is SetValue -> emitSetValue(value)
+            is MultisetValue -> emitMultisetValue(value)
+            is MapValue -> emitMapValue(value)
+            is SequenceValue -> emitSequenceValue(value)
+            is StringValue -> emitStringValue(value)
+            is IntValue -> emitIntValue(value)
+            is BoolValue -> emitBoolValue(value)
+            else -> throw UnsupportedOperationException()
+        }
     }
 
+    private fun emitClassValue(classValue: ClassValue) {
+        TODO()
+    }
+
+    private fun emitArrayValue(arrayValue: ArrayValue) {
+        TODO()
+    }
+
+    private fun emitSetValue(setValue: SetValue) {
+        TODO()
+    }
+
+    private fun emitMultisetValue(multisetValue: MultisetValue) {
+        TODO()
+    }
+
+    private fun emitMapValue(mapValue: MapValue) {
+        TODO()
+    }
+
+    private fun emitSequenceValue(sequenceValue: SequenceValue) {
+        TODO()
+    }
+
+    private fun emitStringValue(stringValue: StringValue) {
+        TODO()
+    }
+
+    private fun emitIntValue(intValue: IntValue) {
+        TODO()
+    }
+
+    private fun emitBoolValue(boolValue: BoolValue) {
+        TODO()
+    }
 
     /* ============================== EXPRESSIONS ============================ */
     override fun interpretExpression(expression: ExpressionAST, valueTable: ValueTable): Value =
