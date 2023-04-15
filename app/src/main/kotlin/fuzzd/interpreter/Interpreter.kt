@@ -1,5 +1,6 @@
 package fuzzd.interpreter
 
+import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
@@ -18,6 +19,14 @@ import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
+import fuzzd.generator.ast.MainFunctionAST
+import fuzzd.generator.ast.SequenceAST
+import fuzzd.generator.ast.StatementAST.AssignmentAST
+import fuzzd.generator.ast.StatementAST.DeclarationAST
+import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
+import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
@@ -61,7 +70,47 @@ import fuzzd.interpreter.value.ValueTable
 import fuzzd.utils.toMultiset
 
 class Interpreter : ASTInterpreter {
-    val valueTable = ValueTable()
+    private val valueTable = ValueTable()
+    private val output = StringBuilder()
+
+    /* ============================== TOP LEVEL ============================== */
+    override fun interpretDafny(dafny: DafnyAST): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun interpretMainFunction(mainFunction: MainFunctionAST) {
+        TODO("Not yet implemented")
+    }
+
+    override fun interpretSequence(sequence: SequenceAST) {
+        TODO("Not yet implemented")
+    }
+
+    /* ============================== STATEMENTS ============================= */
+
+    override fun interpretIfStatement(ifStatement: IfStatementAST) {
+        TODO("Not yet implemented")
+    }
+
+    override fun interpretWhileStatement(whileStatement: WhileLoopAST) {
+        TODO("Not yet implemented")
+    }
+
+    override fun interpretVoidMethodCall(methodCall: VoidMethodCallAST) {
+        TODO("Not yet implemented")
+    }
+
+    override fun interpretDeclaration(declaration: DeclarationAST) {
+        TODO("Not yet implemented")
+    }
+
+    override fun interpretAssign(assign: AssignmentAST) {
+        TODO("Not yet implemented")
+    }
+
+    override fun interpretPrint(printAST: PrintAST) {
+        TODO("Not yet implemented")
+    }
 
 
     /* ============================== EXPRESSIONS ============================ */

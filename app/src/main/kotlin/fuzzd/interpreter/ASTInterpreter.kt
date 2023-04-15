@@ -1,5 +1,6 @@
 package fuzzd.interpreter
 
+import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
@@ -18,12 +19,40 @@ import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
+import fuzzd.generator.ast.MainFunctionAST
+import fuzzd.generator.ast.SequenceAST
+import fuzzd.generator.ast.StatementAST.AssignmentAST
+import fuzzd.generator.ast.StatementAST.DeclarationAST
+import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
+import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.interpreter.value.Value
 import fuzzd.interpreter.value.Value.BoolValue
 import fuzzd.interpreter.value.Value.IntValue
 import fuzzd.interpreter.value.Value.StringValue
 
 interface ASTInterpreter {
+    /* ============================== TOP LEVEL ============================== */
+    fun interpretDafny(dafny: DafnyAST): String
+
+    fun interpretMainFunction(mainFunction: MainFunctionAST)
+
+    fun interpretSequence(sequence: SequenceAST)
+
+    /* ============================== STATEMENTS ============================= */
+
+    fun interpretIfStatement(ifStatement: IfStatementAST)
+
+    fun interpretWhileStatement(whileStatement: WhileLoopAST)
+
+    fun interpretVoidMethodCall(methodCall: VoidMethodCallAST)
+
+    fun interpretDeclaration(declaration: DeclarationAST)
+
+    fun interpretAssign(assign: AssignmentAST)
+
+    fun interpretPrint(printAST: PrintAST)
 
     /* ============================= EXPRESSIONS ============================= */
 
