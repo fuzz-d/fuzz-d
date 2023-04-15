@@ -19,7 +19,11 @@ import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
+import fuzzd.generator.ast.FunctionMethodAST
+import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
+import fuzzd.generator.ast.MethodAST
+import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -74,9 +78,19 @@ import fuzzd.utils.toMultiset
 
 class Interpreter : ASTInterpreter {
     private val output = StringBuilder()
+    private val methods = mutableMapOf<MethodSignatureAST, SequenceAST>()
+    private val functions = mutableMapOf<FunctionMethodSignatureAST, ExpressionAST>()
 
     /* ============================== TOP LEVEL ============================== */
     override fun interpretDafny(dafny: DafnyAST): String {
+        dafny.topLevelElements.filterIsInstance<MethodAST>().forEach { method ->
+            methods[method.signature] = method.getBody()
+        }
+
+        dafny.topLevelElements.filterIsInstance<FunctionMethodAST>().forEach { function ->
+            functions[function.signature] = function.body
+        }
+
         val mainFunction = dafny.topLevelElements.first { it is MainFunctionAST }
         interpretMainFunction(mainFunction as MainFunctionAST)
         return output.toString()
@@ -173,11 +187,24 @@ class Interpreter : ASTInterpreter {
         }
 
     override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, valueTable: ValueTable): Value {
-        TODO("Not yet implemented")
+        val functionScopeValueTable = ValueTable()
+        val functionSignature = functionCall.function
+        val functionParams = functionSignature.params
+        functionParams.indices.forEach { i ->
+            functionScopeValueTable.set(functionParams[i], interpretExpression(functionCall.params[i], valueTable))
+        }
+        return interpretExpression(functions.getValue(functionSignature), functionScopeValueTable)
     }
 
     override fun interpretNonVoidMethodCall(methodCall: NonVoidMethodCallAST, valueTable: ValueTable): Value {
-        TODO("Not yet implemented")
+        val methodScopeValueTable = ValueTable()
+        val methodSignature = methodCall.method
+        val methodParams = methodSignature.params
+        methodParams.indices.forEach { i ->
+            methodScopeValueTable.set(methodParams[i], interpretExpression(methodCall.params[i], valueTable))
+        }
+        interpretSequence(methods.getValue(methodSignature), methodScopeValueTable)
+        return MultiValue(methodSignature.returns.map { r -> methodScopeValueTable.get(r) })
     }
 
     override fun interpretClassInstantiation(classInstantiation: ClassInstantiationAST, valueTable: ValueTable): Value {
