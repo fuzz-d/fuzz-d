@@ -1,5 +1,7 @@
 package fuzzd.interpreter.value
 
+import java.lang.Integer.min
+
 fun <T> multisetDifference(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
     val diff = mutableMapOf<T, Int>()
     m1.entries.forEach { (k, v) ->
@@ -12,16 +14,40 @@ fun <T> multisetDifference(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
     return diff
 }
 
+fun <T> multisetIntersect(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
+    val intersect = mutableMapOf<T, Int>()
+    m1.entries.forEach { (k, v) ->
+        if (k in m2) {
+            intersect[k] = min(m1[k]!!, m2[k]!!)
+        }
+    }
+    return intersect
+}
+
 sealed class Value {
 
     sealed class DataStructureValue : Value() {
         abstract fun contains(item: Value): BoolValue
         abstract fun notContains(item: Value): BoolValue
+
+        abstract fun modulus(): IntValue
+    }
+
+    data class MapValue(val map: Map<Value, Value>) : DataStructureValue() {
+        override fun contains(item: Value): BoolValue = BoolValue(map.containsKey(item))
+        override fun notContains(item: Value): BoolValue = BoolValue(!map.containsKey(item))
+        override fun modulus(): IntValue = IntValue(map.size.toLong())
+        fun union(other: MapValue): MapValue = MapValue(map + other.map)
+        fun difference(other: SetValue): MapValue = MapValue(map - other.set)
+        override fun equals(other: Any?): Boolean = other is MapValue && map == other.map
+        override fun hashCode(): Int = map.hashCode()
     }
 
     data class MultisetValue(val map: Map<Value, Int>) : DataStructureValue() {
         override fun contains(item: Value): BoolValue = BoolValue(map.containsKey(item) && map[item] != 0)
         override fun notContains(item: Value): BoolValue = BoolValue(!map.containsKey(item) || map[item] == 0)
+        override fun modulus(): IntValue = IntValue(map.values.sum().toLong())
+
         fun properSubsetOf(other: MultisetValue): BoolValue =
             BoolValue(multisetDifference(map, other.map).isEmpty() && multisetDifference(map, other.map).isNotEmpty())
 
@@ -39,6 +65,8 @@ sealed class Value {
         )
 
         fun difference(other: MultisetValue): MultisetValue = MultisetValue(multisetDifference(map, other.map))
+        fun intersect(other: MultisetValue): MultisetValue = MultisetValue(multisetIntersect(map, other.map))
+
         override fun equals(other: Any?): Boolean = other is MultisetValue && map == other.map
         override fun hashCode(): Int = map.hashCode()
     }
@@ -46,6 +74,8 @@ sealed class Value {
     data class SetValue(val set: Set<Value>) : DataStructureValue() {
         override fun contains(item: Value): BoolValue = BoolValue(item in set)
         override fun notContains(item: Value): BoolValue = BoolValue(item !in set)
+        override fun modulus(): IntValue = IntValue(set.size.toLong())
+
         fun properSubsetOf(other: SetValue): BoolValue =
             BoolValue(other.set.containsAll(set) && (other.set subtract set).isNotEmpty())
 
@@ -69,6 +99,7 @@ sealed class Value {
     }
 
     data class BoolValue(val value: Boolean) : Value() {
+        fun not(): BoolValue = BoolValue(!value)
         fun iff(other: BoolValue): BoolValue = BoolValue(value && other.value || !value && !other.value)
         fun impl(other: BoolValue): BoolValue = BoolValue(!value || other.value)
         fun rimpl(other: BoolValue): BoolValue = BoolValue(!other.value || value)
@@ -80,6 +111,7 @@ sealed class Value {
     }
 
     data class IntValue(val value: Long) : Value() {
+        fun negate(): IntValue = IntValue(-1 * value)
         fun plus(other: IntValue): IntValue = IntValue(value + other.value)
         fun subtract(other: IntValue): IntValue = IntValue(value - other.value)
         fun multiply(other: IntValue): IntValue = IntValue(value * other.value)
