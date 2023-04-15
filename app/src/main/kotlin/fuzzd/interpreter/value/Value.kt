@@ -1,22 +1,65 @@
 package fuzzd.interpreter.value
 
+fun <T> multisetDifference(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
+    val diff = mutableMapOf<T, Int>()
+    m1.entries.forEach { (k, v) ->
+        if (k !in m2) {
+            diff[k] = v
+        } else if (k in m2 && m2[k]!! < v) {
+            diff[k] = v - m2[k]!!
+        }
+    }
+    return diff
+}
+
 sealed class Value {
-    data class SetValue<T : Value>(val set: Set<T>) : Value() {
-        fun contains(item: T): BoolValue = BoolValue(item in set)
-        fun notContains(item: T): BoolValue = BoolValue(item !in set)
-        fun properSubsetOf(other: SetValue<T>): BoolValue =
+
+    sealed class DataStructureValue : Value() {
+        abstract fun contains(item: Value): BoolValue
+        abstract fun notContains(item: Value): BoolValue
+    }
+
+    data class MultisetValue(val map: Map<Value, Int>) : DataStructureValue() {
+        override fun contains(item: Value): BoolValue = BoolValue(map.containsKey(item) && map[item] != 0)
+        override fun notContains(item: Value): BoolValue = BoolValue(!map.containsKey(item) || map[item] == 0)
+        fun properSubsetOf(other: MultisetValue): BoolValue =
+            BoolValue(multisetDifference(map, other.map).isEmpty() && multisetDifference(map, other.map).isNotEmpty())
+
+        fun subsetOf(other: MultisetValue): BoolValue = BoolValue(multisetDifference(map, other.map).isEmpty())
+        fun supersetOf(other: MultisetValue): BoolValue = BoolValue(multisetDifference(other.map, map).isEmpty())
+        fun properSupersetOf(other: MultisetValue): BoolValue =
+            BoolValue(multisetDifference(map, other.map).isNotEmpty() && multisetDifference(other.map, map).isEmpty())
+
+        fun disjoint(other: MultisetValue): BoolValue = BoolValue(map.keys.none { it in other.map })
+        fun union(other: MultisetValue): MultisetValue = MultisetValue(
+            other.map.keys.fold(map.toMutableMap()) { m, k ->
+                if (m.containsKey(k)) m[k] = m[k]!! + other.map[k]!! else m[k] = other.map[k]!!;
+                m
+            }
+        )
+
+        fun difference(other: MultisetValue): MultisetValue = MultisetValue(multisetDifference(map, other.map))
+        override fun equals(other: Any?): Boolean = other is MultisetValue && map == other.map
+        override fun hashCode(): Int = map.hashCode()
+    }
+
+    data class SetValue(val set: Set<Value>) : DataStructureValue() {
+        override fun contains(item: Value): BoolValue = BoolValue(item in set)
+        override fun notContains(item: Value): BoolValue = BoolValue(item !in set)
+        fun properSubsetOf(other: SetValue): BoolValue =
             BoolValue(other.set.containsAll(set) && (other.set subtract set).isNotEmpty())
 
-        fun subsetOf(other: SetValue<T>): BoolValue = BoolValue(other.set.containsAll(set))
-        fun supersetOf(other: SetValue<T>): BoolValue = BoolValue(set.containsAll(other.set))
-        fun properSupersetOf(other: SetValue<T>): BoolValue =
+        fun subsetOf(other: SetValue): BoolValue = BoolValue(other.set.containsAll(set))
+        fun supersetOf(other: SetValue): BoolValue = BoolValue(set.containsAll(other.set))
+        fun properSupersetOf(other: SetValue): BoolValue =
             BoolValue(set.containsAll(other.set) && (set subtract other.set).isNotEmpty())
 
-        fun disjoint(other: SetValue<T>): BoolValue = BoolValue(set.none { other.set.contains(it) })
-        fun union(other: SetValue<T>): SetValue<T> = SetValue(set union other.set)
-        fun difference(other: SetValue<T>): SetValue<T> = SetValue(set subtract other.set)
-        fun intersect(other: SetValue<T>): SetValue<T> = SetValue(set intersect other.set)
-        override fun equals(other: Any?): Boolean = (other is SetValue<*>) && set == other.set
+        fun disjoint(other: SetValue): BoolValue = BoolValue(set.none { other.set.contains(it) })
+        fun union(other: SetValue): SetValue = SetValue(set union other.set)
+        fun difference(other: SetValue): SetValue = SetValue(set subtract other.set)
+        fun intersect(other: SetValue): SetValue = SetValue(set intersect other.set)
+
+        override fun equals(other: Any?): Boolean = (other is SetValue) && set == other.set
         override fun hashCode(): Int = set.hashCode()
     }
 
@@ -31,6 +74,7 @@ sealed class Value {
         fun rimpl(other: BoolValue): BoolValue = BoolValue(!other.value || value)
         fun and(other: BoolValue): BoolValue = BoolValue(value && other.value)
         fun or(other: BoolValue): BoolValue = BoolValue(value || other.value)
+
         override fun equals(other: Any?): Boolean = other is BoolValue && value == other.value
         override fun hashCode(): Int = value.hashCode()
     }

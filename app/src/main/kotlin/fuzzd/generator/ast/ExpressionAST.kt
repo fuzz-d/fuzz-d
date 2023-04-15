@@ -398,7 +398,7 @@ sealed class ExpressionAST : ASTElement {
         override fun equals(other: Any?): Boolean = other is LiteralAST && other.value == value
     }
 
-    class BooleanLiteralAST(private val value: Boolean) : LiteralAST(value.toString(), BoolType) {
+    class BooleanLiteralAST(val value: Boolean) : LiteralAST(value.toString(), BoolType) {
         override fun equals(other: Any?): Boolean = other is BooleanLiteralAST && other.value == value
         override fun hashCode(): Int = value.hashCode()
     }
@@ -408,7 +408,7 @@ sealed class ExpressionAST : ASTElement {
      * digits = digit {['_'] digit}
      * hexdigits = "0x" hexdigit {['_'] hexdigit}
      */
-    class IntegerLiteralAST(private val value: String, private val hexFormat: Boolean = false) :
+    class IntegerLiteralAST(val value: String, private val hexFormat: Boolean = false) :
         LiteralAST(value, IntType) {
         constructor(value: Int) : this(value.toString())
 
@@ -453,5 +453,5 @@ sealed class ExpressionAST : ASTElement {
 
     class CharacterLiteralAST(char: Char) : LiteralAST("'${char.escape()}'", CharType)
 
-    class StringLiteralAST(value: String) : LiteralAST("\"$value\"", StringType)
+    class StringLiteralAST(val value: String) : LiteralAST("\"$value\"", StringType)
 }
