@@ -22,8 +22,6 @@ import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
-import fuzzd.generator.ast.StatementAST.AssignmentAST
-import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
@@ -66,6 +64,7 @@ import fuzzd.interpreter.value.Value.BoolValue
 import fuzzd.interpreter.value.Value.DataStructureValue
 import fuzzd.interpreter.value.Value.IntValue
 import fuzzd.interpreter.value.Value.MapValue
+import fuzzd.interpreter.value.Value.MultiValue
 import fuzzd.interpreter.value.Value.MultisetValue
 import fuzzd.interpreter.value.Value.SequenceValue
 import fuzzd.interpreter.value.Value.SetValue
@@ -129,8 +128,10 @@ class Interpreter : ASTInterpreter {
     override fun interpretMultiDeclaration(declaration: MultiDeclarationAST, valueTable: ValueTable) {
         if (declaration.exprs.size == 1 && declaration.identifiers.size > 1) {
             // non void method call
-            val methodCall = declaration.exprs[0] as NonVoidMethodCallAST
-
+            val methodReturns = interpretExpression(declaration.exprs[0], valueTable) as MultiValue
+            declaration.identifiers.indices.forEach { i ->
+                valueTable.set(declaration.identifiers[i], methodReturns.values[i])
+            }
         } else {
             val values = declaration.exprs.map { interpretExpression(it, valueTable) }
             declaration.identifiers.indices.forEach { i ->

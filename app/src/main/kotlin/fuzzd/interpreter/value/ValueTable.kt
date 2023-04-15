@@ -17,4 +17,8 @@ class ValueTable(val parent: ValueTable? = null) {
             values[identifier] = value
         }
     }
+
+    fun remove(identifier: IdentifierAST) {
+        values.remove(identifier)
+    }
 }
