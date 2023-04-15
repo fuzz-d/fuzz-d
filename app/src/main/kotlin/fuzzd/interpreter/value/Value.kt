@@ -1,5 +1,6 @@
 package fuzzd.interpreter.value
 
+import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import java.lang.Integer.min
 
 fun <T> multisetDifference(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
@@ -25,6 +26,15 @@ fun <T> multisetIntersect(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
 }
 
 sealed class Value {
+    data class MultiValue(val values: List<Value>) : Value()
+
+    data class ClassValue(val fields: Map<IdentifierAST, Value>)
+
+    class ArrayValue(length: Int) : Value() {
+        val arr = Array<Value?>(length) { null }
+
+        fun length(): IntValue = IntValue(arr.size.toLong())
+    }
 
     sealed class DataStructureValue : Value() {
         abstract fun contains(item: Value): BoolValue

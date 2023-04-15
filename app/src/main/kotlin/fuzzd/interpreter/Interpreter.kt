@@ -1,12 +1,19 @@
 package fuzzd.interpreter
 
 import fuzzd.generator.ast.ExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
+import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
+import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -41,6 +48,7 @@ import fuzzd.generator.ast.operators.BinaryOperator.SupersetOperator
 import fuzzd.generator.ast.operators.BinaryOperator.UnionOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.interpreter.value.Value
+import fuzzd.interpreter.value.Value.ArrayValue
 import fuzzd.interpreter.value.Value.BoolValue
 import fuzzd.interpreter.value.Value.DataStructureValue
 import fuzzd.interpreter.value.Value.IntValue
@@ -49,26 +57,47 @@ import fuzzd.interpreter.value.Value.MultisetValue
 import fuzzd.interpreter.value.Value.SequenceValue
 import fuzzd.interpreter.value.Value.SetValue
 import fuzzd.interpreter.value.Value.StringValue
+import fuzzd.interpreter.value.ValueTable
 import fuzzd.utils.toMultiset
 
 class Interpreter : ASTInterpreter {
+    val valueTable = ValueTable()
+
 
     /* ============================== EXPRESSIONS ============================ */
     override fun interpretExpression(expression: ExpressionAST): Value =
-
         when (expression) {
+            is FunctionMethodCallAST -> interpretFunctionMethodCall(expression)
+            is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression)
+            is ClassInstantiationAST -> interpretClassInstantiation(expression)
             is BinaryExpressionAST -> interpretBinaryExpression(expression)
             is TernaryExpressionAST -> interpretTernaryExpression(expression)
             is UnaryExpressionAST -> interpretUnaryExpression(expression)
             is ModulusExpressionAST -> interpretModulus(expression)
             is MultisetConversionAST -> interpretMultisetConversion(expression)
+            is IdentifierAST -> interpretIdentifier(expression)
             is SetDisplayAST -> interpretSetDisplay(expression)
+            is SequenceDisplayAST -> interpretSequenceDisplay(expression)
             is MapConstructorAST -> interpretMapConstructor(expression)
+            is ArrayLengthAST -> interpretArrayLength(expression)
+            is ArrayInitAST -> interpretArrayInit(expression)
             is StringLiteralAST -> interpretStringLiteral(expression)
             is IntegerLiteralAST -> interpretIntegerLiteral(expression)
             is BooleanLiteralAST -> interpretBooleanLiteral(expression)
             else -> throw UnsupportedOperationException()
         }
+
+    override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST): Value {
+        TODO("Not yet implemented")
+    }
+
+    override fun interpretNonVoidMethodCall(methodCall: NonVoidMethodCallAST): Value {
+        TODO("Not yet implemented")
+    }
+
+    override fun interpretClassInstantiation(classInstantiation: ClassInstantiationAST): Value {
+        TODO("Not yet implemented")
+    }
 
     override fun interpretBinaryExpression(binaryExpression: BinaryExpressionAST): Value {
         val lhs = interpretExpression(binaryExpression.expr1)
@@ -181,6 +210,11 @@ class Interpreter : ASTInterpreter {
         (interpretExpression(modulus.expr) as DataStructureValue).modulus()
 
     override fun interpretMultisetConversion(multisetConversion: MultisetConversionAST): Value {
+        val sequenceValue = interpretExpression(multisetConversion.expr) as SequenceValue
+        return MultisetValue(sequenceValue.seq.toMultiset())
+    }
+
+    override fun interpretIdentifier(identifier: IdentifierAST): Value {
         TODO("Not yet implemented")
     }
 
@@ -188,6 +222,9 @@ class Interpreter : ASTInterpreter {
         val values = setDisplay.exprs.map(this::interpretExpression)
         return if (setDisplay.isMultiset) SetValue(values.toSet()) else MultisetValue(values.toMultiset())
     }
+
+    override fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST): Value =
+        SequenceValue(sequenceDisplay.exprs.map(this::interpretExpression))
 
     override fun interpretMapConstructor(mapConstructor: MapConstructorAST): Value {
         val map = mutableMapOf<Value, Value>()
@@ -198,6 +235,13 @@ class Interpreter : ASTInterpreter {
         }
         return MapValue(map)
     }
+
+    override fun interpretArrayLength(arrayLength: ArrayLengthAST): Value {
+        val array = valueTable.get(arrayLength.array) as ArrayValue
+        return array.length()
+    }
+
+    override fun interpretArrayInit(arrayInit: ArrayInitAST): Value = ArrayValue(arrayInit.length)
 
     override fun interpretStringLiteral(stringLiteral: StringLiteralAST): StringValue = StringValue(stringLiteral.value)
 
