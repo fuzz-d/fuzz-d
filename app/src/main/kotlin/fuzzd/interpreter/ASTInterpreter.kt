@@ -21,9 +21,13 @@ import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
+import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
+import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
+import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
@@ -31,6 +35,7 @@ import fuzzd.interpreter.value.Value
 import fuzzd.interpreter.value.Value.BoolValue
 import fuzzd.interpreter.value.Value.IntValue
 import fuzzd.interpreter.value.Value.StringValue
+import fuzzd.interpreter.value.ValueTable
 
 interface ASTInterpreter {
     /* ============================== TOP LEVEL ============================== */
@@ -38,57 +43,60 @@ interface ASTInterpreter {
 
     fun interpretMainFunction(mainFunction: MainFunctionAST)
 
-    fun interpretSequence(sequence: SequenceAST)
+    fun interpretSequence(sequence: SequenceAST, valueTable: ValueTable)
 
     /* ============================== STATEMENTS ============================= */
 
-    fun interpretIfStatement(ifStatement: IfStatementAST)
+    fun interpretStatement(statement: StatementAST, valueTable: ValueTable)
 
-    fun interpretWhileStatement(whileStatement: WhileLoopAST)
+    fun interpretIfStatement(ifStatement: IfStatementAST, valueTable: ValueTable)
 
-    fun interpretVoidMethodCall(methodCall: VoidMethodCallAST)
+    fun interpretWhileStatement(whileStatement: WhileLoopAST, valueTable: ValueTable)
 
-    fun interpretDeclaration(declaration: DeclarationAST)
+    fun interpretVoidMethodCall(methodCall: VoidMethodCallAST, valueTable: ValueTable)
 
-    fun interpretAssign(assign: AssignmentAST)
+    fun interpretMultiTypedDeclaration(typedDeclaration: MultiTypedDeclarationAST, valueTable: ValueTable)
+    fun interpretMultiDeclaration(declaration: MultiDeclarationAST, valueTable: ValueTable)
 
-    fun interpretPrint(printAST: PrintAST)
+    fun interpretMultiAssign(assign: MultiAssignmentAST, valueTable: ValueTable)
+
+    fun interpretPrint(printAST: PrintAST, valueTable: ValueTable)
 
     /* ============================= EXPRESSIONS ============================= */
 
-    fun interpretExpression(expression: ExpressionAST): Value
+    fun interpretExpression(expression: ExpressionAST, valueTable: ValueTable): Value
 
-    fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST): Value
+    fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, valueTable: ValueTable): Value
 
-    fun interpretNonVoidMethodCall(methodCall: NonVoidMethodCallAST): Value
+    fun interpretNonVoidMethodCall(methodCall: NonVoidMethodCallAST, valueTable: ValueTable): Value
 
-    fun interpretClassInstantiation(classInstantiation: ClassInstantiationAST): Value
+    fun interpretClassInstantiation(classInstantiation: ClassInstantiationAST, valueTable: ValueTable): Value
 
-    fun interpretBinaryExpression(binaryExpression: BinaryExpressionAST): Value
+    fun interpretBinaryExpression(binaryExpression: BinaryExpressionAST, valueTable: ValueTable): Value
 
-    fun interpretTernaryExpression(ternaryExpression: TernaryExpressionAST): Value
+    fun interpretTernaryExpression(ternaryExpression: TernaryExpressionAST, valueTable: ValueTable): Value
 
-    fun interpretUnaryExpression(unaryExpression: UnaryExpressionAST): Value
+    fun interpretUnaryExpression(unaryExpression: UnaryExpressionAST, valueTable: ValueTable): Value
 
-    fun interpretModulus(modulus: ModulusExpressionAST): Value
+    fun interpretModulus(modulus: ModulusExpressionAST, valueTable: ValueTable): Value
 
-    fun interpretMultisetConversion(multisetConversion: MultisetConversionAST): Value
+    fun interpretMultisetConversion(multisetConversion: MultisetConversionAST, valueTable: ValueTable): Value
 
-    fun interpretIdentifier(identifier: IdentifierAST): Value
+    fun interpretIdentifier(identifier: IdentifierAST, valueTable: ValueTable): Value
 
-    fun interpretSetDisplay(setDisplay: SetDisplayAST): Value
+    fun interpretSetDisplay(setDisplay: SetDisplayAST, valueTable: ValueTable): Value
 
-    fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST): Value
+    fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST, valueTable: ValueTable): Value
 
-    fun interpretMapConstructor(mapConstructor: MapConstructorAST): Value
+    fun interpretMapConstructor(mapConstructor: MapConstructorAST, valueTable: ValueTable): Value
 
-    fun interpretArrayLength(arrayLength: ArrayLengthAST): Value
+    fun interpretArrayLength(arrayLength: ArrayLengthAST, valueTable: ValueTable): Value
 
-    fun interpretArrayInit(arrayInit: ArrayInitAST): Value
+    fun interpretArrayInit(arrayInit: ArrayInitAST, valueTable: ValueTable): Value
 
-    fun interpretStringLiteral(stringLiteral: StringLiteralAST): StringValue
+    fun interpretStringLiteral(stringLiteral: StringLiteralAST, valueTable: ValueTable): StringValue
 
-    fun interpretIntegerLiteral(intLiteral: IntegerLiteralAST): IntValue
+    fun interpretIntegerLiteral(intLiteral: IntegerLiteralAST, valueTable: ValueTable): IntValue
 
-    fun interpretBooleanLiteral(boolLiteral: BooleanLiteralAST): BoolValue
+    fun interpretBooleanLiteral(boolLiteral: BooleanLiteralAST, valueTable: ValueTable): BoolValue
 }

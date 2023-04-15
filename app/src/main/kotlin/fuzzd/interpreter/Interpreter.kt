@@ -21,9 +21,13 @@ import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
+import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
+import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
+import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
@@ -70,87 +74,118 @@ import fuzzd.interpreter.value.ValueTable
 import fuzzd.utils.toMultiset
 
 class Interpreter : ASTInterpreter {
-    private val valueTable = ValueTable()
     private val output = StringBuilder()
 
     /* ============================== TOP LEVEL ============================== */
     override fun interpretDafny(dafny: DafnyAST): String {
-        TODO("Not yet implemented")
+        val mainFunction = dafny.topLevelElements.first { it is MainFunctionAST }
+        interpretMainFunction(mainFunction as MainFunctionAST)
+        return output.toString()
     }
 
     override fun interpretMainFunction(mainFunction: MainFunctionAST) {
-        TODO("Not yet implemented")
+        interpretSequence(mainFunction.sequenceAST, ValueTable())
     }
 
-    override fun interpretSequence(sequence: SequenceAST) {
-        TODO("Not yet implemented")
+    override fun interpretSequence(sequence: SequenceAST, valueTable: ValueTable) {
+        sequence.statements.forEach { interpretStatement(it, valueTable) }
     }
 
     /* ============================== STATEMENTS ============================= */
 
-    override fun interpretIfStatement(ifStatement: IfStatementAST) {
+    override fun interpretStatement(statement: StatementAST, valueTable: ValueTable) = when (statement) {
+        is IfStatementAST -> interpretIfStatement(statement, valueTable)
+        is WhileLoopAST -> interpretWhileStatement(statement, valueTable)
+        is VoidMethodCallAST -> interpretVoidMethodCall(statement, valueTable)
+        is MultiTypedDeclarationAST -> interpretMultiTypedDeclaration(statement, valueTable)
+        is MultiDeclarationAST -> interpretMultiDeclaration(statement, valueTable)
+        is MultiAssignmentAST -> interpretMultiAssign(statement, valueTable)
+        is PrintAST -> interpretPrint(statement, valueTable)
+        else -> throw UnsupportedOperationException()
+    }
+
+    override fun interpretIfStatement(ifStatement: IfStatementAST, valueTable: ValueTable) {
+        val conditionValue = interpretExpression(ifStatement.condition, valueTable) as BoolValue
+
+        if (conditionValue.value) {
+            interpretSequence(ifStatement.ifBranch, ValueTable(valueTable))
+        } else {
+            ifStatement.elseBranch?.let { interpretSequence(it, ValueTable(valueTable)) }
+        }
+    }
+
+    override fun interpretWhileStatement(whileStatement: WhileLoopAST, valueTable: ValueTable) {
         TODO("Not yet implemented")
     }
 
-    override fun interpretWhileStatement(whileStatement: WhileLoopAST) {
+    override fun interpretVoidMethodCall(methodCall: VoidMethodCallAST, valueTable: ValueTable) {
         TODO("Not yet implemented")
     }
 
-    override fun interpretVoidMethodCall(methodCall: VoidMethodCallAST) {
+    override fun interpretMultiTypedDeclaration(typedDeclaration: MultiTypedDeclarationAST, valueTable: ValueTable) {
         TODO("Not yet implemented")
     }
 
-    override fun interpretDeclaration(declaration: DeclarationAST) {
+    override fun interpretMultiDeclaration(declaration: MultiDeclarationAST, valueTable: ValueTable) {
+        if (declaration.exprs.size == 1 && declaration.identifiers.size > 1) {
+            // non void method call
+            val methodCall = declaration.exprs[0] as NonVoidMethodCallAST
+
+        } else {
+            val values = declaration.exprs.map { interpretExpression(it, valueTable) }
+            declaration.identifiers.indices.forEach { i ->
+                valueTable.set(declaration.identifiers[i], values[i])
+            }
+        }
+    }
+
+    override fun interpretMultiAssign(assign: MultiAssignmentAST, valueTable: ValueTable) {
         TODO("Not yet implemented")
     }
 
-    override fun interpretAssign(assign: AssignmentAST) {
-        TODO("Not yet implemented")
-    }
-
-    override fun interpretPrint(printAST: PrintAST) {
+    override fun interpretPrint(printAST: PrintAST, valueTable: ValueTable) {
         TODO("Not yet implemented")
     }
 
 
     /* ============================== EXPRESSIONS ============================ */
-    override fun interpretExpression(expression: ExpressionAST): Value =
+    override fun interpretExpression(expression: ExpressionAST, valueTable: ValueTable): Value =
         when (expression) {
-            is FunctionMethodCallAST -> interpretFunctionMethodCall(expression)
-            is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression)
-            is ClassInstantiationAST -> interpretClassInstantiation(expression)
-            is BinaryExpressionAST -> interpretBinaryExpression(expression)
-            is TernaryExpressionAST -> interpretTernaryExpression(expression)
-            is UnaryExpressionAST -> interpretUnaryExpression(expression)
-            is ModulusExpressionAST -> interpretModulus(expression)
-            is MultisetConversionAST -> interpretMultisetConversion(expression)
-            is IdentifierAST -> interpretIdentifier(expression)
-            is SetDisplayAST -> interpretSetDisplay(expression)
-            is SequenceDisplayAST -> interpretSequenceDisplay(expression)
-            is MapConstructorAST -> interpretMapConstructor(expression)
-            is ArrayLengthAST -> interpretArrayLength(expression)
-            is ArrayInitAST -> interpretArrayInit(expression)
-            is StringLiteralAST -> interpretStringLiteral(expression)
-            is IntegerLiteralAST -> interpretIntegerLiteral(expression)
-            is BooleanLiteralAST -> interpretBooleanLiteral(expression)
+            is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, valueTable)
+            is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, valueTable)
+            is ClassInstantiationAST -> interpretClassInstantiation(expression, valueTable)
+            is BinaryExpressionAST -> interpretBinaryExpression(expression, valueTable)
+            is TernaryExpressionAST -> interpretTernaryExpression(expression, valueTable)
+            is UnaryExpressionAST -> interpretUnaryExpression(expression, valueTable)
+            is ModulusExpressionAST -> interpretModulus(expression, valueTable)
+            is MultisetConversionAST -> interpretMultisetConversion(expression, valueTable)
+            is IdentifierAST -> interpretIdentifier(expression, valueTable)
+            is SetDisplayAST -> interpretSetDisplay(expression, valueTable)
+            is SequenceDisplayAST -> interpretSequenceDisplay(expression, valueTable)
+            is MapConstructorAST -> interpretMapConstructor(expression, valueTable)
+            is ArrayLengthAST -> interpretArrayLength(expression, valueTable)
+            is ArrayInitAST -> interpretArrayInit(expression, valueTable)
+            is StringLiteralAST -> interpretStringLiteral(expression, valueTable)
+            is IntegerLiteralAST -> interpretIntegerLiteral(expression, valueTable)
+            is BooleanLiteralAST -> interpretBooleanLiteral(expression, valueTable)
             else -> throw UnsupportedOperationException()
         }
 
-    override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST): Value {
+    override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, valueTable: ValueTable): Value {
         TODO("Not yet implemented")
     }
 
-    override fun interpretNonVoidMethodCall(methodCall: NonVoidMethodCallAST): Value {
+    override fun interpretNonVoidMethodCall(methodCall: NonVoidMethodCallAST, valueTable: ValueTable): Value {
         TODO("Not yet implemented")
     }
 
-    override fun interpretClassInstantiation(classInstantiation: ClassInstantiationAST): Value {
+    override fun interpretClassInstantiation(classInstantiation: ClassInstantiationAST, valueTable: ValueTable): Value {
         TODO("Not yet implemented")
     }
 
-    override fun interpretBinaryExpression(binaryExpression: BinaryExpressionAST): Value {
-        val lhs = interpretExpression(binaryExpression.expr1)
-        val rhs = interpretExpression(binaryExpression.expr2)
+    override fun interpretBinaryExpression(binaryExpression: BinaryExpressionAST, valueTable: ValueTable): Value {
+        val lhs = interpretExpression(binaryExpression.expr1, valueTable)
+        val rhs = interpretExpression(binaryExpression.expr2, valueTable)
 
         return when (binaryExpression.operator) {
             IffOperator -> (lhs as BoolValue).iff(rhs as BoolValue)
@@ -237,17 +272,17 @@ class Interpreter : ASTInterpreter {
         else -> throw UnsupportedOperationException()
     }
 
-    override fun interpretTernaryExpression(ternaryExpression: TernaryExpressionAST): Value {
-        val condition = interpretExpression(ternaryExpression.condition)
+    override fun interpretTernaryExpression(ternaryExpression: TernaryExpressionAST, valueTable: ValueTable): Value {
+        val condition = interpretExpression(ternaryExpression.condition, valueTable)
         return if ((condition as BoolValue).value) {
-            interpretExpression(ternaryExpression.ifBranch)
+            interpretExpression(ternaryExpression.ifBranch, valueTable)
         } else {
-            interpretExpression(ternaryExpression.elseBranch)
+            interpretExpression(ternaryExpression.elseBranch, valueTable)
         }
     }
 
-    override fun interpretUnaryExpression(unaryExpression: UnaryExpressionAST): Value {
-        val exprValue = interpretExpression(unaryExpression.expr)
+    override fun interpretUnaryExpression(unaryExpression: UnaryExpressionAST, valueTable: ValueTable): Value {
+        val exprValue = interpretExpression(unaryExpression.expr, valueTable)
         return if (unaryExpression.operator == NegationOperator) {
             (exprValue as IntValue).negate()
         } else {
@@ -255,46 +290,50 @@ class Interpreter : ASTInterpreter {
         }
     }
 
-    override fun interpretModulus(modulus: ModulusExpressionAST): Value =
-        (interpretExpression(modulus.expr) as DataStructureValue).modulus()
+    override fun interpretModulus(modulus: ModulusExpressionAST, valueTable: ValueTable): Value =
+        (interpretExpression(modulus.expr, valueTable) as DataStructureValue).modulus()
 
-    override fun interpretMultisetConversion(multisetConversion: MultisetConversionAST): Value {
-        val sequenceValue = interpretExpression(multisetConversion.expr) as SequenceValue
+    override fun interpretMultisetConversion(multisetConversion: MultisetConversionAST, valueTable: ValueTable): Value {
+        val sequenceValue = interpretExpression(multisetConversion.expr, valueTable) as SequenceValue
         return MultisetValue(sequenceValue.seq.toMultiset())
     }
 
-    override fun interpretIdentifier(identifier: IdentifierAST): Value {
+    override fun interpretIdentifier(identifier: IdentifierAST, valueTable: ValueTable): Value {
         TODO("Not yet implemented")
     }
 
-    override fun interpretSetDisplay(setDisplay: SetDisplayAST): Value {
-        val values = setDisplay.exprs.map(this::interpretExpression)
+    override fun interpretSetDisplay(setDisplay: SetDisplayAST, valueTable: ValueTable): Value {
+        val values = setDisplay.exprs.map { interpretExpression(it, valueTable) }
         return if (setDisplay.isMultiset) SetValue(values.toSet()) else MultisetValue(values.toMultiset())
     }
 
-    override fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST): Value =
-        SequenceValue(sequenceDisplay.exprs.map(this::interpretExpression))
+    override fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST, valueTable: ValueTable): Value =
+        SequenceValue(sequenceDisplay.exprs.map { interpretExpression(it, valueTable) })
 
-    override fun interpretMapConstructor(mapConstructor: MapConstructorAST): Value {
+    override fun interpretMapConstructor(mapConstructor: MapConstructorAST, valueTable: ValueTable): Value {
         val map = mutableMapOf<Value, Value>()
         mapConstructor.assignments.forEach { (k, v) ->
-            val key = interpretExpression(k)
-            val value = interpretExpression(v)
+            val key = interpretExpression(k, valueTable)
+            val value = interpretExpression(v, valueTable)
             map[key] = value
         }
         return MapValue(map)
     }
 
-    override fun interpretArrayLength(arrayLength: ArrayLengthAST): Value {
+    override fun interpretArrayLength(arrayLength: ArrayLengthAST, valueTable: ValueTable): Value {
         val array = valueTable.get(arrayLength.array) as ArrayValue
         return array.length()
     }
 
-    override fun interpretArrayInit(arrayInit: ArrayInitAST): Value = ArrayValue(arrayInit.length)
+    override fun interpretArrayInit(arrayInit: ArrayInitAST, valueTable: ValueTable): Value =
+        ArrayValue(arrayInit.length)
 
-    override fun interpretStringLiteral(stringLiteral: StringLiteralAST): StringValue = StringValue(stringLiteral.value)
+    override fun interpretStringLiteral(stringLiteral: StringLiteralAST, valueTable: ValueTable): StringValue =
+        StringValue(stringLiteral.value)
 
-    override fun interpretIntegerLiteral(intLiteral: IntegerLiteralAST): IntValue = IntValue(intLiteral.value.toLong())
+    override fun interpretIntegerLiteral(intLiteral: IntegerLiteralAST, valueTable: ValueTable): IntValue =
+        IntValue(intLiteral.value.toLong())
 
-    override fun interpretBooleanLiteral(boolLiteral: BooleanLiteralAST): BoolValue = BoolValue(boolLiteral.value)
+    override fun interpretBooleanLiteral(boolLiteral: BooleanLiteralAST, valueTable: ValueTable): BoolValue =
+        BoolValue(boolLiteral.value)
 }
