@@ -46,6 +46,7 @@ import fuzzd.interpreter.value.Value.DataStructureValue
 import fuzzd.interpreter.value.Value.IntValue
 import fuzzd.interpreter.value.Value.MapValue
 import fuzzd.interpreter.value.Value.MultisetValue
+import fuzzd.interpreter.value.Value.SequenceValue
 import fuzzd.interpreter.value.Value.SetValue
 import fuzzd.interpreter.value.Value.StringValue
 import fuzzd.utils.toMultiset
@@ -106,24 +107,28 @@ class Interpreter : ASTInterpreter {
     private fun interpretProperSubset(lhs: Value, rhs: Value): BoolValue = when (lhs) {
         is MultisetValue -> lhs.properSubsetOf(rhs as MultisetValue)
         is SetValue -> lhs.properSubsetOf(rhs as SetValue)
+        is SequenceValue -> lhs.properSubsetOf(rhs as SequenceValue)
         else -> throw UnsupportedOperationException()
     }
 
     private fun interpretSubset(lhs: Value, rhs: Value): BoolValue = when (lhs) {
         is MultisetValue -> lhs.subsetOf(rhs as MultisetValue)
         is SetValue -> lhs.subsetOf(rhs as SetValue)
+        is SequenceValue -> lhs.subsetOf(rhs as SequenceValue)
         else -> throw UnsupportedOperationException()
     }
 
     private fun interpretSuperset(lhs: Value, rhs: Value): BoolValue = when (lhs) {
         is MultisetValue -> lhs.supersetOf(rhs as MultisetValue)
         is SetValue -> lhs.supersetOf(rhs as SetValue)
+        is SequenceValue -> lhs.supersetOf(rhs as SequenceValue)
         else -> throw UnsupportedOperationException()
     }
 
     private fun interpretProperSuperset(lhs: Value, rhs: Value): BoolValue = when (lhs) {
         is MultisetValue -> lhs.properSupersetOf(rhs as MultisetValue)
         is SetValue -> lhs.properSupersetOf(rhs as SetValue)
+        is SequenceValue -> lhs.properSupersetOf(rhs as SequenceValue)
         else -> throw UnsupportedOperationException()
     }
 
@@ -137,6 +142,7 @@ class Interpreter : ASTInterpreter {
         is MultisetValue -> lhs.union(rhs as MultisetValue)
         is SetValue -> lhs.union(rhs as SetValue)
         is MapValue -> lhs.union(rhs as MapValue)
+        is SequenceValue -> lhs.union(rhs as SequenceValue)
         else -> throw UnsupportedOperationException()
     }
 

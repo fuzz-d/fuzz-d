@@ -33,6 +33,23 @@ sealed class Value {
         abstract fun modulus(): IntValue
     }
 
+    data class SequenceValue(val seq: List<Value>) : DataStructureValue() {
+        override fun contains(item: Value): BoolValue = BoolValue(item in seq)
+        override fun notContains(item: Value): BoolValue = BoolValue(item !in seq)
+        override fun modulus(): IntValue = IntValue(seq.size.toLong())
+        fun properSubsetOf(other: SequenceValue): BoolValue =
+            BoolValue(other.seq.containsAll(seq) && (other.seq - seq.toSet()).isNotEmpty())
+
+        fun subsetOf(other: SequenceValue): BoolValue = BoolValue(other.seq.containsAll(seq))
+        fun supersetOf(other: SequenceValue): BoolValue = BoolValue(seq.containsAll(other.seq))
+        fun properSupersetOf(other: SequenceValue): BoolValue =
+            BoolValue(seq.containsAll(other.seq) && (seq - other.seq.toSet()).isNotEmpty())
+
+        fun union(other: SequenceValue): SequenceValue = SequenceValue(seq + other.seq)
+        override fun equals(other: Any?): Boolean = other is SequenceValue && seq == other.seq
+        override fun hashCode(): Int = seq.hashCode()
+    }
+
     data class MapValue(val map: Map<Value, Value>) : DataStructureValue() {
         override fun contains(item: Value): BoolValue = BoolValue(map.containsKey(item))
         override fun notContains(item: Value): BoolValue = BoolValue(!map.containsKey(item))
