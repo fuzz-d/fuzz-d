@@ -132,11 +132,20 @@ class Interpreter : ASTInterpreter {
     }
 
     override fun interpretVoidMethodCall(methodCall: VoidMethodCallAST, valueTable: ValueTable) {
-        TODO("Not yet implemented")
+        val methodScopeValueTable = ValueTable()
+        val methodSignature = methodCall.method
+        val methodParams = methodSignature.params
+        methodParams.indices.forEach { i ->
+            methodScopeValueTable.set(methodParams[i], interpretExpression(methodCall.params[i], valueTable))
+        }
+        interpretSequence(methods.getValue(methodSignature), valueTable)
     }
 
     override fun interpretMultiTypedDeclaration(typedDeclaration: MultiTypedDeclarationAST, valueTable: ValueTable) {
-        TODO("Not yet implemented")
+        val values = typedDeclaration.exprs.map { interpretExpression(it, valueTable) }
+        typedDeclaration.identifiers.indices.forEach { i ->
+            valueTable.set(typedDeclaration.identifiers[i], values[i])
+        }
     }
 
     override fun interpretMultiDeclaration(declaration: MultiDeclarationAST, valueTable: ValueTable) {
@@ -159,7 +168,12 @@ class Interpreter : ASTInterpreter {
     }
 
     override fun interpretPrint(printAST: PrintAST, valueTable: ValueTable) {
-        TODO("Not yet implemented")
+        val values = printAST.expr.map { interpretExpression(it, valueTable) }
+        values.forEach { emitOutput(it) }
+    }
+
+    private fun emitOutput(value: Value) = when (value) {
+        else -> throw UnsupportedOperationException()
     }
 
 
