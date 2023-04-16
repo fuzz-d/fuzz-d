@@ -15,6 +15,7 @@ import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
@@ -340,11 +341,10 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         }
 
         val identifiers = lhs.indices.map { i ->
-            val identifier = IdentifierAST(lhs[i].name, rhsTypes[i], mutable = true, initialised = true)
-            identifiersTable.addEntry(identifier.name, identifier)
+            val type = rhsTypes[i]
+            val identifier = if (type is ClassType) {
+                val identifier = ClassInstanceAST(type.clazz, lhs[i].name)
 
-            val type = identifier.type()
-            if (type is ClassType) {
                 type.clazz.fields.map { ident -> ClassInstanceFieldAST(identifier, ident) }
                     .forEach { identifiersTable.addEntry(it.name, it) }
 
@@ -357,7 +357,13 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
                 type.clazz.methods.map { m -> ClassInstanceMethodSignatureAST(identifier, m.signature) }
                     .forEach { methodsTable.addEntry(it.name, it) }
+
+                identifier
+            } else {
+                IdentifierAST(lhs[i].name, rhsTypes[i], mutable = true, initialised = true)
             }
+
+            identifiersTable.addEntry(identifier.name, identifier)
 
             identifier
         }
