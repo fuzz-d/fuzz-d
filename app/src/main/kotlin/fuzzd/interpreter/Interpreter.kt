@@ -31,6 +31,7 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
@@ -87,6 +88,7 @@ class Interpreter : ASTInterpreter {
     private val output = StringBuilder()
     private val methods = mutableMapOf<MethodSignatureAST, SequenceAST>()
     private val functions = mutableMapOf<FunctionMethodSignatureAST, ExpressionAST>()
+    private var doBreak = false
 
     /* ============================== TOP LEVEL ============================== */
     override fun interpretDafny(dafny: DafnyAST): String {
@@ -114,6 +116,10 @@ class Interpreter : ASTInterpreter {
     /* ============================== STATEMENTS ============================= */
 
     override fun interpretStatement(statement: StatementAST, valueTable: ValueTable) = when (statement) {
+        is BreakAST -> {
+            doBreak = true
+        }
+
         is IfStatementAST -> interpretIfStatement(statement, valueTable)
         is WhileLoopAST -> interpretWhileStatement(statement, valueTable)
         is VoidMethodCallAST -> interpretVoidMethodCall(statement, valueTable)
@@ -135,7 +141,14 @@ class Interpreter : ASTInterpreter {
     }
 
     override fun interpretWhileStatement(whileStatement: WhileLoopAST, valueTable: ValueTable) {
-        TODO("Not yet implemented")
+        var condition = interpretExpression(whileStatement.condition, valueTable)
+        val prevBreak = doBreak
+        doBreak = false
+        while (!(condition as BoolValue).value && !doBreak) {
+            interpretSequence(whileStatement.body, ValueTable(valueTable))
+            condition = interpretExpression(whileStatement.condition, valueTable)
+        }
+        doBreak = prevBreak
     }
 
     override fun interpretVoidMethodCall(methodCall: VoidMethodCallAST, valueTable: ValueTable) {
@@ -217,39 +230,49 @@ class Interpreter : ASTInterpreter {
     }
 
     private fun emitClassValue(classValue: ClassValue) {
-        TODO()
+        classValue.fields.values.forEach { (_, v) ->
+            emitOutput(v)
+        }
     }
 
     private fun emitArrayValue(arrayValue: ArrayValue) {
-        TODO()
+        arrayValue.arr.filterNotNull().forEach { emitOutput(it) }
     }
 
     private fun emitSetValue(setValue: SetValue) {
-        TODO()
+        setValue.set.forEach {
+            emitOutput(it)
+        }
     }
 
     private fun emitMultisetValue(multisetValue: MultisetValue) {
-        TODO()
+        multisetValue.map.forEach { (k, v) ->
+            emitOutput(k)
+            output.append(v)
+        }
     }
 
     private fun emitMapValue(mapValue: MapValue) {
-        TODO()
+        mapValue.map.forEach { (k, v) ->
+            emitOutput(k)
+            emitOutput(v)
+        }
     }
 
     private fun emitSequenceValue(sequenceValue: SequenceValue) {
-        TODO()
+        sequenceValue.seq.forEach { emitOutput(it) }
     }
 
     private fun emitStringValue(stringValue: StringValue) {
-        TODO()
+        output.append(stringValue)
     }
 
     private fun emitIntValue(intValue: IntValue) {
-        TODO()
+        output.append(intValue.value)
     }
 
     private fun emitBoolValue(boolValue: BoolValue) {
-        TODO()
+        output.append(boolValue.value)
     }
 
     /* ============================== EXPRESSIONS ============================ */
@@ -297,7 +320,11 @@ class Interpreter : ASTInterpreter {
     }
 
     override fun interpretClassInstantiation(classInstantiation: ClassInstantiationAST, valueTable: ValueTable): Value {
-        TODO("Not yet implemented")
+        val classFields = classInstantiation.clazz.constructorFields
+        val constructorParams = classInstantiation.params.map { interpretExpression(it, valueTable) }
+        val classValueTable = ValueTable()
+        classFields.zip(constructorParams).forEach { classValueTable.set(it.first, it.second) }
+        return ClassValue(classValueTable)
     }
 
     override fun interpretBinaryExpression(binaryExpression: BinaryExpressionAST, valueTable: ValueTable): Value {

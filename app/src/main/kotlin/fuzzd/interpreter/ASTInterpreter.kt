@@ -56,6 +56,7 @@ interface ASTInterpreter {
     fun interpretVoidMethodCall(methodCall: VoidMethodCallAST, valueTable: ValueTable)
 
     fun interpretMultiTypedDeclaration(typedDeclaration: MultiTypedDeclarationAST, valueTable: ValueTable)
+
     fun interpretMultiDeclaration(declaration: MultiDeclarationAST, valueTable: ValueTable)
 
     fun interpretMultiAssign(assign: MultiAssignmentAST, valueTable: ValueTable)
