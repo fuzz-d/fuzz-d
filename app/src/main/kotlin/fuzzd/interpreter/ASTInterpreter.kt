@@ -39,9 +39,9 @@ import fuzzd.interpreter.value.ValueTable
 
 interface ASTInterpreter {
     /* ============================== TOP LEVEL ============================== */
-    fun interpretDafny(dafny: DafnyAST): String
+    fun interpretDafny(dafny: DafnyAST): Pair<String, List<StatementAST>>
 
-    fun interpretMainFunction(mainFunction: MainFunctionAST)
+    fun interpretMainFunction(mainFunction: MainFunctionAST): List<StatementAST>
 
     fun interpretSequence(sequence: SequenceAST, valueTable: ValueTable)
 

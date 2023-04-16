@@ -19,7 +19,6 @@ import fuzzd.utils.DAFNY_TYPE
 import fuzzd.utils.DAFNY_WRAPPERS
 import fuzzd.utils.WRAPPER_FUNCTIONS
 import fuzzd.validator.OutputValidator
-import fuzzd.validator.executor.execution_handler.CsExecutionHandler
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import java.io.File
@@ -53,26 +52,15 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
                 writer.write { advancedAST }
                 writer.close()
 
-                val output = validator.collectOutput(
-                    CsExecutionHandler(
-                        writer.dirPath,
-                        DAFNY_ADVANCED,
-                        compileTimeout = 180L,
-                        executeTimeout = 60L,
-                    ),
-                )
-                if (output != null) {
-                    val safetyRegex = Regex("safety[0-9]+\\n")
-                    val ids = safetyRegex.findAll(output, 0)
-                        .map { it.value }
-                        .map { it.substring(0, it.lastIndex) }
-                        .toSet()
-                    logger.log { "Advanced reconditioning gave ids: $ids " }
-                    ids
-                } else {
-                    logger.log { "Advanced reconditioning timed out" }
-                    null
-                }
+                val output = InterpreterRunner(dir, logger).run(advancedAST)
+
+                val safetyRegex = Regex("safety[0-9]+\\n")
+                val ids = safetyRegex.findAll(output, 0)
+                    .map { it.value }
+                    .map { it.substring(0, it.lastIndex) }
+                    .toSet()
+                logger.log { "Advanced reconditioning gave ids: $ids " }
+                ids
             } else {
                 null
             }

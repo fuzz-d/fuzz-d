@@ -1,12 +1,17 @@
 package fuzzd.interpreter.value
 
-import fuzzd.generator.ast.ClassInstanceFunctionMethodSignatureAST
-import fuzzd.generator.ast.ClassInstanceMethodSignatureAST
 import fuzzd.generator.ast.ExpressionAST
-import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ExpressionListAST
+import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
+import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
+import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
+import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
+import fuzzd.utils.reduceLists
 import java.lang.Integer.min
 
 fun <T> multisetDifference(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
@@ -25,20 +30,26 @@ fun <T> multisetIntersect(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
     val intersect = mutableMapOf<T, Int>()
     m1.entries.forEach { (k, v) ->
         if (k in m2) {
-            intersect[k] = min(m1[k]!!, m2[k]!!)
+            intersect[k] = min(v, m2[k]!!)
         }
     }
     return intersect
 }
 
 sealed class Value {
-    data class MultiValue(val values: List<Value>) : Value()
+    abstract fun toExpressionAST(): ExpressionAST
+
+    data class MultiValue(val values: List<Value>) : Value() {
+        override fun toExpressionAST(): ExpressionAST = ExpressionListAST(values.map { it.toExpressionAST() })
+    }
 
     data class ClassValue(
         val fields: ValueTable,
         val functions: Map<FunctionMethodSignatureAST, ExpressionAST>,
-        val methods: Map<MethodSignatureAST, SequenceAST>
-    ) : Value()
+        val methods: Map<MethodSignatureAST, SequenceAST>,
+    ) : Value() {
+        override fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
+    }
 
     class ArrayValue(length: Int) : Value() {
         val arr = Array<Value?>(length) { null }
@@ -51,12 +62,13 @@ sealed class Value {
             arr[index] ?: throw UnsupportedOperationException("Array index $index was null")
 
         fun length(): IntValue = IntValue(arr.size.toLong())
+
+        override fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
     }
 
     sealed class DataStructureValue : Value() {
         abstract fun contains(item: Value): BoolValue
         abstract fun notContains(item: Value): BoolValue
-
         abstract fun modulus(): IntValue
     }
 
@@ -81,6 +93,8 @@ sealed class Value {
 
         override fun equals(other: Any?): Boolean = other is SequenceValue && seq == other.seq
         override fun hashCode(): Int = seq.hashCode()
+
+        override fun toExpressionAST(): ExpressionAST = SequenceDisplayAST(seq.map { it.toExpressionAST() })
     }
 
     data class MapValue(val map: Map<Value, Value>) : DataStructureValue() {
@@ -96,6 +110,11 @@ sealed class Value {
 
         override fun equals(other: Any?): Boolean = other is MapValue && map == other.map
         override fun hashCode(): Int = map.hashCode()
+
+        override fun toExpressionAST(): ExpressionAST {
+            val assignments = map.map { (k, v) -> Pair(k.toExpressionAST(), v.toExpressionAST()) }
+            return MapConstructorAST(assignments[0].first.type(), assignments[0].second.type(), assignments)
+        }
     }
 
     data class MultisetValue(val map: Map<Value, Int>) : DataStructureValue() {
@@ -114,9 +133,9 @@ sealed class Value {
         fun disjoint(other: MultisetValue): BoolValue = BoolValue(map.keys.none { it in other.map })
         fun union(other: MultisetValue): MultisetValue = MultisetValue(
             other.map.keys.fold(map.toMutableMap()) { m, k ->
-                if (m.containsKey(k)) m[k] = m[k]!! + other.map[k]!! else m[k] = other.map[k]!!;
+                if (m.containsKey(k)) m[k] = m[k]!! + other.map[k]!! else m[k] = other.map[k]!!
                 m
-            }
+            },
         )
 
         fun difference(other: MultisetValue): MultisetValue = MultisetValue(multisetDifference(map, other.map))
@@ -124,18 +143,24 @@ sealed class Value {
 
         fun get(key: Value): IntValue = if (key in map) {
             IntValue(map[key]!!.toLong())
-        } else throw UnsupportedOperationException("Multiset didn't contain key $key")
+        } else {
+            throw UnsupportedOperationException("Multiset didn't contain key $key")
+        }
 
         fun assign(key: Value, value: Int): MultisetValue = MultisetValue(map + mapOf(key to value))
 
         override fun equals(other: Any?): Boolean = other is MultisetValue && map == other.map
         override fun hashCode(): Int = map.hashCode()
+
+        override fun toExpressionAST(): ExpressionAST =
+            SetDisplayAST(map.map { (k, v) -> List(v) { k.toExpressionAST() } }.reduceLists(), true)
     }
 
     data class SetValue(val set: Set<Value>) : DataStructureValue() {
         override fun contains(item: Value): BoolValue = BoolValue(item in set)
         override fun notContains(item: Value): BoolValue = BoolValue(item !in set)
         override fun modulus(): IntValue = IntValue(set.size.toLong())
+        override fun toExpressionAST(): ExpressionAST = SetDisplayAST(set.map { it.toExpressionAST() }, false)
 
         fun properSubsetOf(other: SetValue): BoolValue =
             BoolValue(other.set.containsAll(set) && (other.set subtract set).isNotEmpty())
@@ -157,6 +182,7 @@ sealed class Value {
     data class StringValue(val value: String) : Value() {
         override fun equals(other: Any?): Boolean = other is StringValue && value == other.value
         override fun hashCode(): Int = value.hashCode()
+        override fun toExpressionAST(): ExpressionAST = StringLiteralAST(value)
     }
 
     data class BoolValue(val value: Boolean) : Value() {
@@ -166,6 +192,8 @@ sealed class Value {
         fun rimpl(other: BoolValue): BoolValue = BoolValue(!other.value || value)
         fun and(other: BoolValue): BoolValue = BoolValue(value && other.value)
         fun or(other: BoolValue): BoolValue = BoolValue(value || other.value)
+
+        override fun toExpressionAST(): ExpressionAST = BooleanLiteralAST(value)
 
         override fun equals(other: Any?): Boolean = other is BoolValue && value == other.value
         override fun hashCode(): Int = value.hashCode()
@@ -185,5 +213,7 @@ sealed class Value {
 
         override fun equals(other: Any?): Boolean = other is IntValue && value == other.value
         override fun hashCode(): Int = value.hashCode()
+
+        override fun toExpressionAST(): ExpressionAST = IntegerLiteralAST(value.toInt())
     }
 }

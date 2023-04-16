@@ -9,6 +9,7 @@ import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
@@ -84,6 +85,15 @@ import fuzzd.interpreter.value.Value.SequenceValue
 import fuzzd.interpreter.value.Value.SetValue
 import fuzzd.interpreter.value.Value.StringValue
 import fuzzd.interpreter.value.ValueTable
+import fuzzd.utils.ABSOLUTE
+import fuzzd.utils.ADVANCED_ABSOLUTE
+import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
+import fuzzd.utils.ADVANCED_SAFE_DIV_INT
+import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
+import fuzzd.utils.SAFE_ARRAY_INDEX
+import fuzzd.utils.SAFE_DIVISION_INT
+import fuzzd.utils.SAFE_MODULO_INT
+import fuzzd.utils.reduceLists
 import fuzzd.utils.toMultiset
 
 class Interpreter : ASTInterpreter {
@@ -93,7 +103,7 @@ class Interpreter : ASTInterpreter {
     private var doBreak = false
 
     /* ============================== TOP LEVEL ============================== */
-    override fun interpretDafny(dafny: DafnyAST): String {
+    override fun interpretDafny(dafny: DafnyAST): Pair<String, List<StatementAST>> {
         dafny.topLevelElements.filterIsInstance<MethodAST>().forEach { method ->
             topLevelMethods[method.signature] = method.getBody()
         }
@@ -102,14 +112,52 @@ class Interpreter : ASTInterpreter {
             topLevelFunctions[function.signature] = function.body
         }
 
+        listOf(ADVANCED_ABSOLUTE, ADVANCED_SAFE_ARRAY_INDEX, ADVANCED_SAFE_DIV_INT, ADVANCED_SAFE_MODULO_INT)
+            .forEach { topLevelMethods[it.signature] = it.getBody() }
+
+        listOf(ABSOLUTE, SAFE_ARRAY_INDEX, SAFE_DIVISION_INT, SAFE_MODULO_INT)
+            .forEach { topLevelFunctions[it.signature] = it.body }
+
         val mainFunction = dafny.topLevelElements.first { it is MainFunctionAST }
-        interpretMainFunction(mainFunction as MainFunctionAST)
-        return output.toString()
+        val prints = interpretMainFunction(mainFunction as MainFunctionAST)
+        return Pair(output.toString(), prints)
     }
 
-    override fun interpretMainFunction(mainFunction: MainFunctionAST) {
-        interpretSequence(mainFunction.sequenceAST, ValueTable())
+    override fun interpretMainFunction(mainFunction: MainFunctionAST): List<StatementAST> {
+        val valueTable = ValueTable()
+        interpretSequence(mainFunction.sequenceAST, valueTable)
+
+        // generate checksum prints
+        val prints = valueTable.values.map { (k, v) ->
+            generateChecksumPrint(k, v)
+        }.reduceLists()
+        prints.forEach { interpretPrint(it, valueTable) }
+
+        return prints
     }
+
+    private fun generateChecksumPrint(key: IdentifierAST, value: Value): List<PrintAST> =
+        when (value) {
+            is MultiValue -> listOf(PrintAST(value.toExpressionAST()))
+            is StringValue, is IntValue, is BoolValue -> listOf(PrintAST(key))
+            is SetValue, is MultisetValue, is MapValue, is SequenceValue -> {
+                if (key.type().hasArrayType()) {
+                    listOf(PrintAST(ModulusExpressionAST(key)))
+                } else {
+                    listOf(PrintAST(BinaryExpressionAST(key, DataStructureEqualityOperator, value.toExpressionAST())))
+                }
+            }
+
+            is ArrayValue -> {
+                val indices = value.arr.indices.filter { i -> value.arr[i] != null }
+                indices.map { i -> PrintAST(ArrayIndexAST(key, IntegerLiteralAST(i))) }
+            }
+
+            is ClassValue -> {
+                val classInstance = key as ClassInstanceAST
+                classInstance.fields.map { PrintAST(it) }
+            }
+        }
 
     override fun interpretSequence(sequence: SequenceAST, valueTable: ValueTable) {
         sequence.statements.forEach { interpretStatement(it, valueTable) }
@@ -296,36 +344,35 @@ class Interpreter : ASTInterpreter {
         }
 
     override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, valueTable: ValueTable): Value {
-        val functionScopeValueTable = ValueTable()
         val functionSignature = functionCall.function
         val functionParams = functionSignature.params
-        functionParams.indices.forEach { i ->
-            functionScopeValueTable.set(functionParams[i], interpretExpression(functionCall.params[i], valueTable))
+
+        val (body, functionScopeValueTable) = if (functionSignature is ClassInstanceFunctionMethodSignatureAST) {
+            val classValue = interpretIdentifier(functionSignature.classInstance, valueTable) as ClassValue
+            Pair(classValue.functions.getValue(functionSignature.signature), ValueTable(classValue.fields))
+        } else {
+            Pair(topLevelFunctions.getValue(functionSignature), ValueTable())
         }
 
-        val body = if (functionSignature is ClassInstanceFunctionMethodSignatureAST) {
-            val classValue = interpretIdentifier(functionSignature.classInstance, valueTable) as ClassValue
-            classValue.functions.getValue(functionSignature.signature)
-        } else {
-            topLevelFunctions.getValue(functionSignature)
+        functionParams.indices.forEach { i ->
+            functionScopeValueTable.set(functionParams[i], interpretExpression(functionCall.params[i], valueTable))
         }
 
         return interpretExpression(body, functionScopeValueTable)
     }
 
-    fun interpretMethodCall(
+    private fun interpretMethodCall(
         methodSignature: MethodSignatureAST,
         params: List<ExpressionAST>,
-        valueTable: ValueTable
+        valueTable: ValueTable,
     ): ValueTable {
-        val body = if (methodSignature is ClassInstanceMethodSignatureAST) {
+        val (body, methodScopeValueTable) = if (methodSignature is ClassInstanceMethodSignatureAST) {
             val classValue = interpretIdentifier(methodSignature.classInstance, valueTable) as ClassValue
-            classValue.methods.getValue(methodSignature.signature)
+            Pair(classValue.methods.getValue(methodSignature.signature), ValueTable(classValue.fields))
         } else {
-            topLevelMethods.getValue(methodSignature)
+            Pair(topLevelMethods.getValue(methodSignature), ValueTable())
         }
 
-        val methodScopeValueTable = ValueTable()
         val methodParams = methodSignature.params
 
         methodParams.indices.forEach { i ->
