@@ -2,19 +2,24 @@ package fuzzd.interpreter
 
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.IndexAST
+import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
+import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -33,6 +38,7 @@ import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
+import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
@@ -145,7 +151,7 @@ class Interpreter : ASTInterpreter {
     override fun interpretMultiTypedDeclaration(typedDeclaration: MultiTypedDeclarationAST, valueTable: ValueTable) {
         val values = typedDeclaration.exprs.map { interpretExpression(it, valueTable) }
         typedDeclaration.identifiers.indices.forEach { i ->
-            valueTable.set(typedDeclaration.identifiers[i], values[i])
+            setIdentifierValue(typedDeclaration.identifiers[i], values[i], valueTable)
         }
     }
 
@@ -154,18 +160,40 @@ class Interpreter : ASTInterpreter {
             // non void method call
             val methodReturns = interpretExpression(declaration.exprs[0], valueTable) as MultiValue
             declaration.identifiers.indices.forEach { i ->
-                valueTable.set(declaration.identifiers[i], methodReturns.values[i])
+                setIdentifierValue(declaration.identifiers[i], methodReturns.values[i], valueTable)
             }
         } else {
             val values = declaration.exprs.map { interpretExpression(it, valueTable) }
             declaration.identifiers.indices.forEach { i ->
-                valueTable.set(declaration.identifiers[i], values[i])
+                setIdentifierValue(declaration.identifiers[i], values[i], valueTable)
             }
         }
     }
 
     override fun interpretMultiAssign(assign: MultiAssignmentAST, valueTable: ValueTable) {
-        TODO("Not yet implemented")
+        val values = assign.exprs.map { interpretExpression(it, valueTable) }
+        assign.identifiers.indices.forEach { i ->
+            setIdentifierValue(assign.identifiers[i], values[i], valueTable)
+        }
+    }
+
+    private fun setIdentifierValue(identifier: IdentifierAST, value: Value, valueTable: ValueTable) {
+        when (identifier) {
+            is ClassInstanceFieldAST -> {
+                val classValue = interpretIdentifier(identifier.classInstance, valueTable) as ClassValue
+                setIdentifierValue(identifier.classField, value, classValue.fields)
+            }
+
+            is ArrayIndexAST -> {
+                val arrayValue = interpretIdentifier(identifier.array, valueTable) as ArrayValue
+                val index = interpretExpression(identifier.index, valueTable) as IntValue
+                arrayValue.setIndex(index.value.toInt(), value)
+            }
+
+            is SequenceIndexAST, is IndexAST, is IndexAssignAST -> throw UnsupportedOperationException()
+
+            else -> valueTable.set(identifier, value)
+        }
     }
 
     override fun interpretPrint(printAST: PrintAST, valueTable: ValueTable) {
@@ -387,8 +415,53 @@ class Interpreter : ASTInterpreter {
         return MultisetValue(sequenceValue.seq.toMultiset())
     }
 
-    override fun interpretIdentifier(identifier: IdentifierAST, valueTable: ValueTable): Value {
-        TODO("Not yet implemented")
+    override fun interpretIdentifier(identifier: IdentifierAST, valueTable: ValueTable): Value =
+        when (identifier) {
+            is ClassInstanceFieldAST -> {
+                val classValue = interpretIdentifier(identifier.classInstance, valueTable) as ClassValue
+                interpretIdentifier(identifier.classField, classValue.fields)
+            }
+
+            is ArrayIndexAST -> {
+                val arrayValue = interpretIdentifier(identifier.array, valueTable) as ArrayValue
+                val index = interpretExpression(identifier.index, valueTable) as IntValue
+
+                arrayValue.getIndex(index.value.toInt())
+            }
+
+            is SequenceIndexAST -> {
+                val sequenceValue = interpretIdentifier(identifier.sequence, valueTable) as SequenceValue
+                val index = interpretExpression(identifier.index, valueTable) as IntValue
+
+                sequenceValue.getIndex(index.value.toInt())
+            }
+
+            is IndexAST -> {
+                val key = interpretExpression(identifier.key, valueTable)
+                if (identifier.ident.type() is MapType) {
+                    val mapValue = interpretIdentifier(identifier.ident, valueTable) as MapValue
+                    mapValue.get(key)
+                } else {
+                    val multisetValue = interpretIdentifier(identifier.ident, valueTable) as MultisetValue
+                    multisetValue.get(key)
+                }
+            }
+
+            is IndexAssignAST -> interpretIndexAssign(identifier, valueTable)
+
+            else -> valueTable.get(identifier)
+        }
+
+    private fun interpretIndexAssign(indexAssign: IndexAssignAST, valueTable: ValueTable): Value {
+        val key = interpretExpression(indexAssign.key, valueTable)
+        val value = interpretExpression(indexAssign.value, valueTable)
+
+        return when (val ident = interpretExpression(indexAssign.ident, valueTable)) {
+            is MultisetValue -> ident.assign(key, (value as IntValue).value.toInt())
+            is MapValue -> ident.assign(key, value)
+            is SequenceValue -> ident.assign((key as IntValue).value.toInt(), value)
+            else -> throw UnsupportedOperationException()
+        }
     }
 
     override fun interpretSetDisplay(setDisplay: SetDisplayAST, valueTable: ValueTable): Value {

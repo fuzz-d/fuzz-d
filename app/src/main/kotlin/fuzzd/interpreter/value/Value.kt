@@ -28,10 +28,17 @@ fun <T> multisetIntersect(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
 sealed class Value {
     data class MultiValue(val values: List<Value>) : Value()
 
-    data class ClassValue(val fields: Map<IdentifierAST, Value>) : Value()
+    data class ClassValue(val fields: ValueTable) : Value()
 
     class ArrayValue(length: Int) : Value() {
         val arr = Array<Value?>(length) { null }
+
+        fun setIndex(index: Int, value: Value) {
+            arr[index] = value
+        }
+
+        fun getIndex(index: Int): Value =
+            arr[index] ?: throw UnsupportedOperationException("Array index $index was null")
 
         fun length(): IntValue = IntValue(arr.size.toLong())
     }
@@ -56,6 +63,12 @@ sealed class Value {
             BoolValue(seq.containsAll(other.seq) && (seq - other.seq.toSet()).isNotEmpty())
 
         fun union(other: SequenceValue): SequenceValue = SequenceValue(seq + other.seq)
+
+        fun getIndex(index: Int): Value = seq[index]
+
+        fun assign(key: Int, value: Value): SequenceValue =
+            SequenceValue(seq.subList(0, key) + value + seq.subList(key + 1, seq.size))
+
         override fun equals(other: Any?): Boolean = other is SequenceValue && seq == other.seq
         override fun hashCode(): Int = seq.hashCode()
     }
@@ -66,6 +79,11 @@ sealed class Value {
         override fun modulus(): IntValue = IntValue(map.size.toLong())
         fun union(other: MapValue): MapValue = MapValue(map + other.map)
         fun difference(other: SetValue): MapValue = MapValue(map - other.set)
+
+        fun get(key: Value): Value = map[key] ?: throw UnsupportedOperationException("Map didn't contain key $key")
+
+        fun assign(key: Value, value: Value): MapValue = MapValue(map + mapOf(key to value))
+
         override fun equals(other: Any?): Boolean = other is MapValue && map == other.map
         override fun hashCode(): Int = map.hashCode()
     }
@@ -93,6 +111,12 @@ sealed class Value {
 
         fun difference(other: MultisetValue): MultisetValue = MultisetValue(multisetDifference(map, other.map))
         fun intersect(other: MultisetValue): MultisetValue = MultisetValue(multisetIntersect(map, other.map))
+
+        fun get(key: Value): IntValue = if (key in map) {
+            IntValue(map[key]!!.toLong())
+        } else throw UnsupportedOperationException("Multiset didn't contain key $key")
+
+        fun assign(key: Value, value: Int): MultisetValue = MultisetValue(map + mapOf(key to value))
 
         override fun equals(other: Any?): Boolean = other is MultisetValue && map == other.map
         override fun hashCode(): Int = map.hashCode()
