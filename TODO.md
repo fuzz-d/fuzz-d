@@ -1,8 +1,10 @@
 ## TODO
     
 - ~~Test case reduction workflow~~
-  - unnecessary while loop limiter removal
+  - ~~unnecessary while loop limiter removal~~
 - dafny interpreter
+  - Euclidean division
+  - Build generated prints into workflow
 - instrumenting Dafny
 - ~~checksum within control flow?~~
 - ~~Better internal object field use representation~~
@@ -11,7 +13,7 @@
   - ~~multi-declaration, multi-assign~~
 - ~~avoid reading uninitialised method return values~~
 - ~~avoid array constructors as parameters~~
-- reduce number of declarations + increase number of assigns
+- ~~reduce number of declarations + increase number of assigns~~
 - ~~solve stack overflow errors - inner class generation limits~~
 - ~~OOP integration~~
     - ~~Class method + field calls~~
@@ -22,14 +24,14 @@
     - ~~Class & Trait Generation~~
 - ensure we can't generate statements that reduce to `while (false)`
 - further unit testing
-- parameter support in functions & function methods for data structures
-- Sequences, sets, multisets, maps
+- ~~parameter support in functions & function methods for data structures~~
+- ~~Sequences, sets, multisets, maps~~
 - Multi-dimensional arrays
 - parallel assignment to arrays via ```forall```
 - continue + break support in loops
 - Inner scopes using outer scope variable names (interesting case with arrays :) )
 - ~~Updating values in array on assignment~~
-- Tracking values over if statements (control flow)
+- ~~Tracking values over if statements (control flow)~~
 - ~~Expression safety for integer/real/character overflow~~
 - ~~Assignment for non-array identifiers (should be a lot easier :) )~~
 - ~~Logging~~
