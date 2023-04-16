@@ -676,7 +676,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitSetDisplay(ctx: SetDisplayContext): SetDisplayAST {
         val exprs = ctx.expression().map(this::visitExpression)
-        return SetDisplayAST(exprs, ctx.MULTISET() != null)
+        return SetDisplayAST(exprs, ctx.MULTISET() == null)
     }
 
     override fun visitSequenceDisplay(ctx: SequenceDisplayContext): SequenceDisplayAST {
