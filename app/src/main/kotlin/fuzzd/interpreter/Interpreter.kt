@@ -242,6 +242,7 @@ class Interpreter : ASTInterpreter {
     private fun emitSetValue(setValue: SetValue) {
         setValue.set.forEach {
             emitOutput(it)
+            emitOutput(StringValue("\n"))
         }
     }
 
@@ -264,7 +265,7 @@ class Interpreter : ASTInterpreter {
     }
 
     private fun emitStringValue(stringValue: StringValue) {
-        output.append(stringValue)
+        output.append(stringValue.value)
     }
 
     private fun emitIntValue(intValue: IntValue) {

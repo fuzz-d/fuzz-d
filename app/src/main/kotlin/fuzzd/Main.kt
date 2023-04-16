@@ -77,11 +77,29 @@ class Recondition : Subcommand("recondition", "Recondition a reduced test case")
 }
 
 @OptIn(ExperimentalCli::class)
+class Interpret : Subcommand("interpret", "Interpret a valid .dfy file") {
+    private val file by argument(ArgType.String, "file", "path to .dfy file to interpret")
+
+    override fun execute() {
+        val file = File(file)
+        val logger = Logger(file.absoluteFile.parentFile, fileName = "interpret.log")
+        try {
+            InterpreterRunner(file.absoluteFile.parentFile, logger).run(file)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            logger.close()
+        }
+    }
+}
+
+@OptIn(ExperimentalCli::class)
 fun createArgParser(): ArgParser {
     val parser = ArgParser("fuzzd")
     val fuzz = Fuzz()
     val recondition = Recondition()
-    parser.subcommands(fuzz, recondition)
+    val interpret = Interpret()
+    parser.subcommands(fuzz, recondition, interpret)
 
     return parser
 }
