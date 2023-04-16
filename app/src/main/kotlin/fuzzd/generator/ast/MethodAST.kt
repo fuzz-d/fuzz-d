@@ -62,5 +62,5 @@ open class MethodSignatureAST(
     }
 }
 
-class ClassInstanceMethodSignatureAST(classInstance: IdentifierAST, signature: MethodSignatureAST) :
+class ClassInstanceMethodSignatureAST(val classInstance: IdentifierAST, val signature: MethodSignatureAST) :
     MethodSignatureAST("$classInstance.${signature.name}", signature.params, signature.returns)

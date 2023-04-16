@@ -1,6 +1,12 @@
 package fuzzd.interpreter.value
 
+import fuzzd.generator.ast.ClassInstanceFunctionMethodSignatureAST
+import fuzzd.generator.ast.ClassInstanceMethodSignatureAST
+import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.FunctionMethodSignatureAST
+import fuzzd.generator.ast.MethodSignatureAST
+import fuzzd.generator.ast.SequenceAST
 import java.lang.Integer.min
 
 fun <T> multisetDifference(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
@@ -28,7 +34,11 @@ fun <T> multisetIntersect(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
 sealed class Value {
     data class MultiValue(val values: List<Value>) : Value()
 
-    data class ClassValue(val fields: ValueTable) : Value()
+    data class ClassValue(
+        val fields: ValueTable,
+        val functions: Map<FunctionMethodSignatureAST, ExpressionAST>,
+        val methods: Map<MethodSignatureAST, SequenceAST>
+    ) : Value()
 
     class ArrayValue(length: Int) : Value() {
         val arr = Array<Value?>(length) { null }

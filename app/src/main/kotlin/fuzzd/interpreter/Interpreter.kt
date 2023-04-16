@@ -1,5 +1,7 @@
 package fuzzd.interpreter
 
+import fuzzd.generator.ast.ClassInstanceFunctionMethodSignatureAST
+import fuzzd.generator.ast.ClassInstanceMethodSignatureAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
@@ -86,18 +88,18 @@ import fuzzd.utils.toMultiset
 
 class Interpreter : ASTInterpreter {
     private val output = StringBuilder()
-    private val methods = mutableMapOf<MethodSignatureAST, SequenceAST>()
-    private val functions = mutableMapOf<FunctionMethodSignatureAST, ExpressionAST>()
+    private val topLevelMethods = mutableMapOf<MethodSignatureAST, SequenceAST>()
+    private val topLevelFunctions = mutableMapOf<FunctionMethodSignatureAST, ExpressionAST>()
     private var doBreak = false
 
     /* ============================== TOP LEVEL ============================== */
     override fun interpretDafny(dafny: DafnyAST): String {
         dafny.topLevelElements.filterIsInstance<MethodAST>().forEach { method ->
-            methods[method.signature] = method.getBody()
+            topLevelMethods[method.signature] = method.getBody()
         }
 
         dafny.topLevelElements.filterIsInstance<FunctionMethodAST>().forEach { function ->
-            functions[function.signature] = function.body
+            topLevelFunctions[function.signature] = function.body
         }
 
         val mainFunction = dafny.topLevelElements.first { it is MainFunctionAST }
@@ -144,7 +146,7 @@ class Interpreter : ASTInterpreter {
         var condition = interpretExpression(whileStatement.condition, valueTable)
         val prevBreak = doBreak
         doBreak = false
-        while (!(condition as BoolValue).value && !doBreak) {
+        while ((condition as BoolValue).value && !doBreak) {
             interpretSequence(whileStatement.body, ValueTable(valueTable))
             condition = interpretExpression(whileStatement.condition, valueTable)
         }
@@ -152,13 +154,7 @@ class Interpreter : ASTInterpreter {
     }
 
     override fun interpretVoidMethodCall(methodCall: VoidMethodCallAST, valueTable: ValueTable) {
-        val methodScopeValueTable = ValueTable()
-        val methodSignature = methodCall.method
-        val methodParams = methodSignature.params
-        methodParams.indices.forEach { i ->
-            methodScopeValueTable.set(methodParams[i], interpretExpression(methodCall.params[i], valueTable))
-        }
-        interpretSequence(methods.getValue(methodSignature), valueTable)
+        interpretMethodCall(methodCall.method, methodCall.params, valueTable)
     }
 
     override fun interpretMultiTypedDeclaration(typedDeclaration: MultiTypedDeclarationAST, valueTable: ValueTable) {
@@ -306,18 +302,42 @@ class Interpreter : ASTInterpreter {
         functionParams.indices.forEach { i ->
             functionScopeValueTable.set(functionParams[i], interpretExpression(functionCall.params[i], valueTable))
         }
-        return interpretExpression(functions.getValue(functionSignature), functionScopeValueTable)
+
+        val body = if (functionSignature is ClassInstanceFunctionMethodSignatureAST) {
+            val classValue = interpretIdentifier(functionSignature.classInstance, valueTable) as ClassValue
+            classValue.functions.getValue(functionSignature.signature)
+        } else {
+            topLevelFunctions.getValue(functionSignature)
+        }
+
+        return interpretExpression(body, functionScopeValueTable)
+    }
+
+    fun interpretMethodCall(
+        methodSignature: MethodSignatureAST,
+        params: List<ExpressionAST>,
+        valueTable: ValueTable
+    ): ValueTable {
+        val body = if (methodSignature is ClassInstanceMethodSignatureAST) {
+            val classValue = interpretIdentifier(methodSignature.classInstance, valueTable) as ClassValue
+            classValue.methods.getValue(methodSignature.signature)
+        } else {
+            topLevelMethods.getValue(methodSignature)
+        }
+
+        val methodScopeValueTable = ValueTable()
+        val methodParams = methodSignature.params
+
+        methodParams.indices.forEach { i ->
+            methodScopeValueTable.set(methodParams[i], interpretExpression(params[i], valueTable))
+        }
+        interpretSequence(body, methodScopeValueTable)
+        return methodScopeValueTable
     }
 
     override fun interpretNonVoidMethodCall(methodCall: NonVoidMethodCallAST, valueTable: ValueTable): Value {
-        val methodScopeValueTable = ValueTable()
-        val methodSignature = methodCall.method
-        val methodParams = methodSignature.params
-        methodParams.indices.forEach { i ->
-            methodScopeValueTable.set(methodParams[i], interpretExpression(methodCall.params[i], valueTable))
-        }
-        interpretSequence(methods.getValue(methodSignature), methodScopeValueTable)
-        return MultiValue(methodSignature.returns.map { r -> methodScopeValueTable.get(r) })
+        val methodScopeValueTable = interpretMethodCall(methodCall.method, methodCall.params, valueTable)
+        return MultiValue(methodCall.method.returns.map { r -> methodScopeValueTable.get(r) })
     }
 
     override fun interpretClassInstantiation(classInstantiation: ClassInstantiationAST, valueTable: ValueTable): Value {
@@ -325,7 +345,11 @@ class Interpreter : ASTInterpreter {
         val constructorParams = classInstantiation.params.map { interpretExpression(it, valueTable) }
         val classValueTable = ValueTable()
         classFields.zip(constructorParams).forEach { classValueTable.set(it.first, it.second) }
-        return ClassValue(classValueTable)
+
+        val methods = classInstantiation.clazz.methods.associate { Pair(it.signature, it.getBody()) }
+        val functions = classInstantiation.clazz.functionMethods.associate { Pair(it.signature, it.body) }
+
+        return ClassValue(classValueTable, functions, methods)
     }
 
     override fun interpretBinaryExpression(binaryExpression: BinaryExpressionAST, valueTable: ValueTable): Value {

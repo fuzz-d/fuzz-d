@@ -48,6 +48,6 @@ open class FunctionMethodSignatureAST(
 }
 
 class ClassInstanceFunctionMethodSignatureAST(
-    classInstance: IdentifierAST,
-    signature: FunctionMethodSignatureAST,
+    val classInstance: IdentifierAST,
+    val signature: FunctionMethodSignatureAST,
 ) : FunctionMethodSignatureAST("$classInstance.${signature.name}", signature.returnType, signature.params)
