@@ -35,10 +35,10 @@ class FuzzRunner(private val dir: File, private val logger: Logger) {
             originalWriter.close()
 
             if (run) {
-                reconditionRunner.run(ast, advanced)
+                val output = reconditionRunner.run(ast, advanced)
 
                 // differential testing; log results
-                val validationResult = validator.validateFile(dir, DAFNY_WRAPPERS, DAFNY_BODY, DAFNY_MAIN)
+                val validationResult = validator.validateFile(dir, DAFNY_WRAPPERS, DAFNY_BODY, DAFNY_MAIN, output)
                 logger.log { validationResult }
             }
         } catch (e: Exception) {

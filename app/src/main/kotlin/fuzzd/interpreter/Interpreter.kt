@@ -255,7 +255,10 @@ class Interpreter : ASTInterpreter {
 
     override fun interpretPrint(printAST: PrintAST, valueTable: ValueTable) {
         val values = printAST.expr.map { interpretExpression(it, valueTable) }
-        values.forEach { emitOutput(it) }
+        values.forEach {
+            emitOutput(it)
+            if (printAST.newLine) output.appendLine()
+        }
     }
 
     private fun emitOutput(value: Value) {
@@ -565,7 +568,7 @@ class Interpreter : ASTInterpreter {
 
     override fun interpretSetDisplay(setDisplay: SetDisplayAST, valueTable: ValueTable): Value {
         val values = setDisplay.exprs.map { interpretExpression(it, valueTable) }
-        return if (setDisplay.isMultiset) SetValue(values.toSet()) else MultisetValue(values.toMultiset())
+        return if (setDisplay.isMultiset) MultisetValue(values.toMultiset()) else SetValue(values.toSet())
     }
 
     override fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST, valueTable: ValueTable): Value =

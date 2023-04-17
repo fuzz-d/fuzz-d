@@ -186,8 +186,8 @@ class Generator(
         context.symbolTable.add(globalStateIdentifier)
 
         val body = generateSequence(context)
-        val prints = generateChecksum(context)
-        return MainFunctionAST(SequenceAST(globalStateDeps + globalStateDecl + body.statements + prints))
+//        val prints = generateChecksum(context)
+        return MainFunctionAST(SequenceAST(globalStateDeps + globalStateDecl + body.statements /*+ prints*/))
     }
 
     override fun generateChecksum(context: GenerationContext): List<StatementAST> =
@@ -966,10 +966,16 @@ class Generator(
     private fun generateMultisetIndex(
         context: GenerationContext,
         targetType: MultisetType,
-    ): Pair<IndexAST, List<StatementAST>> {
+    ): Pair<TernaryExpressionAST, List<StatementAST>> {
         val (ident, identDeps) = generateIdentifier(context, targetType)
         val (indexKey, indexKeyDeps) = generateExpression(context.increaseExpressionDepth(), targetType.innerType)
-        return Pair(IndexAST(ident, indexKey), identDeps + indexKeyDeps)
+        val (altExpr, altExprDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
+
+        val index = IndexAST(ident, indexKey)
+        val ternaryExpression =
+            TernaryExpressionAST(BinaryExpressionAST(indexKey, MembershipOperator, ident), index, altExpr)
+
+        return Pair(ternaryExpression, identDeps + indexKeyDeps + altExprDeps)
     }
 
     override fun generateUnaryExpression(

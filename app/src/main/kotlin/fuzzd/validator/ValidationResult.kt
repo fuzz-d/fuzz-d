@@ -3,7 +3,7 @@ package fuzzd.validator
 import fuzzd.utils.indent
 import fuzzd.validator.executor.execution_handler.ExecutionHandler
 
-class ValidationResult(handlers: List<ExecutionHandler>) {
+class ValidationResult(handlers: List<ExecutionHandler>, val targetOutput: String?) {
     private val succeededCompile: List<ExecutionHandler>
     private val failedCompile: List<ExecutionHandler>
     private val succeededExecute: List<ExecutionHandler>
@@ -28,7 +28,9 @@ class ValidationResult(handlers: List<ExecutionHandler>) {
     }
 
     private fun differentOutput(): Boolean =
-            succeededExecute.any { h -> h.executeResult().stdOut != succeededExecute[0].executeResult().stdOut }
+        succeededExecute.any { h ->
+            h.executeResult().stdOut != (targetOutput ?: succeededExecute[0].executeResult().stdOut)
+        }
 
     override fun toString(): String {
         val sb = StringBuilder()
@@ -40,6 +42,7 @@ class ValidationResult(handlers: List<ExecutionHandler>) {
         failedExecute.forEach { h -> sb.append("${h.getCompileTarget()}:\n${indent(h.executeResult())}\n") }
 
         sb.appendLine("--------------------------------- EXECUTE SUCCEEDED -------------------------------")
+        sb.appendLine("Target Output: $targetOutput")
         succeededExecute.forEach { h -> sb.append("${h.getCompileTarget()}:\n${indent(h.executeResult())}\n") }
 
         sb.appendLine("Compiler crash: ${failedCompile.isNotEmpty()}")

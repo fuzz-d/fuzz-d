@@ -22,6 +22,7 @@ class OutputValidator {
         wrapperFileName: String,
         bodyFileName: String,
         mainFileName: String,
+        targetOutput: String?
     ): ValidationResult {
         val writer = OutputWriter(fileDir, "$mainFileName.dfy")
         val fileDirPath = fileDir.path
@@ -43,13 +44,13 @@ class OutputValidator {
             .map { t -> t.start(); t }
             .map { t -> t.join() }
 
-        return ValidationResult(handlers)
+        return ValidationResult(handlers, targetOutput)
     }
 
     fun collectOutput(handler: ExecutionHandler): String? {
         handler.run()
         return if (handler.executeResult().terminated) {
-            println(ValidationResult(listOf(handler)))
+            println(ValidationResult(listOf(handler), null))
             handler.executeResult().stdOut
         } else {
             null

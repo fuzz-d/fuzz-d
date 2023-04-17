@@ -97,7 +97,7 @@ sealed class StatementAST : ASTElement {
     class AssignmentAST(identifier: IdentifierAST, expr: ExpressionAST) :
         MultiAssignmentAST(listOf(identifier), listOf(expr))
 
-    class PrintAST(val expr: List<ExpressionAST>, private val newLine: Boolean = true) : StatementAST() {
+    class PrintAST(val expr: List<ExpressionAST>, val newLine: Boolean = true) : StatementAST() {
         constructor(expr: ExpressionAST) : this(listOf(expr))
 
         override fun toString(): String = "print ${expr.joinToString(", ")}${if (newLine) ", \"\\n\"" else ""};"

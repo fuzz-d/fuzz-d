@@ -3,6 +3,7 @@ package fuzzd
 import dafnyLexer
 import dafnyParser
 import fuzzd.generator.ast.DafnyAST
+import fuzzd.generator.ast.StatementAST
 import fuzzd.interpreter.Interpreter
 import fuzzd.logging.OutputWriter
 import fuzzd.recondition.visitor.DafnyVisitor
@@ -12,7 +13,7 @@ import java.io.File
 class InterpreterRunner(private val dir: File, private val logger: fuzzd.logging.Logger) {
     private val interpreter = Interpreter()
 
-    fun run(file: File): String {
+    fun run(file: File): Pair<String, List<StatementAST>> {
         logger.log { "Lexing & Parsing ${file.name}" }
         val input = file.inputStream()
         val cs = CharStreams.fromStream(input)
@@ -22,7 +23,7 @@ class InterpreterRunner(private val dir: File, private val logger: fuzzd.logging
         return run(ast)
     }
 
-    fun run(ast: DafnyAST): String {
+    fun run(ast: DafnyAST): Pair<String, List<StatementAST>> {
         logger.log { "Interpreting Dafny AST" }
 
         val output = interpreter.interpretDafny(ast)
@@ -33,7 +34,7 @@ class InterpreterRunner(private val dir: File, private val logger: fuzzd.logging
         logger.log { "Completed interpreting Dafny AST. Output stored in ${dir.name}/$INTERPRET_FILENAME" }
         logger.log { output.second }
 
-        return output.first
+        return output
     }
 
     companion object {
