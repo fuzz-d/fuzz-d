@@ -7,8 +7,7 @@ class ValueTable(val parent: ValueTable? = null) {
 
     fun has(identifier: IdentifierAST): Boolean = identifier in values || parent?.has(identifier) == true
 
-    fun get(identifier: IdentifierAST): Value =
-        if (identifier in values) values[identifier]!! else parent!!.get(identifier)
+    fun get(identifier: IdentifierAST): Value = if (identifier in values) values[identifier]!! else parent!!.get(identifier)
 
     fun set(identifier: IdentifierAST, value: Value) {
         if (identifier !in values && parent != null && parent.has(identifier)) {

@@ -26,6 +26,7 @@ import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
+import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
@@ -53,6 +54,7 @@ import fuzzd.utils.SAFE_ARRAY_INDEX
 import fuzzd.utils.safetyMap
 
 class Reconditioner(private val logger: Logger, private val ids: Set<String>? = null) : ASTReconditioner {
+    private val reconditionedClasses = mutableMapOf<ClassAST, ClassAST>()
     private fun requiresSafety(str: String) = ids == null || str in ids
 
     private val safetyIdGenerator = SafetyIdGenerator()
@@ -90,7 +92,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         val reconditionedMethods = classAST.methods.map(this::reconditionMethod).toSet()
         val reconditionedFunctionMethods = classAST.functionMethods.map(this::reconditionFunctionMethod).toSet()
 
-        return ClassAST(
+        val reconditionedClass = ClassAST(
             classAST.name,
             classAST.extends,
             reconditionedFunctionMethods,
@@ -98,6 +100,10 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             classAST.fields,
             classAST.inheritedFields,
         )
+
+        reconditionedClasses[classAST] = reconditionedClass
+
+        return reconditionedClass
     }
 
     override fun reconditionMethod(methodAST: MethodAST): MethodAST {
@@ -108,7 +114,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
     override fun reconditionMainFunction(mainFunction: MainFunctionAST) =
         MainFunctionAST(reconditionSequence(mainFunction.sequenceAST))
 
-    override fun reconditionFunctionMethod(functionMethodAST: FunctionMethodAST) =
+    override fun reconditionFunctionMethod(functionMethodAST: FunctionMethodAST): FunctionMethodAST =
         FunctionMethodAST(functionMethodAST.signature, reconditionExpression(functionMethodAST.body))
 
     override fun reconditionSequence(sequence: SequenceAST): SequenceAST =
@@ -361,7 +367,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
     override fun reconditionClassInstantiation(classInstantiation: ClassInstantiationAST): ExpressionAST =
         ClassInstantiationAST(
-            classInstantiation.clazz,
+            reconditionedClasses.getValue(classInstantiation.clazz),
             classInstantiation.params.map(this::reconditionExpression),
         )
 

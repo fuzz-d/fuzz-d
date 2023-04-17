@@ -12,6 +12,7 @@ import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.ExpressionListAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
@@ -35,6 +36,7 @@ import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.BreakAST
+import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
@@ -170,19 +172,24 @@ class Interpreter : ASTInterpreter {
 
     /* ============================== STATEMENTS ============================= */
 
-    override fun interpretStatement(statement: StatementAST, valueTable: ValueTable) = when (statement) {
-        is BreakAST -> {
-            doBreak = true
-        }
+    override fun interpretStatement(statement: StatementAST, valueTable: ValueTable) {
+        if (doBreak) return
 
-        is IfStatementAST -> interpretIfStatement(statement, valueTable)
-        is WhileLoopAST -> interpretWhileStatement(statement, valueTable)
-        is VoidMethodCallAST -> interpretVoidMethodCall(statement, valueTable)
-        is MultiTypedDeclarationAST -> interpretMultiTypedDeclaration(statement, valueTable)
-        is MultiDeclarationAST -> interpretMultiDeclaration(statement, valueTable)
-        is MultiAssignmentAST -> interpretMultiAssign(statement, valueTable)
-        is PrintAST -> interpretPrint(statement, valueTable)
-        else -> throw UnsupportedOperationException()
+        return when (statement) {
+            is BreakAST -> {
+                doBreak = true
+            }
+
+            is IfStatementAST -> interpretIfStatement(statement, valueTable)
+            is CounterLimitedWhileLoopAST -> interpretCounterLimitedWhileStatement(statement, valueTable)
+            is WhileLoopAST -> interpretWhileStatement(statement, valueTable)
+            is VoidMethodCallAST -> interpretVoidMethodCall(statement, valueTable)
+            is MultiTypedDeclarationAST -> interpretMultiTypedDeclaration(statement, valueTable)
+            is MultiDeclarationAST -> interpretMultiDeclaration(statement, valueTable)
+            is MultiAssignmentAST -> interpretMultiAssign(statement, valueTable)
+            is PrintAST -> interpretPrint(statement, valueTable)
+            else -> throw UnsupportedOperationException()
+        }
     }
 
     override fun interpretIfStatement(ifStatement: IfStatementAST, valueTable: ValueTable) {
@@ -193,6 +200,27 @@ class Interpreter : ASTInterpreter {
         } else {
             ifStatement.elseBranch?.let { interpretSequence(it, ValueTable(valueTable)) }
         }
+    }
+
+    override fun interpretCounterLimitedWhileStatement(
+        whileStatement: CounterLimitedWhileLoopAST,
+        valueTable: ValueTable
+    ) {
+        interpretStatement(whileStatement.counterInitialisation, valueTable)
+        var condition = interpretExpression(whileStatement.condition, valueTable)
+        val prevBreak = doBreak
+        doBreak = false
+        while ((condition as BoolValue).value && !doBreak) {
+            val innerValueTable = ValueTable(valueTable)
+            interpretStatement(whileStatement.terminationCheck, innerValueTable)
+            if (doBreak) {
+                break;
+            }
+            interpretStatement(whileStatement.counterUpdate, innerValueTable)
+            interpretSequence(whileStatement.body, innerValueTable)
+            condition = interpretExpression(whileStatement.condition, valueTable)
+        }
+        doBreak = prevBreak
     }
 
     override fun interpretWhileStatement(whileStatement: WhileLoopAST, valueTable: ValueTable) {
@@ -272,12 +300,12 @@ class Interpreter : ASTInterpreter {
             is ArrayValue -> emitArrayValue(value)
             is SetValue -> emitSetValue(value)
             is MultisetValue -> emitMultisetValue(value)
+            is MultiValue -> emitMultiValue(value)
             is MapValue -> emitMapValue(value)
             is SequenceValue -> emitSequenceValue(value)
             is StringValue -> emitStringValue(value)
             is IntValue -> emitIntValue(value)
             is BoolValue -> emitBoolValue(value)
-            else -> throw UnsupportedOperationException()
         }
     }
 
@@ -312,6 +340,10 @@ class Interpreter : ASTInterpreter {
         }
     }
 
+    private fun emitMultiValue(multiValue: MultiValue) {
+        multiValue.values.forEach { emitOutput(it) }
+    }
+
     private fun emitSequenceValue(sequenceValue: SequenceValue) {
         sequenceValue.seq.forEach { emitOutput(it) }
     }
@@ -329,27 +361,31 @@ class Interpreter : ASTInterpreter {
     }
 
     /* ============================== EXPRESSIONS ============================ */
-    override fun interpretExpression(expression: ExpressionAST, valueTable: ValueTable): Value =
-        when (expression) {
-            is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, valueTable)
-            is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, valueTable)
-            is ClassInstantiationAST -> interpretClassInstantiation(expression, valueTable)
-            is BinaryExpressionAST -> interpretBinaryExpression(expression, valueTable)
-            is TernaryExpressionAST -> interpretTernaryExpression(expression, valueTable)
-            is UnaryExpressionAST -> interpretUnaryExpression(expression, valueTable)
-            is ModulusExpressionAST -> interpretModulus(expression, valueTable)
-            is MultisetConversionAST -> interpretMultisetConversion(expression, valueTable)
-            is IdentifierAST -> interpretIdentifier(expression, valueTable)
-            is SetDisplayAST -> interpretSetDisplay(expression, valueTable)
-            is SequenceDisplayAST -> interpretSequenceDisplay(expression, valueTable)
-            is MapConstructorAST -> interpretMapConstructor(expression, valueTable)
-            is ArrayLengthAST -> interpretArrayLength(expression, valueTable)
-            is ArrayInitAST -> interpretArrayInit(expression, valueTable)
-            is StringLiteralAST -> interpretStringLiteral(expression, valueTable)
-            is IntegerLiteralAST -> interpretIntegerLiteral(expression, valueTable)
-            is BooleanLiteralAST -> interpretBooleanLiteral(expression, valueTable)
-            else -> throw UnsupportedOperationException()
-        }
+    override fun interpretExpression(expression: ExpressionAST, valueTable: ValueTable): Value = when (expression) {
+        is ExpressionListAST -> interpretExpressionList(expression, valueTable)
+        is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, valueTable)
+        is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, valueTable)
+        is ClassInstantiationAST -> interpretClassInstantiation(expression, valueTable)
+        is BinaryExpressionAST -> interpretBinaryExpression(expression, valueTable)
+        is TernaryExpressionAST -> interpretTernaryExpression(expression, valueTable)
+        is UnaryExpressionAST -> interpretUnaryExpression(expression, valueTable)
+        is ModulusExpressionAST -> interpretModulus(expression, valueTable)
+        is MultisetConversionAST -> interpretMultisetConversion(expression, valueTable)
+        is IdentifierAST -> interpretIdentifier(expression, valueTable)
+        is SetDisplayAST -> interpretSetDisplay(expression, valueTable)
+        is SequenceDisplayAST -> interpretSequenceDisplay(expression, valueTable)
+        is MapConstructorAST -> interpretMapConstructor(expression, valueTable)
+        is ArrayLengthAST -> interpretArrayLength(expression, valueTable)
+        is ArrayInitAST -> interpretArrayInit(expression, valueTable)
+        is StringLiteralAST -> interpretStringLiteral(expression, valueTable)
+        is IntegerLiteralAST -> interpretIntegerLiteral(expression, valueTable)
+        is BooleanLiteralAST -> interpretBooleanLiteral(expression, valueTable)
+        else -> throw UnsupportedOperationException()
+    }
+
+    override fun interpretExpressionList(expressionList: ExpressionListAST, valueTable: ValueTable): Value = MultiValue(
+        expressionList.exprs.map { interpretExpression(it, valueTable) }
+    )
 
     override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, valueTable: ValueTable): Value {
         val functionSignature = functionCall.function
@@ -590,7 +626,7 @@ class Interpreter : ASTInterpreter {
     }
 
     override fun interpretArrayLength(arrayLength: ArrayLengthAST, valueTable: ValueTable): Value {
-        val array = valueTable.get(arrayLength.array) as ArrayValue
+        val array = interpretIdentifier(arrayLength.array, valueTable) as ArrayValue
         return array.length()
     }
 

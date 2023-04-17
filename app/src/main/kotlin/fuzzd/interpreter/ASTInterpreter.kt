@@ -7,6 +7,7 @@ import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.ExpressionListAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
@@ -23,6 +24,7 @@ import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
+import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
@@ -51,6 +53,8 @@ interface ASTInterpreter {
 
     fun interpretIfStatement(ifStatement: IfStatementAST, valueTable: ValueTable)
 
+    fun interpretCounterLimitedWhileStatement(whileStatement: CounterLimitedWhileLoopAST, valueTable: ValueTable)
+
     fun interpretWhileStatement(whileStatement: WhileLoopAST, valueTable: ValueTable)
 
     fun interpretVoidMethodCall(methodCall: VoidMethodCallAST, valueTable: ValueTable)
@@ -66,6 +70,8 @@ interface ASTInterpreter {
     /* ============================= EXPRESSIONS ============================= */
 
     fun interpretExpression(expression: ExpressionAST, valueTable: ValueTable): Value
+
+    fun interpretExpressionList(expressionList: ExpressionListAST, valueTable: ValueTable): Value
 
     fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, valueTable: ValueTable): Value
 
