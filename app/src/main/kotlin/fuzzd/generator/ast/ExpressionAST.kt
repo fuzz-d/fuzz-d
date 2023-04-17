@@ -188,9 +188,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun toString(): String = name
 
-        fun initialise() {
-            initialised = true
-        }
+        open fun initialise(): IdentifierAST = if (initialised) this else IdentifierAST(name, type, mutable, true)
 
         fun initialised(): Boolean = initialised
 
@@ -208,7 +206,12 @@ sealed class ExpressionAST : ASTElement {
     class ClassInstanceAST(
         val clazz: ClassAST,
         name: String,
-    ) : IdentifierAST(name, ClassType(clazz)) {
+        mutable: Boolean = true,
+        initialised: Boolean = false
+    ) : IdentifierAST(name, ClassType(clazz), mutable, initialised) {
+        override fun initialise(): IdentifierAST =
+            if (initialised()) this else ClassInstanceAST(clazz, name, mutable, true)
+
         val fields = clazz.fields.map { ClassInstanceFieldAST(this, it) }
 
         val functionMethods =
@@ -246,7 +249,7 @@ sealed class ExpressionAST : ASTElement {
     class SequenceIndexAST(
         val sequence: IdentifierAST,
         val index: ExpressionAST,
-    ) : IdentifierAST(sequence.name, (sequence.type() as SequenceType).innerType) {
+    ) : IdentifierAST(sequence.name, (sequence.type() as SequenceType).innerType, initialised = true) {
         init {
             if (index.type() != IntType) {
                 throw InvalidInputException("Got invalid type for sequence index. Got ${index.type()}, expected int")
@@ -262,6 +265,7 @@ sealed class ExpressionAST : ASTElement {
     ) : IdentifierAST(
         ident.name,
         if (ident.type() is MapType) (ident.type() as MapType).valueType else IntType,
+        initialised = true
     ) {
         init {
             when (val identType = ident.type()) {
@@ -291,7 +295,7 @@ sealed class ExpressionAST : ASTElement {
         val ident: IdentifierAST,
         val key: ExpressionAST,
         val value: ExpressionAST,
-    ) : IdentifierAST(ident.name, ident.type()) {
+    ) : IdentifierAST(ident.name, ident.type(), initialised = true) {
         init {
             when (val identType = ident.type()) {
                 is MapType -> {

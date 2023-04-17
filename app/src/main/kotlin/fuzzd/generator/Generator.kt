@@ -627,11 +627,9 @@ class Generator(
             ARRAY_INDEX -> generateArrayIndex(context, targetType)
         }
 
-        context.symbolTable.add(identifier)
+        context.symbolTable.add(identifier.initialise())
 
         val (expr, exprDeps) = generateExpression(context, targetType)
-
-        identifier.initialise()
 
         return identDeps + exprDeps + AssignmentAST(identifier, expr)
     }
@@ -904,7 +902,7 @@ class Generator(
         context: GenerationContext,
         targetType: MapType,
     ): Pair<IndexAssignAST, List<StatementAST>> {
-        val (ident, identDeps) = generateIdentifier(context, targetType)
+        val (ident, identDeps) = generateIdentifier(context, targetType, initialisedConstraint = true)
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
         val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), targetType.valueType)
 
@@ -915,7 +913,7 @@ class Generator(
         context: GenerationContext,
         targetType: MultisetType,
     ): Pair<IndexAssignAST, List<StatementAST>> {
-        val (ident, identDeps) = generateIdentifier(context, targetType)
+        val (ident, identDeps) = generateIdentifier(context, targetType, initialisedConstraint = true)
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), targetType.innerType)
         val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
 
@@ -933,7 +931,7 @@ class Generator(
         context: GenerationContext,
         targetType: SequenceType
     ): Pair<IndexAssignAST, List<StatementAST>> {
-        val (ident, identDeps) = generateIdentifier(context, targetType)
+        val (ident, identDeps) = generateIdentifier(context, targetType, initialisedConstraint = true)
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
         val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), targetType.innerType)
 
@@ -953,7 +951,7 @@ class Generator(
         context: GenerationContext,
         targetType: MapType,
     ): Pair<TernaryExpressionAST, List<StatementAST>> {
-        val (ident, identDeps) = generateIdentifier(context, targetType)
+        val (ident, identDeps) = generateIdentifier(context, targetType, initialisedConstraint = true)
         val (indexKey, indexKeyDeps) = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
         val (altExpr, altExprDeps) = generateExpression(context.increaseExpressionDepth(), targetType.valueType)
 
@@ -968,7 +966,7 @@ class Generator(
         context: GenerationContext,
         targetType: MultisetType,
     ): Pair<TernaryExpressionAST, List<StatementAST>> {
-        val (ident, identDeps) = generateIdentifier(context, targetType)
+        val (ident, identDeps) = generateIdentifier(context, targetType, initialisedConstraint = true)
         val (indexKey, indexKeyDeps) = generateExpression(context.increaseExpressionDepth(), targetType.innerType)
         val (altExpr, altExprDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
 
