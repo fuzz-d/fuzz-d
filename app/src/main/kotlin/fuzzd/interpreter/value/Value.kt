@@ -36,6 +36,14 @@ fun <T> multisetIntersect(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
     return intersect
 }
 
+fun divideEuclidean(a: Long, b: Long): Long =
+    when {
+        b == 0L -> throw UnsupportedOperationException()
+        a > 0L -> a / b
+        a < 0L && b > 0L -> (a / b) - if (a % b == 0L) 0 else 1
+        else -> if (a % b == 0L) a / b else (a + b) / b
+    }
+
 sealed class Value {
     abstract fun toExpressionAST(): ExpressionAST
 
@@ -204,7 +212,7 @@ sealed class Value {
         fun plus(other: IntValue): IntValue = IntValue(value + other.value)
         fun subtract(other: IntValue): IntValue = IntValue(value - other.value)
         fun multiply(other: IntValue): IntValue = IntValue(value * other.value)
-        fun divide(other: IntValue): IntValue = TODO("Euclidean division")
+        fun divide(other: IntValue): IntValue = IntValue(divideEuclidean(value, other.value))
         fun modulo(other: IntValue): IntValue = IntValue(value % other.value)
         fun lessThan(other: IntValue): BoolValue = BoolValue(value < other.value)
         fun lessThanEquals(other: IntValue): BoolValue = BoolValue(value <= other.value)
