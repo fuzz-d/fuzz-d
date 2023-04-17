@@ -876,7 +876,8 @@ class Generator(
         targetType: Type,
     ): Pair<MapConstructorAST, List<StatementAST>> {
         val mapType = targetType as MapType
-        val numberOfExpressions = selectionManager.selectNumberOfConstructorFields(context)
+        val numberOfExpressions =
+            1 // selectionManager.selectNumberOfConstructorFields(context) - https://github.com/dafny-lang/dafny/issues/3856
         val exprContext = context.increaseExpressionDepth()
         val (assigns, assignDeps) = (1..numberOfExpressions)
             .map {
@@ -1013,6 +1014,7 @@ class Generator(
     ): Pair<BinaryExpressionAST, List<StatementAST>> {
         val nextDepthContext = context.increaseExpressionDepth()
         val (operator, type) = selectionManager.selectBinaryOperator(context, targetType)
+
         val (expr1, expr1Deps) = generateExpression(nextDepthContext, type.first)
         val (expr2, expr2Deps) = generateExpression(nextDepthContext, type.second)
 
