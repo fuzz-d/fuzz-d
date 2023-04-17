@@ -3,7 +3,7 @@
 - ~~Test case reduction workflow~~
   - ~~unnecessary while loop limiter removal~~
 - dafny interpreter
-  - Euclidean division
+  - ~~Euclidean division~~
   - Build generated prints into workflow
 - instrumenting Dafny
 - ~~checksum within control flow?~~

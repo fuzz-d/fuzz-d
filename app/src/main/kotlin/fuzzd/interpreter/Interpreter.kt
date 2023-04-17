@@ -129,14 +129,14 @@ class Interpreter : ASTInterpreter {
 
         // generate checksum prints
         val prints = valueTable.values.map { (k, v) ->
-            generateChecksumPrint(k, v)
+            generateChecksumPrint(k, v, valueTable)
         }.reduceLists()
         prints.forEach { interpretPrint(it, valueTable) }
 
         return prints
     }
 
-    private fun generateChecksumPrint(key: IdentifierAST, value: Value): List<PrintAST> =
+    private fun generateChecksumPrint(key: IdentifierAST, value: Value, valueTable: ValueTable): List<PrintAST> =
         when (value) {
             is MultiValue -> listOf(PrintAST(value.toExpressionAST()))
             is StringValue, is IntValue, is BoolValue -> listOf(PrintAST(key))
@@ -150,12 +150,17 @@ class Interpreter : ASTInterpreter {
 
             is ArrayValue -> {
                 val indices = value.arr.indices.filter { i -> value.arr[i] != null }
-                indices.map { i -> PrintAST(ArrayIndexAST(key, IntegerLiteralAST(i))) }
+                indices.map { i ->
+                    val identifier = ArrayIndexAST(key, IntegerLiteralAST(i))
+                    generateChecksumPrint(identifier, interpretIdentifier(identifier, valueTable), valueTable)
+                }.reduceLists()
             }
 
             is ClassValue -> {
                 val classInstance = key as ClassInstanceAST
-                classInstance.fields.map { PrintAST(it) }
+                classInstance.fields
+                    .map { generateChecksumPrint(it, interpretIdentifier(it, valueTable), valueTable) }
+                    .reduceLists()
             }
         }
 
