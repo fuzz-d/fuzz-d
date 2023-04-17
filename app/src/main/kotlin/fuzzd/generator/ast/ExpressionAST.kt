@@ -229,9 +229,11 @@ sealed class ExpressionAST : ASTElement {
     class ArrayIndexAST(
         val array: IdentifierAST,
         val index: ExpressionAST,
+        private val initialised: Boolean = false
     ) : IdentifierAST(
         array.name,
         (array.type() as ArrayType).internalType,
+        initialised
     ) {
         init {
             if (array.type() !is ArrayType) {
@@ -242,6 +244,8 @@ sealed class ExpressionAST : ASTElement {
                 throw InvalidInputException("Creating array index with index of type ${index.type()}")
             }
         }
+
+        override fun initialise(): ArrayIndexAST = if (initialised()) this else ArrayIndexAST(array, index, initialised = true)
 
         override fun toString(): String = "$array[$index]"
     }
