@@ -97,49 +97,56 @@ import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.reduceLists
 import fuzzd.utils.toMultiset
+import java.beans.Expression
 import java.math.BigInteger
 
 class Interpreter : ASTInterpreter {
     private val output = StringBuilder()
-    private val topLevelMethods = mutableMapOf<MethodSignatureAST, SequenceAST>()
-    private val topLevelFunctions = mutableMapOf<FunctionMethodSignatureAST, ExpressionAST>()
     private var doBreak = false
 
     /* ============================== TOP LEVEL ============================== */
     override fun interpretDafny(dafny: DafnyAST): Pair<String, List<StatementAST>> {
+        val context = InterpreterContext()
         dafny.topLevelElements.filterIsInstance<MethodAST>().forEach { method ->
-            topLevelMethods[method.signature] = method.getBody()
+            context.methods.set(method.signature, method.getBody())
         }
 
         dafny.topLevelElements.filterIsInstance<FunctionMethodAST>().forEach { function ->
-            topLevelFunctions[function.signature] = function.body
+            context.functions.set(function.signature, function.body)
         }
 
-        listOf(ADVANCED_ABSOLUTE, ADVANCED_SAFE_ARRAY_INDEX, ADVANCED_SAFE_DIV_INT, ADVANCED_SAFE_MODULO_INT)
-            .forEach { topLevelMethods[it.signature] = it.getBody() }
+        listOf(
+            ADVANCED_ABSOLUTE,
+            ADVANCED_SAFE_ARRAY_INDEX,
+            ADVANCED_SAFE_DIV_INT,
+            ADVANCED_SAFE_MODULO_INT
+        ).forEach { context.methods.set(it.signature, it.getBody()) }
 
-        listOf(ABSOLUTE, SAFE_ARRAY_INDEX, SAFE_DIVISION_INT, SAFE_MODULO_INT)
-            .forEach { topLevelFunctions[it.signature] = it.body }
+        listOf(
+            ABSOLUTE,
+            SAFE_ARRAY_INDEX,
+            SAFE_DIVISION_INT,
+            SAFE_MODULO_INT
+        ).forEach { context.functions.set(it.signature, it.body) }
 
         val mainFunction = dafny.topLevelElements.first { it is MainFunctionAST }
-        val prints = interpretMainFunction(mainFunction as MainFunctionAST)
+        val prints = interpretMainFunction(mainFunction as MainFunctionAST, context)
         return Pair(output.toString(), prints)
     }
 
-    override fun interpretMainFunction(mainFunction: MainFunctionAST): List<StatementAST> {
-        val valueTable = ValueTable()
-        interpretSequence(mainFunction.sequenceAST, valueTable)
+    override fun interpretMainFunction(mainFunction: MainFunctionAST, context: InterpreterContext): List<StatementAST> {
+        interpretSequence(mainFunction.sequenceAST, context)
 
         // generate checksum prints
-        val prints = valueTable.values.map { (k, v) ->
-            generateChecksumPrint(k, v, valueTable)
+        val prints = context.fields.values.map { (k, v) ->
+            generateChecksumPrint(k, v, context)
         }.reduceLists()
-        prints.forEach { interpretPrint(it, valueTable) }
+        prints.forEach { interpretPrint(it, context) }
 
         return prints
     }
 
-    private fun generateChecksumPrint(key: IdentifierAST, value: Value, valueTable: ValueTable): List<PrintAST> =
+    private fun generateChecksumPrint(key: IdentifierAST, value: Value, context: InterpreterContext): List<PrintAST> =
         when (value) {
             is MultiValue -> listOf(PrintAST(value.toExpressionAST()))
             is StringValue, is IntValue, is BoolValue -> listOf(PrintAST(key))
@@ -155,25 +162,24 @@ class Interpreter : ASTInterpreter {
                 val indices = value.arr.indices.filter { i -> value.arr[i] != null }
                 indices.map { i ->
                     val identifier = ArrayIndexAST(key, IntegerLiteralAST(i))
-                    generateChecksumPrint(identifier, interpretIdentifier(identifier, valueTable), valueTable)
+                    generateChecksumPrint(identifier, interpretIdentifier(identifier, context), context)
                 }.reduceLists()
             }
 
             is ClassValue -> {
                 val classInstance = key as ClassInstanceAST
-                classInstance.fields
-                    .map { generateChecksumPrint(it, interpretIdentifier(it, valueTable), valueTable) }
+                classInstance.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }
                     .reduceLists()
             }
         }
 
-    override fun interpretSequence(sequence: SequenceAST, valueTable: ValueTable) {
-        sequence.statements.forEach { interpretStatement(it, valueTable) }
+    override fun interpretSequence(sequence: SequenceAST, context: InterpreterContext) {
+        sequence.statements.forEach { interpretStatement(it, context) }
     }
 
     /* ============================== STATEMENTS ============================= */
 
-    override fun interpretStatement(statement: StatementAST, valueTable: ValueTable) {
+    override fun interpretStatement(statement: StatementAST, context: InterpreterContext) {
         if (doBreak) return
 
         return when (statement) {
@@ -181,114 +187,115 @@ class Interpreter : ASTInterpreter {
                 doBreak = true
             }
 
-            is IfStatementAST -> interpretIfStatement(statement, valueTable)
-            is CounterLimitedWhileLoopAST -> interpretCounterLimitedWhileStatement(statement, valueTable)
-            is WhileLoopAST -> interpretWhileStatement(statement, valueTable)
-            is VoidMethodCallAST -> interpretVoidMethodCall(statement, valueTable)
-            is MultiTypedDeclarationAST -> interpretMultiTypedDeclaration(statement, valueTable)
-            is MultiDeclarationAST -> interpretMultiDeclaration(statement, valueTable)
-            is MultiAssignmentAST -> interpretMultiAssign(statement, valueTable)
-            is PrintAST -> interpretPrint(statement, valueTable)
+            is IfStatementAST -> interpretIfStatement(statement, context)
+            is CounterLimitedWhileLoopAST -> interpretCounterLimitedWhileStatement(statement, context)
+            is WhileLoopAST -> interpretWhileStatement(statement, context)
+            is VoidMethodCallAST -> interpretVoidMethodCall(statement, context)
+            is MultiTypedDeclarationAST -> interpretMultiTypedDeclaration(statement, context)
+            is MultiDeclarationAST -> interpretMultiDeclaration(statement, context)
+            is MultiAssignmentAST -> interpretMultiAssign(statement, context)
+            is PrintAST -> interpretPrint(statement, context)
             else -> throw UnsupportedOperationException()
         }
     }
 
-    override fun interpretIfStatement(ifStatement: IfStatementAST, valueTable: ValueTable) {
-        val conditionValue = interpretExpression(ifStatement.condition, valueTable) as BoolValue
+    override fun interpretIfStatement(ifStatement: IfStatementAST, context: InterpreterContext) {
+        val conditionValue = interpretExpression(ifStatement.condition, context) as BoolValue
 
         if (conditionValue.value) {
-            interpretSequence(ifStatement.ifBranch, ValueTable(valueTable))
+            interpretSequence(ifStatement.ifBranch, context.increaseDepth())
         } else {
-            ifStatement.elseBranch?.let { interpretSequence(it, ValueTable(valueTable)) }
+            ifStatement.elseBranch?.let { interpretSequence(it, context.increaseDepth()) }
         }
     }
 
     override fun interpretCounterLimitedWhileStatement(
-        whileStatement: CounterLimitedWhileLoopAST,
-        valueTable: ValueTable
+        whileStatement: CounterLimitedWhileLoopAST, context: InterpreterContext
     ) {
-        interpretStatement(whileStatement.counterInitialisation, valueTable)
-        var condition = interpretExpression(whileStatement.condition, valueTable)
+        interpretStatement(whileStatement.counterInitialisation, context)
+        var condition = interpretExpression(whileStatement.condition, context)
         val prevBreak = doBreak
         doBreak = false
         while ((condition as BoolValue).value && !doBreak) {
-            val innerValueTable = ValueTable(valueTable)
-            interpretStatement(whileStatement.terminationCheck, innerValueTable)
+            val innerContext = context.increaseDepth()
+            interpretStatement(whileStatement.terminationCheck, innerContext)
             if (doBreak) {
                 break;
             }
-            interpretStatement(whileStatement.counterUpdate, innerValueTable)
-            interpretSequence(whileStatement.body, innerValueTable)
-            condition = interpretExpression(whileStatement.condition, valueTable)
+            interpretStatement(whileStatement.counterUpdate, innerContext)
+            interpretSequence(whileStatement.body, innerContext)
+            condition = interpretExpression(whileStatement.condition, context)
         }
         doBreak = prevBreak
     }
 
-    override fun interpretWhileStatement(whileStatement: WhileLoopAST, valueTable: ValueTable) {
-        var condition = interpretExpression(whileStatement.condition, valueTable)
+    override fun interpretWhileStatement(whileStatement: WhileLoopAST, context: InterpreterContext) {
+        var condition = interpretExpression(whileStatement.condition, context)
         val prevBreak = doBreak
         doBreak = false
         while ((condition as BoolValue).value && !doBreak) {
-            interpretSequence(whileStatement.body, ValueTable(valueTable))
-            condition = interpretExpression(whileStatement.condition, valueTable)
+            interpretSequence(whileStatement.body, context.increaseDepth())
+            condition = interpretExpression(whileStatement.condition, context)
         }
         doBreak = prevBreak
     }
 
-    override fun interpretVoidMethodCall(methodCall: VoidMethodCallAST, valueTable: ValueTable) {
-        interpretMethodCall(methodCall.method, methodCall.params, valueTable)
+    override fun interpretVoidMethodCall(methodCall: VoidMethodCallAST, context: InterpreterContext) {
+        interpretMethodCall(methodCall.method, methodCall.params, context)
     }
 
-    override fun interpretMultiTypedDeclaration(typedDeclaration: MultiTypedDeclarationAST, valueTable: ValueTable) {
-        val values = typedDeclaration.exprs.map { interpretExpression(it, valueTable) }
+    override fun interpretMultiTypedDeclaration(
+        typedDeclaration: MultiTypedDeclarationAST, context: InterpreterContext
+    ) {
+        val values = typedDeclaration.exprs.map { interpretExpression(it, context) }
         typedDeclaration.identifiers.indices.forEach { i ->
-            setIdentifierValue(typedDeclaration.identifiers[i], values[i], valueTable)
+            setIdentifierValue(typedDeclaration.identifiers[i], values[i], context)
         }
     }
 
-    override fun interpretMultiDeclaration(declaration: MultiDeclarationAST, valueTable: ValueTable) {
+    override fun interpretMultiDeclaration(declaration: MultiDeclarationAST, context: InterpreterContext) {
         if (declaration.exprs.size == 1 && declaration.identifiers.size > 1) {
             // non void method call
-            val methodReturns = interpretExpression(declaration.exprs[0], valueTable) as MultiValue
+            val methodReturns = interpretExpression(declaration.exprs[0], context) as MultiValue
             declaration.identifiers.indices.forEach { i ->
-                setIdentifierValue(declaration.identifiers[i], methodReturns.values[i], valueTable)
+                setIdentifierValue(declaration.identifiers[i], methodReturns.values[i], context)
             }
         } else {
-            val values = declaration.exprs.map { interpretExpression(it, valueTable) }
+            val values = declaration.exprs.map { interpretExpression(it, context) }
             declaration.identifiers.indices.forEach { i ->
-                setIdentifierValue(declaration.identifiers[i], values[i], valueTable)
+                setIdentifierValue(declaration.identifiers[i], values[i], context)
             }
         }
     }
 
-    override fun interpretMultiAssign(assign: MultiAssignmentAST, valueTable: ValueTable) {
-        val values = assign.exprs.map { interpretExpression(it, valueTable) }
+    override fun interpretMultiAssign(assign: MultiAssignmentAST, context: InterpreterContext) {
+        val values = assign.exprs.map { interpretExpression(it, context) }
         assign.identifiers.indices.forEach { i ->
-            setIdentifierValue(assign.identifiers[i], values[i], valueTable)
+            setIdentifierValue(assign.identifiers[i], values[i], context)
         }
     }
 
-    private fun setIdentifierValue(identifier: IdentifierAST, value: Value, valueTable: ValueTable) {
+    private fun setIdentifierValue(identifier: IdentifierAST, value: Value, context: InterpreterContext) {
         when (identifier) {
             is ClassInstanceFieldAST -> {
-                val classValue = interpretIdentifier(identifier.classInstance, valueTable) as ClassValue
-                setIdentifierValue(identifier.classField, value, classValue.fields)
+                val classValue = interpretIdentifier(identifier.classInstance, context) as ClassValue
+                setIdentifierValue(identifier.classField, value, InterpreterContext(classValue.fields))
             }
 
             is ArrayIndexAST -> {
-                val arrayValue = interpretIdentifier(identifier.array, valueTable) as ArrayValue
-                val index = interpretExpression(identifier.index, valueTable) as IntValue
+                val arrayValue = interpretIdentifier(identifier.array, context) as ArrayValue
+                val index = interpretExpression(identifier.index, context) as IntValue
                 arrayValue.setIndex(index.value.toInt(), value)
             }
 
             is SequenceIndexAST, is IndexAST, is IndexAssignAST -> throw UnsupportedOperationException()
 
-            else -> valueTable.set(identifier, value)
+            else -> context.fields.set(identifier, value)
         }
     }
 
-    override fun interpretPrint(printAST: PrintAST, valueTable: ValueTable) {
-        val values = printAST.expr.map { interpretExpression(it, valueTable) }
+    override fun interpretPrint(printAST: PrintAST, context: InterpreterContext) {
+        val values = printAST.expr.map { interpretExpression(it, context) }
         values.forEach {
             emitOutput(it)
             if (printAST.newLine) output.appendLine()
@@ -362,80 +369,116 @@ class Interpreter : ASTInterpreter {
     }
 
     /* ============================== EXPRESSIONS ============================ */
-    override fun interpretExpression(expression: ExpressionAST, valueTable: ValueTable): Value = when (expression) {
-        is ExpressionListAST -> interpretExpressionList(expression, valueTable)
-        is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, valueTable)
-        is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, valueTable)
-        is ClassInstantiationAST -> interpretClassInstantiation(expression, valueTable)
-        is BinaryExpressionAST -> interpretBinaryExpression(expression, valueTable)
-        is TernaryExpressionAST -> interpretTernaryExpression(expression, valueTable)
-        is UnaryExpressionAST -> interpretUnaryExpression(expression, valueTable)
-        is ModulusExpressionAST -> interpretModulus(expression, valueTable)
-        is MultisetConversionAST -> interpretMultisetConversion(expression, valueTable)
-        is IdentifierAST -> interpretIdentifier(expression, valueTable)
-        is SetDisplayAST -> interpretSetDisplay(expression, valueTable)
-        is SequenceDisplayAST -> interpretSequenceDisplay(expression, valueTable)
-        is MapConstructorAST -> interpretMapConstructor(expression, valueTable)
-        is ArrayLengthAST -> interpretArrayLength(expression, valueTable)
-        is ArrayInitAST -> interpretArrayInit(expression, valueTable)
-        is StringLiteralAST -> interpretStringLiteral(expression, valueTable)
-        is IntegerLiteralAST -> interpretIntegerLiteral(expression, valueTable)
-        is BooleanLiteralAST -> interpretBooleanLiteral(expression, valueTable)
-        else -> throw UnsupportedOperationException()
+    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value =
+        when (expression) {
+            is ExpressionListAST -> interpretExpressionList(expression, context)
+            is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
+            is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
+            is ClassInstantiationAST -> interpretClassInstantiation(expression, context)
+            is BinaryExpressionAST -> interpretBinaryExpression(expression, context)
+            is TernaryExpressionAST -> interpretTernaryExpression(expression, context)
+            is UnaryExpressionAST -> interpretUnaryExpression(expression, context)
+            is ModulusExpressionAST -> interpretModulus(expression, context)
+            is MultisetConversionAST -> interpretMultisetConversion(expression, context)
+            is IdentifierAST -> interpretIdentifier(expression, context)
+            is SetDisplayAST -> interpretSetDisplay(expression, context)
+            is SequenceDisplayAST -> interpretSequenceDisplay(expression, context)
+            is MapConstructorAST -> interpretMapConstructor(expression, context)
+            is ArrayLengthAST -> interpretArrayLength(expression, context)
+            is ArrayInitAST -> interpretArrayInit(expression, context)
+            is StringLiteralAST -> interpretStringLiteral(expression, context)
+            is IntegerLiteralAST -> interpretIntegerLiteral(expression, context)
+            is BooleanLiteralAST -> interpretBooleanLiteral(expression, context)
+            else -> throw UnsupportedOperationException()
+        }
+
+    override fun interpretExpressionList(expressionList: ExpressionListAST, context: InterpreterContext): Value =
+        MultiValue(expressionList.exprs.map { interpretExpression(it, context) })
+
+    override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, context: InterpreterContext): Value =
+        if (functionCall.function is ClassInstanceFunctionMethodSignatureAST) {
+            interpretClassInstanceFunctionMethodCall(functionCall, context)
+        } else {
+            val functionSignature = functionCall.function
+            val functionParams = functionSignature.params
+
+            val body = context.functions.get(functionSignature)
+            val functionScopeValueTable = ValueTable<IdentifierAST, Value>()
+
+            setParams(functionParams, functionCall.params, functionScopeValueTable, context)
+
+            interpretExpression(body, context.functionCall(functionScopeValueTable))
+        }
+
+    private fun setParams(
+        functionParams: List<IdentifierAST>,
+        functionCallParams: List<ExpressionAST>,
+        functionScopeValueTable: ValueTable<IdentifierAST, Value>,
+        context: InterpreterContext
+    ) {
+        functionParams.indices.forEach { i ->
+            functionScopeValueTable.set(functionParams[i], interpretExpression(functionCallParams[i], context))
+        }
     }
 
-    override fun interpretExpressionList(expressionList: ExpressionListAST, valueTable: ValueTable): Value = MultiValue(
-        expressionList.exprs.map { interpretExpression(it, valueTable) }
-    )
-
-    override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, valueTable: ValueTable): Value {
-        val functionSignature = functionCall.function
+    private fun interpretClassInstanceFunctionMethodCall(
+        functionCall: FunctionMethodCallAST, context: InterpreterContext
+    ): Value {
+        val functionSignature = functionCall.function as ClassInstanceFunctionMethodSignatureAST
         val functionParams = functionSignature.params
 
-        val (body, functionScopeValueTable) = if (functionSignature is ClassInstanceFunctionMethodSignatureAST) {
-            val classValue = interpretIdentifier(functionSignature.classInstance, valueTable) as ClassValue
-            Pair(classValue.functions.getValue(functionSignature.signature), ValueTable(classValue.fields))
-        } else {
-            Pair(topLevelFunctions.getValue(functionSignature), ValueTable())
-        }
+        val classValue = interpretIdentifier(functionSignature.classInstance, context) as ClassValue
+        val body = classValue.functions.getValue(functionSignature.signature)
 
-        functionParams.indices.forEach { i ->
-            functionScopeValueTable.set(functionParams[i], interpretExpression(functionCall.params[i], valueTable))
-        }
+        val functionContext = context.functionCall(classValue)
+        setParams(functionParams, functionCall.params, functionContext.fields, context)
 
-        return interpretExpression(body, functionScopeValueTable)
+        val expr = interpretExpression(body, functionContext)
+
+        return expr
     }
 
     private fun interpretMethodCall(
         methodSignature: MethodSignatureAST,
         params: List<ExpressionAST>,
-        valueTable: ValueTable,
-    ): ValueTable {
-        val (body, methodScopeValueTable) = if (methodSignature is ClassInstanceMethodSignatureAST) {
-            val classValue = interpretIdentifier(methodSignature.classInstance, valueTable) as ClassValue
-            Pair(classValue.methods.getValue(methodSignature.signature), ValueTable(classValue.fields))
-        } else {
-            Pair(topLevelMethods.getValue(methodSignature), ValueTable())
-        }
-
+        context: InterpreterContext,
+    ): ValueTable<IdentifierAST, Value> = if (methodSignature is ClassInstanceMethodSignatureAST) {
+        interpretClassInstanceMethodCall(methodSignature, params, context)
+    } else {
+        val methodScopeValueTable = ValueTable<IdentifierAST, Value>()
+        val body = context.methods.get(methodSignature)
         val methodParams = methodSignature.params
 
-        methodParams.indices.forEach { i ->
-            methodScopeValueTable.set(methodParams[i], interpretExpression(params[i], valueTable))
-        }
-        interpretSequence(body, methodScopeValueTable)
-        return methodScopeValueTable
+        setParams(methodParams, params, methodScopeValueTable, context)
+
+        interpretSequence(body, context.functionCall(methodScopeValueTable))
+        methodScopeValueTable
     }
 
-    override fun interpretNonVoidMethodCall(methodCall: NonVoidMethodCallAST, valueTable: ValueTable): Value {
-        val methodScopeValueTable = interpretMethodCall(methodCall.method, methodCall.params, valueTable)
+    private fun interpretClassInstanceMethodCall(
+        methodSignature: ClassInstanceMethodSignatureAST, params: List<ExpressionAST>, context: InterpreterContext
+    ): ValueTable<IdentifierAST, Value> {
+        val classValue = interpretIdentifier(methodSignature.classInstance, context) as ClassValue
+        val body = classValue.methods.getValue(methodSignature.signature)
+        val methodContext = context.functionCall(classValue)
+
+        setParams(methodSignature.params, params, methodContext.fields, context)
+
+        interpretSequence(body, methodContext)
+        return methodContext.fields
+    }
+
+    override fun interpretNonVoidMethodCall(methodCall: NonVoidMethodCallAST, context: InterpreterContext): Value {
+        val methodScopeValueTable = interpretMethodCall(methodCall.method, methodCall.params, context)
         return MultiValue(methodCall.method.returns.map { r -> methodScopeValueTable.get(r) })
     }
 
-    override fun interpretClassInstantiation(classInstantiation: ClassInstantiationAST, valueTable: ValueTable): Value {
+    override fun interpretClassInstantiation(
+        classInstantiation: ClassInstantiationAST, context: InterpreterContext
+    ): Value {
         val classFields = classInstantiation.clazz.constructorFields
-        val constructorParams = classInstantiation.params.map { interpretExpression(it, valueTable) }
-        val classValueTable = ValueTable()
+        val constructorParams = classInstantiation.params.map { interpretExpression(it, context) }
+        val classValueTable = ValueTable<IdentifierAST, Value>()
         classFields.zip(constructorParams).forEach { classValueTable.set(it.first, it.second) }
 
         val methods = classInstantiation.clazz.methods.associate { Pair(it.signature, it.getBody()) }
@@ -444,9 +487,9 @@ class Interpreter : ASTInterpreter {
         return ClassValue(classValueTable, functions, methods)
     }
 
-    override fun interpretBinaryExpression(binaryExpression: BinaryExpressionAST, valueTable: ValueTable): Value {
-        val lhs = interpretExpression(binaryExpression.expr1, valueTable)
-        val rhs = interpretExpression(binaryExpression.expr2, valueTable)
+    override fun interpretBinaryExpression(binaryExpression: BinaryExpressionAST, context: InterpreterContext): Value {
+        val lhs = interpretExpression(binaryExpression.expr1, context)
+        val rhs = interpretExpression(binaryExpression.expr2, context)
 
         return when (binaryExpression.operator) {
             IffOperator -> (lhs as BoolValue).iff(rhs as BoolValue)
@@ -533,17 +576,19 @@ class Interpreter : ASTInterpreter {
         else -> throw UnsupportedOperationException()
     }
 
-    override fun interpretTernaryExpression(ternaryExpression: TernaryExpressionAST, valueTable: ValueTable): Value {
-        val condition = interpretExpression(ternaryExpression.condition, valueTable)
+    override fun interpretTernaryExpression(
+        ternaryExpression: TernaryExpressionAST, context: InterpreterContext
+    ): Value {
+        val condition = interpretExpression(ternaryExpression.condition, context)
         return if ((condition as BoolValue).value) {
-            interpretExpression(ternaryExpression.ifBranch, valueTable)
+            interpretExpression(ternaryExpression.ifBranch, context)
         } else {
-            interpretExpression(ternaryExpression.elseBranch, valueTable)
+            interpretExpression(ternaryExpression.elseBranch, context)
         }
     }
 
-    override fun interpretUnaryExpression(unaryExpression: UnaryExpressionAST, valueTable: ValueTable): Value {
-        val exprValue = interpretExpression(unaryExpression.expr, valueTable)
+    override fun interpretUnaryExpression(unaryExpression: UnaryExpressionAST, context: InterpreterContext): Value {
+        val exprValue = interpretExpression(unaryExpression.expr, context)
         return if (unaryExpression.operator == NegationOperator) {
             (exprValue as IntValue).negate()
         } else {
@@ -551,56 +596,58 @@ class Interpreter : ASTInterpreter {
         }
     }
 
-    override fun interpretModulus(modulus: ModulusExpressionAST, valueTable: ValueTable): Value =
-        (interpretExpression(modulus.expr, valueTable) as DataStructureValue).modulus()
+    override fun interpretModulus(modulus: ModulusExpressionAST, context: InterpreterContext): Value =
+        (interpretExpression(modulus.expr, context) as DataStructureValue).modulus()
 
-    override fun interpretMultisetConversion(multisetConversion: MultisetConversionAST, valueTable: ValueTable): Value {
-        val sequenceValue = interpretExpression(multisetConversion.expr, valueTable) as SequenceValue
+    override fun interpretMultisetConversion(
+        multisetConversion: MultisetConversionAST, context: InterpreterContext
+    ): Value {
+        val sequenceValue = interpretExpression(multisetConversion.expr, context) as SequenceValue
         return MultisetValue(sequenceValue.seq.toMultiset())
     }
 
-    override fun interpretIdentifier(identifier: IdentifierAST, valueTable: ValueTable): Value =
+    override fun interpretIdentifier(identifier: IdentifierAST, context: InterpreterContext): Value =
         when (identifier) {
             is ClassInstanceFieldAST -> {
-                val classValue = interpretIdentifier(identifier.classInstance, valueTable) as ClassValue
-                interpretIdentifier(identifier.classField, classValue.fields)
+                val classValue = interpretIdentifier(identifier.classInstance, context) as ClassValue
+                interpretIdentifier(identifier.classField, InterpreterContext(classValue.fields))
             }
 
             is ArrayIndexAST -> {
-                val arrayValue = interpretIdentifier(identifier.array, valueTable) as ArrayValue
-                val index = interpretExpression(identifier.index, valueTable) as IntValue
+                val arrayValue = interpretIdentifier(identifier.array, context) as ArrayValue
+                val index = interpretExpression(identifier.index, context) as IntValue
 
                 arrayValue.getIndex(index.value.toInt())
             }
 
             is SequenceIndexAST -> {
-                val sequenceValue = interpretIdentifier(identifier.sequence, valueTable) as SequenceValue
-                val index = interpretExpression(identifier.index, valueTable) as IntValue
+                val sequenceValue = interpretIdentifier(identifier.sequence, context) as SequenceValue
+                val index = interpretExpression(identifier.index, context) as IntValue
 
                 sequenceValue.getIndex(index.value.toInt())
             }
 
             is IndexAST -> {
-                val key = interpretExpression(identifier.key, valueTable)
+                val key = interpretExpression(identifier.key, context)
                 if (identifier.ident.type() is MapType) {
-                    val mapValue = interpretIdentifier(identifier.ident, valueTable) as MapValue
+                    val mapValue = interpretIdentifier(identifier.ident, context) as MapValue
                     mapValue.get(key)
                 } else {
-                    val multisetValue = interpretIdentifier(identifier.ident, valueTable) as MultisetValue
+                    val multisetValue = interpretIdentifier(identifier.ident, context) as MultisetValue
                     multisetValue.get(key)
                 }
             }
 
-            is IndexAssignAST -> interpretIndexAssign(identifier, valueTable)
+            is IndexAssignAST -> interpretIndexAssign(identifier, context)
 
-            else -> valueTable.get(identifier)
+            else -> context.fields.get(identifier)
         }
 
-    private fun interpretIndexAssign(indexAssign: IndexAssignAST, valueTable: ValueTable): Value {
-        val key = interpretExpression(indexAssign.key, valueTable)
-        val value = interpretExpression(indexAssign.value, valueTable)
+    private fun interpretIndexAssign(indexAssign: IndexAssignAST, context: InterpreterContext): Value {
+        val key = interpretExpression(indexAssign.key, context)
+        val value = interpretExpression(indexAssign.value, context)
 
-        return when (val ident = interpretExpression(indexAssign.ident, valueTable)) {
+        return when (val ident = interpretExpression(indexAssign.ident, context)) {
             is MultisetValue -> ident.assign(key, (value as IntValue).value.toInt())
             is MapValue -> ident.assign(key, value)
             is SequenceValue -> ident.assign((key as IntValue).value.toInt(), value)
@@ -608,38 +655,38 @@ class Interpreter : ASTInterpreter {
         }
     }
 
-    override fun interpretSetDisplay(setDisplay: SetDisplayAST, valueTable: ValueTable): Value {
-        val values = setDisplay.exprs.map { interpretExpression(it, valueTable) }
+    override fun interpretSetDisplay(setDisplay: SetDisplayAST, context: InterpreterContext): Value {
+        val values = setDisplay.exprs.map { interpretExpression(it, context) }
         return if (setDisplay.isMultiset) MultisetValue(values.toMultiset()) else SetValue(values.toSet())
     }
 
-    override fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST, valueTable: ValueTable): Value =
-        SequenceValue(sequenceDisplay.exprs.map { interpretExpression(it, valueTable) })
+    override fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST, context: InterpreterContext): Value =
+        SequenceValue(sequenceDisplay.exprs.map { interpretExpression(it, context) })
 
-    override fun interpretMapConstructor(mapConstructor: MapConstructorAST, valueTable: ValueTable): Value {
+    override fun interpretMapConstructor(mapConstructor: MapConstructorAST, context: InterpreterContext): Value {
         val map = mutableMapOf<Value, Value>()
         mapConstructor.assignments.forEach { (k, v) ->
-            val key = interpretExpression(k, valueTable)
-            val value = interpretExpression(v, valueTable)
+            val key = interpretExpression(k, context)
+            val value = interpretExpression(v, context)
             map[key] = value
         }
         return MapValue(map)
     }
 
-    override fun interpretArrayLength(arrayLength: ArrayLengthAST, valueTable: ValueTable): Value {
-        val array = interpretIdentifier(arrayLength.array, valueTable) as ArrayValue
+    override fun interpretArrayLength(arrayLength: ArrayLengthAST, context: InterpreterContext): Value {
+        val array = interpretIdentifier(arrayLength.array, context) as ArrayValue
         return array.length()
     }
 
-    override fun interpretArrayInit(arrayInit: ArrayInitAST, valueTable: ValueTable): Value =
+    override fun interpretArrayInit(arrayInit: ArrayInitAST, context: InterpreterContext): Value =
         ArrayValue(arrayInit.length)
 
-    override fun interpretStringLiteral(stringLiteral: StringLiteralAST, valueTable: ValueTable): StringValue =
+    override fun interpretStringLiteral(stringLiteral: StringLiteralAST, context: InterpreterContext): StringValue =
         StringValue(stringLiteral.value)
 
-    override fun interpretIntegerLiteral(intLiteral: IntegerLiteralAST, valueTable: ValueTable): IntValue =
+    override fun interpretIntegerLiteral(intLiteral: IntegerLiteralAST, context: InterpreterContext): IntValue =
         IntValue(BigInteger.valueOf(intLiteral.value.toLong()))
 
-    override fun interpretBooleanLiteral(boolLiteral: BooleanLiteralAST, valueTable: ValueTable): BoolValue =
+    override fun interpretBooleanLiteral(boolLiteral: BooleanLiteralAST, context: InterpreterContext): BoolValue =
         BoolValue(boolLiteral.value)
 }

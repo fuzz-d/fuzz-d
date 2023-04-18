@@ -3,6 +3,7 @@ package fuzzd.interpreter.value
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ExpressionListAST
+import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
@@ -56,7 +57,7 @@ sealed class Value {
     }
 
     data class ClassValue(
-        val fields: ValueTable,
+        val fields: ValueTable<IdentifierAST, Value>,
         val functions: Map<FunctionMethodSignatureAST, ExpressionAST>,
         val methods: Map<MethodSignatureAST, SequenceAST>,
     ) : Value() {

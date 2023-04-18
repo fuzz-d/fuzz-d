@@ -1,23 +1,27 @@
 package fuzzd.interpreter.value
 
-import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+class ValueTable<T, U>(val parent: ValueTable<T, U>? = null) {
+    val values = mutableMapOf<T, U>()
 
-class ValueTable(val parent: ValueTable? = null) {
-    val values = mutableMapOf<IdentifierAST, Value>()
+    constructor(parent: ValueTable<T, U>?, values: Map<T, U>) : this(parent) {
+        values.forEach { (k, v) -> this.values[k] = v }
+    }
 
-    fun has(identifier: IdentifierAST): Boolean = identifier in values || parent?.has(identifier) == true
+    fun topLevel(): ValueTable<T, U> = parent?.topLevel() ?: this
 
-    fun get(identifier: IdentifierAST): Value = if (identifier in values) values[identifier]!! else parent!!.get(identifier)
+    fun has(item: T): Boolean = item in values || parent?.has(item) == true
 
-    fun set(identifier: IdentifierAST, value: Value) {
-        if (identifier !in values && parent != null && parent.has(identifier)) {
-            parent.set(identifier, value)
+    fun get(item: T): U = if (item in values) values[item]!! else parent!!.get(item)
+
+    fun set(item: T, value: U) {
+        if (item !in values && parent != null && parent.has(item)) {
+            parent.set(item, value)
         } else {
-            values[identifier] = value
+            values[item] = value
         }
     }
 
-    fun remove(identifier: IdentifierAST) {
-        values.remove(identifier)
+    fun remove(item: T) {
+        values.remove(item)
     }
 }
