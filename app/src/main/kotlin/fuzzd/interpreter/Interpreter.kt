@@ -148,8 +148,7 @@ class Interpreter : ASTInterpreter {
 
     private fun generateChecksumPrint(key: IdentifierAST, value: Value, context: InterpreterContext): List<PrintAST> =
         when (value) {
-            is MultiValue -> listOf(PrintAST(value.toExpressionAST()))
-            is StringValue, is IntValue, is BoolValue -> listOf(PrintAST(key))
+            is MultiValue, is StringValue, is IntValue, is BoolValue -> listOf(PrintAST(key))
             is SetValue, is MultisetValue, is MapValue, is SequenceValue -> {
                 if (key.type().hasArrayType()) {
                     listOf(PrintAST(ModulusExpressionAST(key)))
