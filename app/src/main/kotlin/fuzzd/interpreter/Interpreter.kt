@@ -97,6 +97,7 @@ import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.reduceLists
 import fuzzd.utils.toMultiset
+import java.math.BigInteger
 
 class Interpreter : ASTInterpreter {
     private val output = StringBuilder()
@@ -637,7 +638,7 @@ class Interpreter : ASTInterpreter {
         StringValue(stringLiteral.value)
 
     override fun interpretIntegerLiteral(intLiteral: IntegerLiteralAST, valueTable: ValueTable): IntValue =
-        IntValue(intLiteral.value.toLong())
+        IntValue(BigInteger.valueOf(intLiteral.value.toLong()))
 
     override fun interpretBooleanLiteral(boolLiteral: BooleanLiteralAST, valueTable: ValueTable): BoolValue =
         BoolValue(boolLiteral.value)

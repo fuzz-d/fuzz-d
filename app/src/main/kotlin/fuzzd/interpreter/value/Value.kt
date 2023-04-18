@@ -13,6 +13,10 @@ import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.utils.reduceLists
 import java.lang.Integer.min
+import java.math.BigInteger
+import java.math.BigInteger.ONE
+import java.math.BigInteger.ZERO
+import java.math.BigInteger.valueOf
 
 fun <T> multisetDifference(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
     val diff = mutableMapOf<T, Int>()
@@ -36,12 +40,12 @@ fun <T> multisetIntersect(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
     return intersect
 }
 
-fun divideEuclidean(a: Long, b: Long): Long =
+fun divideEuclidean(a: BigInteger, b: BigInteger): BigInteger =
     when {
-        b == 0L -> throw UnsupportedOperationException()
-        a > 0L -> a / b
-        a < 0L && b > 0L -> (a / b) - if (a % b == 0L) 0 else 1
-        else -> if (a % b == 0L) a / b else (a + b) / b
+        b == ZERO -> throw UnsupportedOperationException()
+        a > ZERO -> a / b
+        a < ZERO && b > ZERO -> (a / b) - if (a % b == ZERO) ZERO else ONE
+        else -> if (a % b == ZERO) a / b else (a + b) / b
     }
 
 sealed class Value {
@@ -69,7 +73,7 @@ sealed class Value {
         fun getIndex(index: Int): Value =
             arr[index] ?: throw UnsupportedOperationException("Array index $index was null")
 
-        fun length(): IntValue = IntValue(arr.size.toLong())
+        fun length(): IntValue = IntValue(valueOf(arr.size.toLong()))
 
         override fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
     }
@@ -83,7 +87,7 @@ sealed class Value {
     data class SequenceValue(val seq: List<Value>) : DataStructureValue() {
         override fun contains(item: Value): BoolValue = BoolValue(item in seq)
         override fun notContains(item: Value): BoolValue = BoolValue(item !in seq)
-        override fun modulus(): IntValue = IntValue(seq.size.toLong())
+        override fun modulus(): IntValue = IntValue(valueOf(seq.size.toLong()))
         fun properSubsetOf(other: SequenceValue): BoolValue =
             BoolValue(other.seq.containsAll(seq) && (other.seq - seq.toSet()).isNotEmpty())
 
@@ -108,7 +112,7 @@ sealed class Value {
     data class MapValue(val map: Map<Value, Value>) : DataStructureValue() {
         override fun contains(item: Value): BoolValue = BoolValue(map.containsKey(item))
         override fun notContains(item: Value): BoolValue = BoolValue(!map.containsKey(item))
-        override fun modulus(): IntValue = IntValue(map.size.toLong())
+        override fun modulus(): IntValue = IntValue(valueOf(map.size.toLong()))
         fun union(other: MapValue): MapValue = MapValue(map + other.map)
         fun difference(other: SetValue): MapValue = MapValue(map - other.set)
 
@@ -128,7 +132,7 @@ sealed class Value {
     data class MultisetValue(val map: Map<Value, Int>) : DataStructureValue() {
         override fun contains(item: Value): BoolValue = BoolValue(map.containsKey(item) && map[item] != 0)
         override fun notContains(item: Value): BoolValue = BoolValue(!map.containsKey(item) || map[item] == 0)
-        override fun modulus(): IntValue = IntValue(map.values.sum().toLong())
+        override fun modulus(): IntValue = IntValue(valueOf(map.values.sum().toLong()))
 
         fun properSubsetOf(other: MultisetValue): BoolValue =
             BoolValue(multisetDifference(map, other.map).isEmpty() && multisetDifference(map, other.map).isNotEmpty())
@@ -150,7 +154,7 @@ sealed class Value {
         fun intersect(other: MultisetValue): MultisetValue = MultisetValue(multisetIntersect(map, other.map))
 
         fun get(key: Value): IntValue = if (key in map) {
-            IntValue(map[key]!!.toLong())
+            IntValue(valueOf(map[key]!!.toLong()))
         } else {
             throw UnsupportedOperationException("Multiset didn't contain key $key")
         }
@@ -167,7 +171,7 @@ sealed class Value {
     data class SetValue(val set: Set<Value>) : DataStructureValue() {
         override fun contains(item: Value): BoolValue = BoolValue(item in set)
         override fun notContains(item: Value): BoolValue = BoolValue(item !in set)
-        override fun modulus(): IntValue = IntValue(set.size.toLong())
+        override fun modulus(): IntValue = IntValue(valueOf(set.size.toLong()))
         override fun toExpressionAST(): ExpressionAST = SetDisplayAST(set.map { it.toExpressionAST() }, false)
 
         fun properSubsetOf(other: SetValue): BoolValue =
@@ -207,8 +211,8 @@ sealed class Value {
         override fun hashCode(): Int = value.hashCode()
     }
 
-    data class IntValue(val value: Long) : Value() {
-        fun negate(): IntValue = IntValue(-1 * value)
+    data class IntValue(val value: BigInteger) : Value() {
+        fun negate(): IntValue = IntValue(valueOf( -1) * value)
         fun plus(other: IntValue): IntValue = IntValue(value + other.value)
         fun subtract(other: IntValue): IntValue = IntValue(value - other.value)
         fun multiply(other: IntValue): IntValue = IntValue(value * other.value)

@@ -1,41 +1,12 @@
 ## TODO
-    
-- ~~Test case reduction workflow~~
-  - ~~unnecessary while loop limiter removal~~
-- dafny interpreter
-  - ~~Euclidean division~~
-  - Build generated prints into workflow
+
 - instrumenting Dafny
-- ~~checksum within control flow?~~
-- ~~Better internal object field use representation~~
-- ~~Dafny visitor~~
-  - ~~ternary expressions~~
-  - ~~multi-declaration, multi-assign~~
-- ~~avoid reading uninitialised method return values~~
-- ~~avoid array constructors as parameters~~
-- ~~reduce number of declarations + increase number of assigns~~
-- ~~solve stack overflow errors - inner class generation limits~~
-- ~~OOP integration~~
-    - ~~Class method + field calls~~
-    - ~~Class Instantiation AST expression~~
-    - ~~Trait & class extension tracking~~
-    - ~~Trait generation with extends~~
-    - ~~Class & Trait AST definitions~~
-    - ~~Class & Trait Generation~~
+- swarm testing
+- further type system expansion, sequence slicing
+- ask Ally about hotspot testing??
 - ensure we can't generate statements that reduce to `while (false)`
 - further unit testing
-- ~~parameter support in functions & function methods for data structures~~
-- ~~Sequences, sets, multisets, maps~~
 - Multi-dimensional arrays
 - parallel assignment to arrays via ```forall```
 - continue + break support in loops
 - Inner scopes using outer scope variable names (interesting case with arrays :) )
-- ~~Updating values in array on assignment~~
-- ~~Tracking values over if statements (control flow)~~
-- ~~Expression safety for integer/real/character overflow~~
-- ~~Assignment for non-array identifiers (should be a lot easier :) )~~
-- ~~Logging~~
-- ~~investigate other core types e.g. nat?~~
-- ~~Basic while loops~~
-- ~~function methods~~
-- ~~functions - avoid recursion -- track method calls structure -- ensure returns have value~~
