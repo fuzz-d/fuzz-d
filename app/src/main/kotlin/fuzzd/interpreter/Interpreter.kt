@@ -444,7 +444,8 @@ class Interpreter : ASTInterpreter {
     ): ValueTable<IdentifierAST, Value> = if (methodSignature is ClassInstanceMethodSignatureAST) {
         interpretClassInstanceMethodCall(methodSignature, params, context)
     } else {
-        val methodScopeValueTable = ValueTable<IdentifierAST, Value>()
+        val methodScopeValueTable =
+            if (context.fields.topLevel() == context.fields) ValueTable() else ValueTable(context.fields)
         val body = context.methods.get(methodSignature)
         val methodParams = methodSignature.params
 
