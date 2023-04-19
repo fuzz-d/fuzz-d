@@ -22,11 +22,15 @@ class ValueTable<T, U>(private val parent: ValueTable<T, U>? = null) {
     else
         parent!!.get(item)
 
-    fun set(item: T, value: U) {
+    fun assign(item: T, value: U) {
         if (item !in values && parent != null && parent.has(item)) {
-            parent.set(item, value)
+            parent.assign(item, value)
         } else {
             values[item] = value
         }
+    }
+
+    fun declare(item: T, value: U) {
+        values[item] = value
     }
 }

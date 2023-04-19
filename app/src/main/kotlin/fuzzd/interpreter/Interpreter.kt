@@ -105,11 +105,11 @@ class Interpreter : ASTInterpreter {
     override fun interpretDafny(dafny: DafnyAST): Pair<String, List<StatementAST>> {
         val context = InterpreterContext()
         dafny.topLevelElements.filterIsInstance<MethodAST>().forEach { method ->
-            context.methods.set(method.signature, method.getBody())
+            context.methods.assign(method.signature, method.getBody())
         }
 
         dafny.topLevelElements.filterIsInstance<FunctionMethodAST>().forEach { function ->
-            context.functions.set(function.signature, function.body)
+            context.functions.assign(function.signature, function.body)
         }
 
         listOf(
@@ -117,14 +117,14 @@ class Interpreter : ASTInterpreter {
             ADVANCED_SAFE_ARRAY_INDEX,
             ADVANCED_SAFE_DIV_INT,
             ADVANCED_SAFE_MODULO_INT
-        ).forEach { context.methods.set(it.signature, it.getBody()) }
+        ).forEach { context.methods.assign(it.signature, it.getBody()) }
 
         listOf(
             ABSOLUTE,
             SAFE_ARRAY_INDEX,
             SAFE_DIVISION_INT,
             SAFE_MODULO_INT
-        ).forEach { context.functions.set(it.signature, it.body) }
+        ).forEach { context.functions.assign(it.signature, it.body) }
 
         val mainFunction = dafny.topLevelElements.first { it is MainFunctionAST }
         val prints = interpretMainFunction(mainFunction as MainFunctionAST, context)
@@ -247,7 +247,7 @@ class Interpreter : ASTInterpreter {
     ) {
         val values = typedDeclaration.exprs.map { interpretExpression(it, context) }
         typedDeclaration.identifiers.indices.forEach { i ->
-            setIdentifierValue(typedDeclaration.identifiers[i], values[i], context)
+            setIdentifierValue(typedDeclaration.identifiers[i], values[i], context, true)
         }
     }
 
@@ -256,12 +256,12 @@ class Interpreter : ASTInterpreter {
             // non void method call
             val methodReturns = interpretExpression(declaration.exprs[0], context) as MultiValue
             declaration.identifiers.indices.forEach { i ->
-                setIdentifierValue(declaration.identifiers[i], methodReturns.values[i], context)
+                setIdentifierValue(declaration.identifiers[i], methodReturns.values[i], context, true)
             }
         } else {
             val values = declaration.exprs.map { interpretExpression(it, context) }
             declaration.identifiers.indices.forEach { i ->
-                setIdentifierValue(declaration.identifiers[i], values[i], context)
+                setIdentifierValue(declaration.identifiers[i], values[i], context, true)
             }
         }
     }
@@ -269,15 +269,20 @@ class Interpreter : ASTInterpreter {
     override fun interpretMultiAssign(assign: MultiAssignmentAST, context: InterpreterContext) {
         val values = assign.exprs.map { interpretExpression(it, context) }
         assign.identifiers.indices.forEach { i ->
-            setIdentifierValue(assign.identifiers[i], values[i], context)
+            setIdentifierValue(assign.identifiers[i], values[i], context, false)
         }
     }
 
-    private fun setIdentifierValue(identifier: IdentifierAST, value: Value, context: InterpreterContext) {
+    private fun setIdentifierValue(
+        identifier: IdentifierAST,
+        value: Value,
+        context: InterpreterContext,
+        isDeclaration: Boolean
+    ) {
         when (identifier) {
             is ClassInstanceFieldAST -> {
                 val classValue = interpretIdentifier(identifier.classInstance, context) as ClassValue
-                setIdentifierValue(identifier.classField, value, context.classField(classValue.fields))
+                setIdentifierValue(identifier.classField, value, context.classField(classValue.fields), isDeclaration)
             }
 
             is ArrayIndexAST -> {
@@ -288,7 +293,11 @@ class Interpreter : ASTInterpreter {
 
             is SequenceIndexAST, is IndexAST, is IndexAssignAST -> throw UnsupportedOperationException()
 
-            else -> context.fields.set(identifier, value)
+            else -> if (isDeclaration) {
+                context.fields.declare(identifier, value)
+            } else {
+                context.fields.assign(identifier, value)
+            }
         }
     }
 
@@ -414,7 +423,7 @@ class Interpreter : ASTInterpreter {
         context: InterpreterContext
     ) {
         functionParams.indices.forEach { i ->
-            functionScopeValueTable.set(functionParams[i], interpretExpression(functionCallParams[i], context))
+            functionScopeValueTable.assign(functionParams[i], interpretExpression(functionCallParams[i], context))
         }
     }
 
@@ -484,7 +493,7 @@ class Interpreter : ASTInterpreter {
         val classFields = classInstantiation.clazz.constructorFields
         val constructorParams = classInstantiation.params.map { interpretExpression(it, context) }
         val classValueTable = ValueTable<IdentifierAST, Value>()
-        classFields.zip(constructorParams).forEach { classValueTable.set(it.first, it.second) }
+        classFields.zip(constructorParams).forEach { classValueTable.assign(it.first, it.second) }
 
         val methods = classInstantiation.clazz.methods.associate { Pair(it.signature, it.getBody()) }
         val functions = classInstantiation.clazz.functionMethods.associate { Pair(it.signature, it.body) }
