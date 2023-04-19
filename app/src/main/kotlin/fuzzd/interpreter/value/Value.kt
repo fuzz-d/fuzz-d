@@ -204,6 +204,8 @@ sealed class Value {
         fun rimpl(other: BoolValue): BoolValue = BoolValue(!other.value || value)
         fun and(other: BoolValue): BoolValue = BoolValue(value && other.value)
         fun or(other: BoolValue): BoolValue = BoolValue(value || other.value)
+        fun shortAnd(block: () -> BoolValue) = BoolValue(value && block().value)
+        fun shortOr(block: () -> BoolValue) = BoolValue(value || block().value)
 
         override fun toExpressionAST(): ExpressionAST = BooleanLiteralAST(value)
 
@@ -212,7 +214,7 @@ sealed class Value {
     }
 
     data class IntValue(val value: BigInteger) : Value() {
-        fun negate(): IntValue = IntValue(valueOf( -1) * value)
+        fun negate(): IntValue = IntValue(valueOf(-1) * value)
         fun plus(other: IntValue): IntValue = IntValue(value + other.value)
         fun subtract(other: IntValue): IntValue = IntValue(value - other.value)
         fun multiply(other: IntValue): IntValue = IntValue(value * other.value)

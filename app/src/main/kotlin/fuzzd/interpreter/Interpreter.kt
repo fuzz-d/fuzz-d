@@ -406,6 +406,7 @@ class Interpreter : ASTInterpreter {
             interpretExpression(body, context.functionCall(functionScopeValueTable))
         }
 
+
     private fun setParams(
         functionParams: List<IdentifierAST>,
         functionCallParams: List<ExpressionAST>,
@@ -491,39 +492,46 @@ class Interpreter : ASTInterpreter {
         return ClassValue(classValueTable, functions, methods)
     }
 
-    override fun interpretBinaryExpression(binaryExpression: BinaryExpressionAST, context: InterpreterContext): Value {
-        val lhs = interpretExpression(binaryExpression.expr1, context)
-        val rhs = interpretExpression(binaryExpression.expr2, context)
+    override fun interpretBinaryExpression(binaryExpression: BinaryExpressionAST, context: InterpreterContext): Value =
+        if (binaryExpression.operator == ConjunctionOperator) {
+            // short circuit evaluation
+            val lhs = interpretExpression(binaryExpression.expr1, context)
+            (lhs as BoolValue).shortAnd { interpretExpression(binaryExpression.expr2, context) as BoolValue }
+        } else if (binaryExpression.operator == DisjunctionOperator) {
+            val lhs = interpretExpression(binaryExpression.expr1, context)
+            (lhs as BoolValue).shortOr { interpretExpression(binaryExpression.expr2, context) as BoolValue }
+        } else {
+            val lhs = interpretExpression(binaryExpression.expr1, context)
+            val rhs = interpretExpression(binaryExpression.expr2, context)
 
-        return when (binaryExpression.operator) {
-            IffOperator -> (lhs as BoolValue).iff(rhs as BoolValue)
-            ImplicationOperator -> (lhs as BoolValue).impl(rhs as BoolValue)
-            ReverseImplicationOperator -> (lhs as BoolValue).rimpl(rhs as BoolValue)
-            ConjunctionOperator -> (lhs as BoolValue).and(rhs as BoolValue)
-            DisjunctionOperator -> (lhs as BoolValue).or(rhs as BoolValue)
-            LessThanOperator -> (lhs as IntValue).lessThan(rhs as IntValue)
-            LessThanEqualOperator -> (lhs as IntValue).lessThanEquals(rhs as IntValue)
-            GreaterThanEqualOperator -> (lhs as IntValue).greaterThanEquals(rhs as IntValue)
-            GreaterThanOperator -> (lhs as IntValue).greaterThan(rhs as IntValue)
-            EqualsOperator, DataStructureEqualityOperator -> BoolValue(lhs == rhs)
-            NotEqualsOperator, DataStructureInequalityOperator -> BoolValue(lhs != rhs)
-            AdditionOperator -> (lhs as IntValue).plus(rhs as IntValue)
-            SubtractionOperator -> (lhs as IntValue).subtract(rhs as IntValue)
-            MultiplicationOperator -> (lhs as IntValue).multiply(rhs as IntValue)
-            DivisionOperator -> (lhs as IntValue).divide(rhs as IntValue)
-            ModuloOperator -> (lhs as IntValue).modulo(rhs as IntValue)
-            MembershipOperator -> (rhs as DataStructureValue).contains(lhs)
-            AntiMembershipOperator -> (rhs as DataStructureValue).notContains(lhs)
-            ProperSubsetOperator -> interpretProperSubset(lhs, rhs)
-            SubsetOperator -> interpretSubset(lhs, rhs)
-            SupersetOperator -> interpretSuperset(lhs, rhs)
-            ProperSupersetOperator -> interpretProperSuperset(lhs, rhs)
-            DisjointOperator -> interpretDisjoint(lhs, rhs)
-            UnionOperator -> interpretUnion(lhs, rhs)
-            DifferenceOperator -> interpretDifference(lhs, rhs)
-            IntersectionOperator -> interpretIntersection(lhs, rhs)
+            when (binaryExpression.operator) {
+                IffOperator -> (lhs as BoolValue).iff(rhs as BoolValue)
+                ImplicationOperator -> (lhs as BoolValue).impl(rhs as BoolValue)
+                ReverseImplicationOperator -> (lhs as BoolValue).rimpl(rhs as BoolValue)
+                LessThanOperator -> (lhs as IntValue).lessThan(rhs as IntValue)
+                LessThanEqualOperator -> (lhs as IntValue).lessThanEquals(rhs as IntValue)
+                GreaterThanEqualOperator -> (lhs as IntValue).greaterThanEquals(rhs as IntValue)
+                GreaterThanOperator -> (lhs as IntValue).greaterThan(rhs as IntValue)
+                EqualsOperator, DataStructureEqualityOperator -> BoolValue(lhs == rhs)
+                NotEqualsOperator, DataStructureInequalityOperator -> BoolValue(lhs != rhs)
+                AdditionOperator -> (lhs as IntValue).plus(rhs as IntValue)
+                SubtractionOperator -> (lhs as IntValue).subtract(rhs as IntValue)
+                MultiplicationOperator -> (lhs as IntValue).multiply(rhs as IntValue)
+                DivisionOperator -> (lhs as IntValue).divide(rhs as IntValue)
+                ModuloOperator -> (lhs as IntValue).modulo(rhs as IntValue)
+                MembershipOperator -> (rhs as DataStructureValue).contains(lhs)
+                AntiMembershipOperator -> (rhs as DataStructureValue).notContains(lhs)
+                ProperSubsetOperator -> interpretProperSubset(lhs, rhs)
+                SubsetOperator -> interpretSubset(lhs, rhs)
+                SupersetOperator -> interpretSuperset(lhs, rhs)
+                ProperSupersetOperator -> interpretProperSuperset(lhs, rhs)
+                DisjointOperator -> interpretDisjoint(lhs, rhs)
+                UnionOperator -> interpretUnion(lhs, rhs)
+                DifferenceOperator -> interpretDifference(lhs, rhs)
+                IntersectionOperator -> interpretIntersection(lhs, rhs)
+                else -> throw UnsupportedOperationException()
+            }
         }
-    }
 
     private fun interpretProperSubset(lhs: Value, rhs: Value): BoolValue = when (lhs) {
         is MultisetValue -> lhs.properSubsetOf(rhs as MultisetValue)
