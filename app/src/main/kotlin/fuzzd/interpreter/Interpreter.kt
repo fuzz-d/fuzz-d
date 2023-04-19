@@ -28,6 +28,7 @@ import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
+import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
@@ -116,14 +117,14 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             ADVANCED_ABSOLUTE,
             ADVANCED_SAFE_ARRAY_INDEX,
             ADVANCED_SAFE_DIV_INT,
-            ADVANCED_SAFE_MODULO_INT
+            ADVANCED_SAFE_MODULO_INT,
         ).forEach { context.methods.assign(it.signature, it.getBody()) }
 
         listOf(
             ABSOLUTE,
             SAFE_ARRAY_INDEX,
             SAFE_DIVISION_INT,
-            SAFE_MODULO_INT
+            SAFE_MODULO_INT,
         ).forEach { context.functions.assign(it.signature, it.body) }
 
         val mainFunction = dafny.topLevelElements.first { it is MainFunctionAST }
@@ -141,7 +142,9 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                 .map { (k, v) ->
                     generateChecksumPrint(k, v!!, context)
                 }.reduceLists()
-        } else emptyList()
+        } else {
+            emptyList()
+        }
 
         prints.forEach { interpretPrint(it, context) }
 
@@ -211,7 +214,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     override fun interpretCounterLimitedWhileStatement(
-        whileStatement: CounterLimitedWhileLoopAST, context: InterpreterContext
+        whileStatement: CounterLimitedWhileLoopAST,
+        context: InterpreterContext,
     ) {
         interpretStatement(whileStatement.counterInitialisation, context)
         var condition = interpretExpression(whileStatement.condition, context)
@@ -221,7 +225,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             val innerContext = context.increaseDepth()
             interpretStatement(whileStatement.terminationCheck, innerContext)
             if (doBreak) {
-                break;
+                break
             }
             interpretStatement(whileStatement.counterUpdate, innerContext)
             interpretSequence(whileStatement.body, innerContext)
@@ -246,7 +250,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     override fun interpretMultiTypedDeclaration(
-        typedDeclaration: MultiTypedDeclarationAST, context: InterpreterContext
+        typedDeclaration: MultiTypedDeclarationAST,
+        context: InterpreterContext,
     ) {
         val values = typedDeclaration.exprs.map { interpretExpression(it, context) }
         typedDeclaration.identifiers.indices.forEach { i ->
@@ -280,7 +285,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         identifier: IdentifierAST,
         value: Value,
         context: InterpreterContext,
-        isDeclaration: Boolean
+        isDeclaration: Boolean,
     ) {
         when (identifier) {
             is ClassInstanceFieldAST -> {
@@ -288,8 +293,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                 setIdentifierValue(
                     identifier.classField,
                     value,
-                    InterpreterContext(classValue.fields, context.functions, context.methods),
-                    isDeclaration
+                    InterpreterContext(context.fields, context.functions, context.methods, classValue.classContext),
+                    isDeclaration,
                 )
             }
 
@@ -304,7 +309,14 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             else -> if (isDeclaration) {
                 context.fields.declare(identifier, value)
             } else {
-                context.fields.assign(identifier, value)
+                if (context.fields.has(identifier)) {
+                    context.fields.assign(
+                        identifier,
+                        value,
+                    )
+                } else {
+                    context.classContext!!.fields.assign(identifier, value)
+                }
             }
         }
     }
@@ -333,7 +345,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     private fun emitClassValue(classValue: ClassValue) {
-        classValue.fields.values
+        classValue.classContext.fields.values
             .filter { (_, v) -> v != null }
             .forEach { (_, v) ->
                 emitOutput(v!!)
@@ -410,46 +422,53 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
     override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, context: InterpreterContext): Value =
         if (functionCall.function is ClassInstanceFunctionMethodSignatureAST) {
-            interpretClassInstanceFunctionMethodCall(functionCall, context)
-        } else {
             val functionSignature = functionCall.function
-            val functionParams = functionSignature.params
-
-            val body = context.functions.get(functionSignature)
-            val functionScopeValueTable = ValueTable<IdentifierAST, Value>()
-
-            setParams(functionParams, functionCall.params, functionScopeValueTable, context)
-
-            interpretExpression(body, context.functionCall(functionScopeValueTable))
+            val classValue = interpretIdentifier(functionSignature.classInstance, context) as ClassValue
+            interpretFunctionCall(
+                functionSignature.signature,
+                functionCall.params,
+                InterpreterContext(context.fields, context.functions, context.methods, classValue.classContext),
+            )
+        } else {
+            interpretFunctionCall(functionCall.function, functionCall.params, context)
         }
 
+    private fun interpretFunctionCall(
+        functionSignature: FunctionMethodSignatureAST,
+        params: List<ExpressionAST>,
+        context: InterpreterContext,
+    ): Value {
+        val (functionContext, body) = if (context.functions.has(functionSignature)) {
+            Pair(
+                InterpreterContext(ValueTable(), context.functions, context.methods, null),
+                context.functions.get(functionSignature),
+            )
+        } else {
+            Pair(
+                InterpreterContext(
+                    ValueTable(context.classContext!!.fields),
+                    context.functions,
+                    context.methods,
+                    context.classContext,
+                ),
+                context.classContext.functions.get(functionSignature),
+            )
+        }
+
+        setParams(functionSignature.params, params, functionContext.fields, context)
+
+        return interpretExpression(body, functionContext)
+    }
 
     private fun setParams(
         functionParams: List<IdentifierAST>,
         functionCallParams: List<ExpressionAST>,
-        functionScopeValueTable: ValueTable<IdentifierAST, Value>,
-        context: InterpreterContext
+        functionFields: ValueTable<IdentifierAST, Value>,
+        context: InterpreterContext,
     ) {
         functionParams.indices.forEach { i ->
-            functionScopeValueTable.declare(functionParams[i], interpretExpression(functionCallParams[i], context))
+            functionFields.declare(functionParams[i], interpretExpression(functionCallParams[i], context))
         }
-    }
-
-    private fun interpretClassInstanceFunctionMethodCall(
-        functionCall: FunctionMethodCallAST, context: InterpreterContext
-    ): Value {
-        val functionSignature = functionCall.function as ClassInstanceFunctionMethodSignatureAST
-        val functionParams = functionSignature.params
-
-        val classValue = interpretIdentifier(functionSignature.classInstance, context) as ClassValue
-        val body = classValue.functions.getValue(functionSignature.signature)
-
-        val functionContext = context.functionCall(classValue)
-        setParams(functionParams, functionCall.params, functionContext.fields, context)
-
-        val expr = interpretExpression(body, functionContext)
-
-        return expr
     }
 
     private fun interpretMethodCall(
@@ -458,55 +477,57 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         returns: List<IdentifierAST>,
         context: InterpreterContext,
     ): ValueTable<IdentifierAST, Value> = if (methodSignature is ClassInstanceMethodSignatureAST) {
-        interpretClassInstanceMethodCall(methodSignature, params, returns, context)
-    } else {
-        val methodScopeValueTable =
-            if (context.fields.topLevel() == context.fields) ValueTable() else ValueTable(context.fields)
-        val body = context.methods.get(methodSignature)
-        val methodParams = methodSignature.params
-
-        setParams(methodParams, params, methodScopeValueTable, context)
-        returns.forEach { methodScopeValueTable.create(it) }
-
-        interpretSequence(body, context.functionCall(methodScopeValueTable))
-        methodScopeValueTable
-    }
-
-    private fun interpretClassInstanceMethodCall(
-        methodSignature: ClassInstanceMethodSignatureAST,
-        params: List<ExpressionAST>,
-        returns: List<IdentifierAST>,
-        context: InterpreterContext
-    ): ValueTable<IdentifierAST, Value> {
         val classValue = interpretIdentifier(methodSignature.classInstance, context) as ClassValue
-        val body = classValue.methods.getValue(methodSignature.signature)
-        val methodContext = context.functionCall(classValue)
+        interpretMethodCall(
+            methodSignature.signature,
+            params,
+            returns,
+            InterpreterContext(context.fields, context.functions, context.methods, classValue.classContext),
+        )
+    } else {
+        val (methodContext, body) = if (context.methods.has(methodSignature)) {
+            Pair(
+                InterpreterContext(ValueTable(), context.functions, context.methods, null),
+                context.methods.get(methodSignature),
+            )
+        } else {
+            Pair(
+                InterpreterContext(
+                    ValueTable(context.classContext!!.fields),
+                    context.functions,
+                    context.methods,
+                    context.classContext,
+                ),
+                context.classContext.methods.get(methodSignature),
+            )
+        }
 
         setParams(methodSignature.params, params, methodContext.fields, context)
         returns.forEach { methodContext.fields.create(it) }
 
         interpretSequence(body, methodContext)
-        return methodContext.fields
+        methodContext.fields
     }
 
     override fun interpretNonVoidMethodCall(methodCall: NonVoidMethodCallAST, context: InterpreterContext): Value {
-        val methodScopeValueTable =
+        val methodFields =
             interpretMethodCall(methodCall.method, methodCall.params, methodCall.method.returns, context)
-        return MultiValue(methodCall.method.returns.map { r -> methodScopeValueTable.get(r) })
+        return MultiValue(methodCall.method.returns.map { r -> methodFields.get(r) })
     }
 
     override fun interpretClassInstantiation(
-        classInstantiation: ClassInstantiationAST, context: InterpreterContext
+        classInstantiation: ClassInstantiationAST,
+        context: InterpreterContext,
     ): Value {
         val classFields = classInstantiation.clazz.constructorFields
         val constructorParams = classInstantiation.params.map { interpretExpression(it, context) }
-        val classValueTable = ValueTable<IdentifierAST, Value>(context.fields)
-        classFields.zip(constructorParams).forEach { classValueTable.assign(it.first, it.second) }
+        val classContext = InterpreterContext()
 
-        val methods = classInstantiation.clazz.methods.associate { Pair(it.signature, it.getBody()) }
-        val functions = classInstantiation.clazz.functionMethods.associate { Pair(it.signature, it.body) }
+        classFields.zip(constructorParams).forEach { classContext.fields.declare(it.first, it.second) }
+        classInstantiation.clazz.functionMethods.forEach { classContext.functions.declare(it.signature, it.body) }
+        classInstantiation.clazz.methods.forEach { classContext.methods.declare(it.signature, it.getBody()) }
 
-        return ClassValue(classValueTable, functions, methods)
+        return ClassValue(classContext)
     }
 
     override fun interpretBinaryExpression(binaryExpression: BinaryExpressionAST, context: InterpreterContext): Value =
@@ -606,7 +627,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     override fun interpretTernaryExpression(
-        ternaryExpression: TernaryExpressionAST, context: InterpreterContext
+        ternaryExpression: TernaryExpressionAST,
+        context: InterpreterContext,
     ): Value {
         val condition = interpretExpression(ternaryExpression.condition, context)
         return if ((condition as BoolValue).value) {
@@ -629,7 +651,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         (interpretExpression(modulus.expr, context) as DataStructureValue).modulus()
 
     override fun interpretMultisetConversion(
-        multisetConversion: MultisetConversionAST, context: InterpreterContext
+        multisetConversion: MultisetConversionAST,
+        context: InterpreterContext,
     ): Value {
         val sequenceValue = interpretExpression(multisetConversion.expr, context) as SequenceValue
         return MultisetValue(sequenceValue.seq.toMultiset())
@@ -641,7 +664,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                 val classValue = interpretIdentifier(identifier.classInstance, context) as ClassValue
                 interpretIdentifier(
                     identifier.classField,
-                    InterpreterContext(classValue.fields, context.functions, context.methods)
+                    InterpreterContext(context.fields, context.functions, context.methods, classValue.classContext),
                 )
             }
 
@@ -672,7 +695,13 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
             is IndexAssignAST -> interpretIndexAssign(identifier, context)
 
-            else -> context.fields.get(identifier)
+            else -> if (context.fields.has(identifier)) {
+                context.fields.get(identifier)
+            } else {
+                context.classContext!!.fields.get(
+                    identifier,
+                )
+            }
         }
 
     private fun interpretIndexAssign(indexAssign: IndexAssignAST, context: InterpreterContext): Value {

@@ -2,15 +2,12 @@ package fuzzd.interpreter.value
 
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
-import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
-import fuzzd.generator.ast.FunctionMethodSignatureAST
-import fuzzd.generator.ast.MethodSignatureAST
-import fuzzd.generator.ast.SequenceAST
+import fuzzd.interpreter.InterpreterContext
 import fuzzd.utils.reduceLists
 import java.lang.Integer.min
 import java.math.BigInteger
@@ -55,11 +52,8 @@ sealed class Value {
         override fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
     }
 
-    data class ClassValue(
-        val fields: ValueTable<IdentifierAST, Value>,
-        val functions: Map<FunctionMethodSignatureAST, ExpressionAST>,
-        val methods: Map<MethodSignatureAST, SequenceAST>,
-    ) : Value() {
+    // classContext stores class fields, methods and functions
+    data class ClassValue(val classContext: InterpreterContext) : Value() {
         override fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
     }
 
