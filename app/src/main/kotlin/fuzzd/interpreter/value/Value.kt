@@ -2,7 +2,6 @@ package fuzzd.interpreter.value
 
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
-import fuzzd.generator.ast.ExpressionAST.ExpressionListAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
@@ -53,7 +52,7 @@ sealed class Value {
     abstract fun toExpressionAST(): ExpressionAST
 
     data class MultiValue(val values: List<Value>) : Value() {
-        override fun toExpressionAST(): ExpressionAST = ExpressionListAST(values.map { it.toExpressionAST() })
+        override fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
     }
 
     data class ClassValue(

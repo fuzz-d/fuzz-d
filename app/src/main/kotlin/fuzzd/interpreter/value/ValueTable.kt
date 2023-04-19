@@ -1,7 +1,7 @@
 package fuzzd.interpreter.value
 
-class ValueTable<T, U>(val parent: ValueTable<T, U>? = null) {
-    val values = mutableMapOf<T, U>()
+class ValueTable<T, U>(private val parent: ValueTable<T, U>? = null) {
+    val values = mutableMapOf<T, U?>()
 
     constructor(parent: ValueTable<T, U>?, values: Map<T, U>) : this(parent) {
         values.forEach { (k, v) -> this.values[k] = v }
@@ -11,6 +11,10 @@ class ValueTable<T, U>(val parent: ValueTable<T, U>? = null) {
 
     fun has(item: T): Boolean = item in values || parent?.has(item) == true
 
+    fun create(item: T) {
+        values[item] = null
+    }
+
     fun get(item: T): U = if (item in values) values[item]!! else parent!!.get(item)
 
     fun set(item: T, value: U) {
@@ -19,9 +23,5 @@ class ValueTable<T, U>(val parent: ValueTable<T, U>? = null) {
         } else {
             values[item] = value
         }
-    }
-
-    fun remove(item: T) {
-        values.remove(item)
     }
 }

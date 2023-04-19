@@ -12,7 +12,6 @@ import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
-import fuzzd.generator.ast.ExpressionAST.ExpressionListAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
@@ -29,7 +28,6 @@ import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
-import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
@@ -97,7 +95,6 @@ import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.reduceLists
 import fuzzd.utils.toMultiset
-import java.beans.Expression
 import java.math.BigInteger
 
 class Interpreter : ASTInterpreter {
@@ -138,9 +135,11 @@ class Interpreter : ASTInterpreter {
         interpretSequence(mainFunction.sequenceAST, context)
 
         // generate checksum prints
-        val prints = context.fields.values.map { (k, v) ->
-            generateChecksumPrint(k, v, context)
-        }.reduceLists()
+        val prints = context.fields.values
+            .filter { (_, v) -> v != null }
+            .map { (k, v) ->
+                generateChecksumPrint(k, v!!, context)
+            }.reduceLists()
         prints.forEach { interpretPrint(it, context) }
 
         return prints
@@ -240,7 +239,7 @@ class Interpreter : ASTInterpreter {
     }
 
     override fun interpretVoidMethodCall(methodCall: VoidMethodCallAST, context: InterpreterContext) {
-        interpretMethodCall(methodCall.method, methodCall.params, context)
+        interpretMethodCall(methodCall.method, methodCall.params, emptyList(), context)
     }
 
     override fun interpretMultiTypedDeclaration(
@@ -253,7 +252,7 @@ class Interpreter : ASTInterpreter {
     }
 
     override fun interpretMultiDeclaration(declaration: MultiDeclarationAST, context: InterpreterContext) {
-        if (declaration.exprs.size == 1 && declaration.identifiers.size > 1) {
+        if (declaration.exprs.size == 1 && declaration.exprs[0] is NonVoidMethodCallAST) {
             // non void method call
             val methodReturns = interpretExpression(declaration.exprs[0], context) as MultiValue
             declaration.identifiers.indices.forEach { i ->
@@ -317,9 +316,11 @@ class Interpreter : ASTInterpreter {
     }
 
     private fun emitClassValue(classValue: ClassValue) {
-        classValue.fields.values.forEach { (_, v) ->
-            emitOutput(v)
-        }
+        classValue.fields.values
+            .filter { (_, v) -> v != null }
+            .forEach { (_, v) ->
+                emitOutput(v!!)
+            }
     }
 
     private fun emitArrayValue(arrayValue: ArrayValue) {
@@ -370,7 +371,6 @@ class Interpreter : ASTInterpreter {
     /* ============================== EXPRESSIONS ============================ */
     override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value =
         when (expression) {
-            is ExpressionListAST -> interpretExpressionList(expression, context)
             is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
             is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
             is ClassInstantiationAST -> interpretClassInstantiation(expression, context)
@@ -390,9 +390,6 @@ class Interpreter : ASTInterpreter {
             is BooleanLiteralAST -> interpretBooleanLiteral(expression, context)
             else -> throw UnsupportedOperationException()
         }
-
-    override fun interpretExpressionList(expressionList: ExpressionListAST, context: InterpreterContext): Value =
-        MultiValue(expressionList.exprs.map { interpretExpression(it, context) })
 
     override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, context: InterpreterContext): Value =
         if (functionCall.function is ClassInstanceFunctionMethodSignatureAST) {
@@ -440,9 +437,10 @@ class Interpreter : ASTInterpreter {
     private fun interpretMethodCall(
         methodSignature: MethodSignatureAST,
         params: List<ExpressionAST>,
+        returns: List<IdentifierAST>,
         context: InterpreterContext,
     ): ValueTable<IdentifierAST, Value> = if (methodSignature is ClassInstanceMethodSignatureAST) {
-        interpretClassInstanceMethodCall(methodSignature, params, context)
+        interpretClassInstanceMethodCall(methodSignature, params, returns, context)
     } else {
         val methodScopeValueTable =
             if (context.fields.topLevel() == context.fields) ValueTable() else ValueTable(context.fields)
@@ -450,26 +448,32 @@ class Interpreter : ASTInterpreter {
         val methodParams = methodSignature.params
 
         setParams(methodParams, params, methodScopeValueTable, context)
+        returns.forEach { methodScopeValueTable.create(it) }
 
         interpretSequence(body, context.functionCall(methodScopeValueTable))
         methodScopeValueTable
     }
 
     private fun interpretClassInstanceMethodCall(
-        methodSignature: ClassInstanceMethodSignatureAST, params: List<ExpressionAST>, context: InterpreterContext
+        methodSignature: ClassInstanceMethodSignatureAST,
+        params: List<ExpressionAST>,
+        returns: List<IdentifierAST>,
+        context: InterpreterContext
     ): ValueTable<IdentifierAST, Value> {
         val classValue = interpretIdentifier(methodSignature.classInstance, context) as ClassValue
         val body = classValue.methods.getValue(methodSignature.signature)
         val methodContext = context.functionCall(classValue)
 
         setParams(methodSignature.params, params, methodContext.fields, context)
+        returns.forEach { methodContext.fields.create(it) }
 
         interpretSequence(body, methodContext)
         return methodContext.fields
     }
 
     override fun interpretNonVoidMethodCall(methodCall: NonVoidMethodCallAST, context: InterpreterContext): Value {
-        val methodScopeValueTable = interpretMethodCall(methodCall.method, methodCall.params, context)
+        val methodScopeValueTable =
+            interpretMethodCall(methodCall.method, methodCall.params, methodCall.method.returns, context)
         return MultiValue(methodCall.method.returns.map { r -> methodScopeValueTable.get(r) })
     }
 

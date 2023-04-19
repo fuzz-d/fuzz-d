@@ -39,12 +39,6 @@ sealed class ExpressionAST : ASTElement {
 
     abstract fun type(): Type
 
-    class ExpressionListAST(val exprs: List<ExpressionAST>) : ExpressionAST() {
-        override fun type(): Type = MethodReturnType(exprs.map { it.type() })
-
-        override fun toString(): String = exprs.joinToString(", ")
-    }
-
     class ClassInstantiationAST(val clazz: ClassAST, val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {

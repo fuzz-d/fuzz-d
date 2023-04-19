@@ -1,6 +1,5 @@
 package fuzzd.recondition
 
-import com.google.common.collect.Multiset
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
@@ -12,7 +11,6 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
-import fuzzd.generator.ast.ExpressionAST.ExpressionListAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
@@ -477,19 +475,11 @@ class AdvancedReconditioner {
         }
     }
 
-    fun reconditionNonVoidMethodCall(nonVoidMethodCallAST: NonVoidMethodCallAST): Pair<ExpressionListAST, List<StatementAST>> {
+    fun reconditionNonVoidMethodCall(nonVoidMethodCallAST: NonVoidMethodCallAST): Pair<NonVoidMethodCallAST, List<StatementAST>> {
         val reconditionedMethod = getReconditionedMethodSignature(nonVoidMethodCallAST.method)
         val (params, dependents) = reconditionExpressionList(nonVoidMethodCallAST.params)
 
-        val temps = (0 until nonVoidMethodCallAST.method.returns.size).map { i ->
-            IdentifierAST(
-                tempGenerator.newValue(),
-                nonVoidMethodCallAST.method.returns[i].type(),
-            )
-        }
-        val decl = MultiDeclarationAST(temps, listOf(NonVoidMethodCallAST(reconditionedMethod, params + state)))
-
-        return Pair(ExpressionListAST(temps), dependents + decl)
+        return Pair(NonVoidMethodCallAST(reconditionedMethod, params + state), dependents)
     }
 
     fun reconditionFunctionMethodCall(functionMethodCallAST: FunctionMethodCallAST): Pair<ExpressionAST, List<StatementAST>> {

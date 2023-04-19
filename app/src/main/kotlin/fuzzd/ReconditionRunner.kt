@@ -88,6 +88,7 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
             logger.log { "Reconditioning threw error" }
             logger.log { "===================================" }
             logger.log { e.stackTraceToString() }
+            e.printStackTrace()
             return null
         }
     }
