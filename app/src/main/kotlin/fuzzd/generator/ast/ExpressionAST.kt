@@ -213,6 +213,21 @@ sealed class ExpressionAST : ASTElement {
 
         val methods =
             clazz.methods.map { ClassInstanceMethodSignatureAST(this, it.signature) }
+
+        override fun equals(other: Any?): Boolean =
+            other is ClassInstanceAST &&
+                    clazz == other.clazz &&
+                    name == other.name && initialised() == other.initialised() &&
+                    mutable == other.mutable
+
+        override fun hashCode(): Int {
+            var result = super.hashCode()
+            result = 31 * result + clazz.hashCode()
+            result = 31 * result + fields.hashCode()
+            result = 31 * result + functionMethods.hashCode()
+            result = 31 * result + methods.hashCode()
+            return result
+        }
     }
 
     class ClassInstanceFieldAST(
@@ -239,7 +254,8 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
-        override fun initialise(): ArrayIndexAST = if (initialised()) this else ArrayIndexAST(array, index, initialised = true)
+        override fun initialise(): ArrayIndexAST =
+            if (initialised()) this else ArrayIndexAST(array, index, initialised = true)
 
         override fun toString(): String = "$array[$index]"
     }

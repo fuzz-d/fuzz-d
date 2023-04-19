@@ -52,7 +52,7 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
                 writer.write { advancedAST }
                 writer.close()
 
-                val output = interpreterRunner.run(advancedAST)
+                val output = interpreterRunner.run(advancedAST, false)
 
                 val safetyRegex = Regex("safety[0-9]+\\n")
                 val ids = safetyRegex.findAll(output.first, 0)
@@ -69,7 +69,7 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
             val reconditionedAST = reconditioner.recondition(ast)
 
             val output: Pair<String, List<StatementAST>> = runCatching {
-                interpreterRunner.run(reconditionedAST)
+                interpreterRunner.run(reconditionedAST, true)
             }.onFailure {
                 it.printStackTrace()
             }.getOrThrow()

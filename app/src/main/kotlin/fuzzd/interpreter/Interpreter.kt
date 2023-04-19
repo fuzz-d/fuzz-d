@@ -97,7 +97,7 @@ import fuzzd.utils.reduceLists
 import fuzzd.utils.toMultiset
 import java.math.BigInteger
 
-class Interpreter : ASTInterpreter {
+class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     private val output = StringBuilder()
     private var doBreak = false
 
@@ -135,11 +135,14 @@ class Interpreter : ASTInterpreter {
         interpretSequence(mainFunction.sequenceAST, context)
 
         // generate checksum prints
-        val prints = context.fields.values
-            .filter { (_, v) -> v != null }
-            .map { (k, v) ->
-                generateChecksumPrint(k, v!!, context)
-            }.reduceLists()
+        val prints = if (generateChecksum) {
+            context.fields.values
+                .filter { (_, v) -> v != null }
+                .map { (k, v) ->
+                    generateChecksumPrint(k, v!!, context)
+                }.reduceLists()
+        } else emptyList()
+
         prints.forEach { interpretPrint(it, context) }
 
         return prints
@@ -282,7 +285,12 @@ class Interpreter : ASTInterpreter {
         when (identifier) {
             is ClassInstanceFieldAST -> {
                 val classValue = interpretIdentifier(identifier.classInstance, context) as ClassValue
-                setIdentifierValue(identifier.classField, value, context.classField(classValue.fields), isDeclaration)
+                setIdentifierValue(
+                    identifier.classField,
+                    value,
+                    InterpreterContext(classValue.fields, context.functions, context.methods),
+                    isDeclaration
+                )
             }
 
             is ArrayIndexAST -> {
@@ -423,7 +431,7 @@ class Interpreter : ASTInterpreter {
         context: InterpreterContext
     ) {
         functionParams.indices.forEach { i ->
-            functionScopeValueTable.assign(functionParams[i], interpretExpression(functionCallParams[i], context))
+            functionScopeValueTable.declare(functionParams[i], interpretExpression(functionCallParams[i], context))
         }
     }
 
@@ -492,7 +500,7 @@ class Interpreter : ASTInterpreter {
     ): Value {
         val classFields = classInstantiation.clazz.constructorFields
         val constructorParams = classInstantiation.params.map { interpretExpression(it, context) }
-        val classValueTable = ValueTable<IdentifierAST, Value>()
+        val classValueTable = ValueTable<IdentifierAST, Value>(context.fields)
         classFields.zip(constructorParams).forEach { classValueTable.assign(it.first, it.second) }
 
         val methods = classInstantiation.clazz.methods.associate { Pair(it.signature, it.getBody()) }
@@ -631,7 +639,10 @@ class Interpreter : ASTInterpreter {
         when (identifier) {
             is ClassInstanceFieldAST -> {
                 val classValue = interpretIdentifier(identifier.classInstance, context) as ClassValue
-                interpretIdentifier(identifier.classField, context.classField(classValue.fields))
+                interpretIdentifier(
+                    identifier.classField,
+                    InterpreterContext(classValue.fields, context.functions, context.methods)
+                )
             }
 
             is ArrayIndexAST -> {

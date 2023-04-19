@@ -17,10 +17,7 @@ class ValueTable<T, U>(private val parent: ValueTable<T, U>? = null) {
         values[item] = null
     }
 
-    fun get(item: T): U = if (item in values)
-        values[item]!!
-    else
-        parent!!.get(item)
+    fun get(item: T): U = if (item in values) values[item]!! else parent!!.get(item)
 
     fun assign(item: T, value: U) {
         if (item !in values && parent != null && parent.has(item)) {

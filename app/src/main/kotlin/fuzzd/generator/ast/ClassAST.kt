@@ -97,6 +97,17 @@ class ClassAST(
         other.methods == methods &&
         other.inheritedFields == inheritedFields
 
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + extends.hashCode()
+        result = 31 * result + functionMethods.hashCode()
+        result = 31 * result + methods.hashCode()
+        result = 31 * result + fields.hashCode()
+        result = 31 * result + inheritedFields.hashCode()
+        result = 31 * result + constructorFields.hashCode()
+        return result
+    }
+
     companion object {
         fun builder() = ClassASTBuilder()
 
