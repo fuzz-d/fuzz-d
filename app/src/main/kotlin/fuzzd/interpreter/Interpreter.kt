@@ -277,7 +277,7 @@ class Interpreter : ASTInterpreter {
         when (identifier) {
             is ClassInstanceFieldAST -> {
                 val classValue = interpretIdentifier(identifier.classInstance, context) as ClassValue
-                setIdentifierValue(identifier.classField, value, InterpreterContext(classValue.fields))
+                setIdentifierValue(identifier.classField, value, context.classField(classValue.fields))
             }
 
             is ArrayIndexAST -> {
@@ -622,7 +622,7 @@ class Interpreter : ASTInterpreter {
         when (identifier) {
             is ClassInstanceFieldAST -> {
                 val classValue = interpretIdentifier(identifier.classInstance, context) as ClassValue
-                interpretIdentifier(identifier.classField, InterpreterContext(classValue.fields))
+                interpretIdentifier(identifier.classField, context.classField(classValue.fields))
             }
 
             is ArrayIndexAST -> {

@@ -24,4 +24,7 @@ class InterpreterContext(
     )
 
     fun functionCall(fields: ValueTable<IdentifierAST, Value>) = InterpreterContext(fields, functions, methods)
+
+    fun classField(classFields: ValueTable<IdentifierAST, Value>) =
+        InterpreterContext(classFields.withParent(fields), functions, methods)
 }
