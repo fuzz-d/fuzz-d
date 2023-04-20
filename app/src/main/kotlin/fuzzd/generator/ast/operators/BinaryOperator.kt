@@ -73,7 +73,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     sealed class DataStructureBinaryOperator(precedence: Int, symbol: String) : BinaryOperator(precedence, symbol) {
         override fun outputType(t1: Type, t2: Type): Type = BoolType
         override fun supportsInput(t1: Type, t2: Type): Boolean =
-            t1 == t2 && (t1 is SetType || t1 is MultisetType || t1 is MapType || t1 is SequenceType)
+            (t1 is LiteralType && t1 == t2) || t1 is SetType || t1 is MultisetType || t1 is MapType || t1 is SequenceType
     }
 
     object DataStructureEqualityOperator : DataStructureBinaryOperator(4, "==")
