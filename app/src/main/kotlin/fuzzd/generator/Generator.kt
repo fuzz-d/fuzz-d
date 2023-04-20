@@ -9,7 +9,6 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
-import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
@@ -23,7 +22,6 @@ import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
-import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -38,20 +36,17 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
-import fuzzd.generator.ast.StatementAST.DataStructureMemberDeclarationAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.TypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
-import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
-import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
@@ -61,7 +56,6 @@ import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
-import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
 import fuzzd.generator.ast.error.MethodOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ClassNameGenerator
@@ -73,10 +67,7 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.ParameterNameGener
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ReturnsNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TraitNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
-import fuzzd.generator.ast.operators.BinaryOperator.DataStructureInequalityOperator
-import fuzzd.generator.ast.operators.BinaryOperator.DifferenceOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
-import fuzzd.generator.ast.operators.BinaryOperator.LessThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.selection.AssignType
@@ -109,12 +100,6 @@ import fuzzd.generator.symbol_table.SymbolTable
 import fuzzd.utils.foldPair
 import fuzzd.utils.reduceLists
 import fuzzd.utils.unionAll
-
-// import fuzzd.utils.SAFE_ADDITION_REAL
-// import fuzzd.utils.SAFE_DIVISION_REAL
-// import fuzzd.utils.SAFE_MULTIPLY_REAL
-// import fuzzd.utils.SAFE_SUBTRACT_CHAR
-// import fuzzd.utils.SAFE_SUBTRACT_REAL
 
 class Generator(
     private val selectionManager: SelectionManager,
@@ -186,125 +171,7 @@ class Generator(
         context.symbolTable.add(globalStateIdentifier)
 
         val body = generateSequence(context)
-//        val prints = generateChecksum(context)
         return MainFunctionAST(SequenceAST(globalStateDeps + globalStateDecl + body.statements /*+ prints*/))
-    }
-
-    override fun generateChecksum(context: GenerationContext): List<StatementAST> =
-        context.symbolTable.symbolTable.map {
-            generateChecksum(context, it.key)
-        }.reduceLists()
-
-    fun generateChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
-        return when (identifier.type()) {
-            is ArrayType -> emptyList()
-            is MapType -> emptyList() // generateMapTypeChecksum(context, identifier)
-            is SetType -> emptyList() // generateSetTypeChecksum(context, identifier)
-            is MultisetType -> emptyList() // generateMultisetTypeChecksum(context, identifier)
-            is SequenceType -> generateSequenceTypeChecksum(context, identifier)
-            is ClassType -> generateClassTypeChecksum(context, identifier)
-            is TraitType -> generateTraitTypeChecksum(context, identifier)
-            else -> listOf(PrintAST(identifier))
-        }
-    }
-
-    fun generateSequenceTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
-        val sequenceType = identifier.type() as SequenceType
-        val counter = IdentifierAST(context.loopCounterGenerator.newValue(), IntType)
-        val counterDecl = DeclarationAST(counter, IntegerLiteralAST(0))
-        val condition = BinaryExpressionAST(counter, LessThanEqualOperator, ModulusExpressionAST(identifier))
-
-        val value = IdentifierAST(context.identifierNameGenerator.newValue(), sequenceType.innerType)
-        val valueDecl = DeclarationAST(value, SequenceIndexAST(identifier, counter))
-        val valueChecksum = generateChecksum(context, value)
-
-        val update = AssignmentAST(counter, BinaryExpressionAST(counter, AdditionOperator, IntegerLiteralAST(1)))
-
-        return listOf(counterDecl, WhileLoopAST(condition, SequenceAST(listOf(valueDecl) + valueChecksum + update)))
-    }
-
-    fun generateMapTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
-        val mapType = identifier.type() as MapType
-        val condition =
-            BinaryExpressionAST(
-                identifier,
-                DataStructureInequalityOperator,
-                MapConstructorAST(mapType.keyType, mapType.valueType),
-            )
-
-        val key = IdentifierAST(context.identifierNameGenerator.newValue(), mapType.keyType)
-        val keyDecl = DataStructureMemberDeclarationAST(key, identifier)
-
-        val keyDup = IdentifierAST(context.identifierNameGenerator.newValue(), mapType.keyType)
-        val keyDupDecl = DeclarationAST(keyDup, key)
-        val keyChecksum = generateChecksum(context, keyDup)
-
-        val value = IdentifierAST(context.identifierNameGenerator.newValue(), mapType.valueType)
-        val valueDecl = DeclarationAST(value, IndexAST(identifier, key))
-        val valueChecksum = generateChecksum(context, value)
-
-        val update = AssignmentAST(
-            identifier,
-            BinaryExpressionAST(identifier, DifferenceOperator, SetDisplayAST(listOf(key), false)),
-        )
-        return listOf(
-            WhileLoopAST(
-                condition,
-                SequenceAST(listOf(keyDecl, keyDupDecl, valueDecl) + keyChecksum + valueChecksum + update),
-            ),
-        )
-    }
-
-    fun generateSetTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
-        val setType = identifier.type() as SetType
-        val condition =
-            BinaryExpressionAST(
-                identifier,
-                DataStructureInequalityOperator,
-                SetDisplayAST(emptyList(), false),
-            )
-        val value = IdentifierAST(context.identifierNameGenerator.newValue(), setType.innerType)
-
-        val valueDecl = DataStructureMemberDeclarationAST(value, identifier)
-        val update = AssignmentAST(
-            identifier,
-            BinaryExpressionAST(identifier, DifferenceOperator, SetDisplayAST(listOf(value), false)),
-        )
-        val valueChecksum = generateChecksum(context, value)
-        return listOf(WhileLoopAST(condition, SequenceAST(listOf(valueDecl) + valueChecksum + update)))
-    }
-
-    fun generateMultisetTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
-        val multisetType = identifier.type() as MultisetType
-        val condition =
-            BinaryExpressionAST(
-                identifier,
-                DataStructureInequalityOperator,
-                SetDisplayAST(emptyList(), true),
-            )
-        val key = IdentifierAST(context.identifierNameGenerator.newValue(), multisetType.innerType)
-
-        val keyDecl = DataStructureMemberDeclarationAST(key, identifier)
-        val update = AssignmentAST(identifier, IndexAssignAST(identifier, key, IntegerLiteralAST(0)))
-        val keyChecksum = generateChecksum(context, key)
-        val valueChecksum = generateChecksum(context, IndexAST(identifier, key))
-
-        return listOf(WhileLoopAST(condition, SequenceAST(listOf(keyDecl) + keyChecksum + valueChecksum + update)))
-    }
-
-    fun generateClassTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
-        val classType = identifier.type() as ClassType
-        val clazz = classType.clazz
-
-        return clazz.constructorFields.map { generateChecksum(context, ClassInstanceFieldAST(identifier, it)) }
-            .reduceLists()
-    }
-
-    fun generateTraitTypeChecksum(context: GenerationContext, identifier: IdentifierAST): List<StatementAST> {
-        val traitType = identifier.type() as TraitType
-        val trait = traitType.trait
-
-        return trait.fields.map { generateChecksum(context, ClassInstanceFieldAST(identifier, it)) }.reduceLists()
     }
 
     override fun generateTrait(context: GenerationContext): TraitAST {
@@ -658,9 +525,9 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-                context.functionSymbolTable.methods().map { it.signature } +
-                        context.symbolTable.classInstances().map { it.methods }.unionAll()
-                )
+            context.functionSymbolTable.methods().map { it.signature } +
+                context.symbolTable.classInstances().map { it.methods }.unionAll()
+            )
             .filter { method ->
                 context.methodContext == null || methodCallTable.canUseDependency(
                     context.methodContext,
@@ -799,8 +666,8 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                context.symbolTable.classInstances().map { it.functionMethods }.unionAll()
-                    .filter { it.returnType == targetType }
+            context.symbolTable.classInstances().map { it.functionMethods }.unionAll()
+                .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
     override fun generateIdentifier(
@@ -929,7 +796,7 @@ class Generator(
 
     private fun generateSequenceIndexAssign(
         context: GenerationContext,
-        targetType: SequenceType
+        targetType: SequenceType,
     ): Pair<IndexAssignAST, List<StatementAST>> {
         val (ident, identDeps) = generateIdentifier(context, targetType, initialisedConstraint = true)
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
@@ -998,7 +865,7 @@ class Generator(
 
     override fun generateMultisetConversion(
         context: GenerationContext,
-        targetType: Type
+        targetType: Type,
     ): Pair<MultisetConversionAST, List<StatementAST>> {
         val multisetType = targetType as MultisetType
         val (expr, exprDeps) = generateExpression(context, SetType(multisetType.innerType))

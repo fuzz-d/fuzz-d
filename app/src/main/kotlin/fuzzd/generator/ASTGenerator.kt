@@ -77,8 +77,6 @@ interface ASTGenerator {
 
     fun generateMapAssign(context: GenerationContext): List<StatementAST>
 
-    fun generateChecksum(context: GenerationContext): List<StatementAST>
-
     /* ========================================== EXPRESSIONS ========================================== */
 
     fun generateExpression(context: GenerationContext, targetType: Type): Pair<ExpressionAST, List<StatementAST>>
@@ -104,7 +102,7 @@ interface ASTGenerator {
 
     fun generateMultisetConversion(
         context: GenerationContext,
-        targetType: Type
+        targetType: Type,
     ): Pair<MultisetConversionAST, List<StatementAST>>
 
     fun generateBinaryExpression(
