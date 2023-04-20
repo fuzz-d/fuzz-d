@@ -11,7 +11,6 @@ import org.antlr.v4.runtime.CharStreams
 import java.io.File
 
 class InterpreterRunner(private val dir: File, private val logger: fuzzd.logging.Logger) {
-    private val interpreter = Interpreter()
 
     fun run(file: File): Pair<String, List<StatementAST>> {
         logger.log { "Lexing & Parsing ${file.name}" }
@@ -20,12 +19,13 @@ class InterpreterRunner(private val dir: File, private val logger: fuzzd.logging
         val tokens = org.antlr.v4.runtime.CommonTokenStream(dafnyLexer(cs))
         val ast = DafnyVisitor().visitProgram(dafnyParser(tokens).program())
 
-        return run(ast)
+        return run(ast, false)
     }
 
-    fun run(ast: DafnyAST): Pair<String, List<StatementAST>> {
+    fun run(ast: DafnyAST, generateChecksum: Boolean): Pair<String, List<StatementAST>> {
         logger.log { "Interpreting Dafny AST" }
 
+        val interpreter = Interpreter(generateChecksum)
         val output = interpreter.interpretDafny(ast)
         val outputWriter = OutputWriter(dir, INTERPRET_FILENAME)
         outputWriter.write { output.first }

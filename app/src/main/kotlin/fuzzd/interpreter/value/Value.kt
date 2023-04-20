@@ -2,16 +2,12 @@ package fuzzd.interpreter.value
 
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
-import fuzzd.generator.ast.ExpressionAST.ExpressionListAST
-import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
-import fuzzd.generator.ast.FunctionMethodSignatureAST
-import fuzzd.generator.ast.MethodSignatureAST
-import fuzzd.generator.ast.SequenceAST
+import fuzzd.interpreter.InterpreterContext
 import fuzzd.utils.reduceLists
 import java.lang.Integer.min
 import java.math.BigInteger
@@ -53,14 +49,11 @@ sealed class Value {
     abstract fun toExpressionAST(): ExpressionAST
 
     data class MultiValue(val values: List<Value>) : Value() {
-        override fun toExpressionAST(): ExpressionAST = ExpressionListAST(values.map { it.toExpressionAST() })
+        override fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
     }
 
-    data class ClassValue(
-        val fields: ValueTable<IdentifierAST, Value>,
-        val functions: Map<FunctionMethodSignatureAST, ExpressionAST>,
-        val methods: Map<MethodSignatureAST, SequenceAST>,
-    ) : Value() {
+    // classContext stores class fields, methods and functions
+    data class ClassValue(val classContext: InterpreterContext) : Value() {
         override fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
     }
 
@@ -205,6 +198,8 @@ sealed class Value {
         fun rimpl(other: BoolValue): BoolValue = BoolValue(!other.value || value)
         fun and(other: BoolValue): BoolValue = BoolValue(value && other.value)
         fun or(other: BoolValue): BoolValue = BoolValue(value || other.value)
+        fun shortAnd(block: () -> BoolValue) = BoolValue(value && block().value)
+        fun shortOr(block: () -> BoolValue) = BoolValue(value || block().value)
 
         override fun toExpressionAST(): ExpressionAST = BooleanLiteralAST(value)
 
@@ -213,7 +208,7 @@ sealed class Value {
     }
 
     data class IntValue(val value: BigInteger) : Value() {
-        fun negate(): IntValue = IntValue(valueOf( -1) * value)
+        fun negate(): IntValue = IntValue(valueOf(-1) * value)
         fun plus(other: IntValue): IntValue = IntValue(value + other.value)
         fun subtract(other: IntValue): IntValue = IntValue(value - other.value)
         fun multiply(other: IntValue): IntValue = IntValue(value * other.value)

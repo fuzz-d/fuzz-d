@@ -1,6 +1,5 @@
 package fuzzd.interpreter
 
-import fuzzd.Interpret
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
@@ -8,7 +7,6 @@ import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
-import fuzzd.generator.ast.ExpressionAST.ExpressionListAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
@@ -68,8 +66,6 @@ interface ASTInterpreter {
     /* ============================= EXPRESSIONS ============================= */
 
     fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value
-
-    fun interpretExpressionList(expressionList: ExpressionListAST, context: InterpreterContext): Value
 
     fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, context: InterpreterContext): Value
 
