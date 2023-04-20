@@ -96,10 +96,6 @@ sealed class Type : ASTElement {
         override fun toString(): String = "int"
     }
 
-    object RealType : LiteralType() {
-        override fun toString(): String = "real"
-    }
-
     object CharType : LiteralType() {
         override fun toString(): String = "char"
     }

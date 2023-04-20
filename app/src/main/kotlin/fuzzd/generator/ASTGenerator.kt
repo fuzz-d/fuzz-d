@@ -150,8 +150,6 @@ interface ASTGenerator {
 
     fun generateBooleanLiteral(context: GenerationContext): Pair<BooleanLiteralAST, List<StatementAST>>
 
-    fun generateRealLiteral(context: GenerationContext): Pair<RealLiteralAST, List<StatementAST>>
-
     fun generateCharLiteral(context: GenerationContext): Pair<CharacterLiteralAST, List<StatementAST>>
 
     /* ========================================== TYPE ========================================== */

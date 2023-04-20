@@ -20,7 +20,6 @@ import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
-import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
@@ -53,7 +52,6 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MultisetType
-import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
@@ -929,7 +927,6 @@ class Generator(
         BoolType -> generateBooleanLiteral(context)
         CharType -> generateCharLiteral(context)
         IntType -> generateIntegerLiteral(context)
-        RealType -> generateRealLiteral(context)
         // should not be possible to reach here
         else -> throw UnsupportedOperationException("Trying to generate literal for non-literal type $targetType")
     }
@@ -948,13 +945,6 @@ class Generator(
 
     override fun generateBooleanLiteral(context: GenerationContext): Pair<BooleanLiteralAST, List<StatementAST>> =
         Pair(BooleanLiteralAST(selectionManager.selectBoolean()), emptyList())
-
-    override fun generateRealLiteral(context: GenerationContext): Pair<RealLiteralAST, List<StatementAST>> {
-        val beforePoint = generateDecimalLiteralValue(negative = true)
-        val afterPoint = generateDecimalLiteralValue(negative = false)
-
-        return Pair(RealLiteralAST("$beforePoint.$afterPoint"), emptyList())
-    }
 
     override fun generateCharLiteral(context: GenerationContext): Pair<CharacterLiteralAST, List<StatementAST>> {
         val c = selectionManager.selectCharacter()

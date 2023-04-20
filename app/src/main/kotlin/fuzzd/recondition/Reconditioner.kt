@@ -1,6 +1,5 @@
 package fuzzd.recondition
 
-import com.google.common.collect.Multiset
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
@@ -26,7 +25,6 @@ import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
-import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
@@ -72,10 +70,10 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
         return DafnyAST(
             reconditionedTraits +
-                    reconditionedClasses +
-                    reconditionedFunctionMethods +
-                    reconditionedMethods +
-                    reconditionedMain,
+                reconditionedClasses +
+                reconditionedFunctionMethods +
+                reconditionedMethods +
+                reconditionedMain,
         )
     }
 
@@ -347,7 +345,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
                     IndexAssignAST(
                         ident,
                         FunctionMethodCallAST(SAFE_ARRAY_INDEX.signature, listOf(key, ModulusExpressionAST(ident))),
-                        value
+                        value,
                     )
                 } else {
                     IndexAssignAST(ident, key, value)

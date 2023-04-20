@@ -224,7 +224,7 @@ class AdvancedReconditioner {
         val (reconditionedIdentifier, identifierDependents) = reconditionIdentifier(declaration.identifier)
         val (reconditionedDataStructure, dataStructureDependents) = reconditionIdentifier(declaration.dataStructure)
         return identifierDependents + dataStructureDependents +
-                DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
+            DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
     }
 
     fun reconditionMultiAssignment(multiAssignmentAST: MultiAssignmentAST): List<StatementAST> {
@@ -232,7 +232,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
         return identifierDependents + exprDependents +
-                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+            MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMultiTypedDeclaration(multiTypedDeclarationAST: MultiTypedDeclarationAST): List<StatementAST> {
@@ -250,7 +250,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
 
         return identifierDependents + exprDependents +
-                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+            MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionIfStatement(ifStatementAST: IfStatementAST): List<StatementAST> {
@@ -465,7 +465,7 @@ class AdvancedReconditioner {
 
                 val methodCall = NonVoidMethodCallAST(
                     ADVANCED_SAFE_ARRAY_INDEX.signature,
-                    listOf(key, ModulusExpressionAST(ident), state, StringLiteralAST(safetyId))
+                    listOf(key, ModulusExpressionAST(ident), state, StringLiteralAST(safetyId)),
                 )
                 val decl = DeclarationAST(temp, methodCall)
                 Pair(IndexAssignAST(ident, temp, value), identDependents + keyDependents + valueDependents + decl)
