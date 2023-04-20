@@ -201,7 +201,7 @@ sealed class ExpressionAST : ASTElement {
         val clazz: ClassAST,
         name: String,
         mutable: Boolean = true,
-        initialised: Boolean = false
+        initialised: Boolean = false,
     ) : IdentifierAST(name, ClassType(clazz), mutable, initialised) {
         override fun initialise(): IdentifierAST =
             if (initialised()) this else ClassInstanceAST(clazz, name, mutable, true)
@@ -216,9 +216,9 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
-                    clazz == other.clazz &&
-                    name == other.name && initialised() == other.initialised() &&
-                    mutable == other.mutable
+                clazz == other.clazz &&
+                name == other.name && initialised() == other.initialised() &&
+                mutable == other.mutable
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -238,11 +238,11 @@ sealed class ExpressionAST : ASTElement {
     class ArrayIndexAST(
         val array: IdentifierAST,
         val index: ExpressionAST,
-        private val initialised: Boolean = false
+        private val initialised: Boolean = false,
     ) : IdentifierAST(
         array.name,
         (array.type() as ArrayType).internalType,
-        initialised
+        initialised,
     ) {
         init {
             if (array.type() !is ArrayType) {
@@ -279,7 +279,7 @@ sealed class ExpressionAST : ASTElement {
     ) : IdentifierAST(
         ident.name,
         if (ident.type() is MapType) (ident.type() as MapType).valueType else IntType,
-        initialised = true
+        initialised = true,
     ) {
         init {
             when (val identType = ident.type()) {
@@ -374,18 +374,25 @@ sealed class ExpressionAST : ASTElement {
     }
 
     class SetDisplayAST(val exprs: List<ExpressionAST>, val isMultiset: Boolean) : ExpressionAST() {
-        override fun type(): Type =
-            if (exprs.isEmpty()) {
-                PlaceholderType
-            } else {
-                if (isMultiset) MultisetType(exprs[0].type()) else SetType(exprs[0].type())
-            }
+        private var innerType = if (exprs.isEmpty()) PlaceholderType else exprs[0].type()
+
+        constructor(exprs: List<ExpressionAST>, isMultiset: Boolean, innerType: Type) : this(exprs, isMultiset) {
+            this.innerType = innerType
+        }
+
+        override fun type(): Type = if (isMultiset) MultisetType(innerType) else SetType(innerType)
 
         override fun toString(): String = "${if (isMultiset) "multiset" else ""}{${exprs.joinToString(", ")}}"
     }
 
     class SequenceDisplayAST(val exprs: List<ExpressionAST>) : ExpressionAST() {
-        override fun type(): Type = if (exprs.isEmpty()) PlaceholderType else SequenceType(exprs[0].type())
+        private var innerType = if (exprs.isEmpty()) PlaceholderType else exprs[0].type()
+
+        constructor(exprs: List<ExpressionAST>, innerType: Type) : this(exprs) {
+            this.innerType = innerType
+        }
+
+        override fun type(): Type = SequenceType(innerType)
 
         override fun toString(): String = "[${exprs.joinToString(", ")}]"
     }
