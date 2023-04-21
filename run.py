@@ -48,10 +48,10 @@ def copyDirectories(directories, directory):
 
 if __name__ == '__main__':
     timeout_start = time.time()    
-    timeout_secs = 60 * 60 * 2 # 2 hours
+    timeout_secs = 60 * 60 * 8 # 8 hours
     while time.time() < timeout_start + timeout_secs:
         for i in range(10):
-            os.system("java -jar /home/alex/fuzz-d/app/build/libs/app.jar fuzz")
+            os.system("timeout 60 java -jar /home/alex/fuzz-d/app/build/libs/app.jar fuzz")
         
         compiler_crash_dirs, execute_crash_dirs, different_output_dirs, timeout_dirs, success_dirs = getErrorDirectories()
         copyDirectories(compiler_crash_dirs, os.path.join('result', 'compiler_crash'))
