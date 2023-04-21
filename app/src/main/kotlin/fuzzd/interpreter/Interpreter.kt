@@ -158,7 +158,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         when (value) {
             is MultiValue, is CharValue, is StringValue, is IntValue, is BoolValue -> listOf(PrintAST(key))
             is SetValue, is MultisetValue, is MapValue, is SequenceValue -> {
-                if (key.type().hasArrayType()) {
+                if (key.type().hasHeapType()) {
                     listOf(PrintAST(ModulusExpressionAST(key)))
                 } else {
                     listOf(PrintAST(BinaryExpressionAST(key, DataStructureEqualityOperator, value.toExpressionAST())))

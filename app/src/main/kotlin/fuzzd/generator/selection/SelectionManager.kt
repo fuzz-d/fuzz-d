@@ -16,7 +16,6 @@ import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.BooleanBinaryOperator
-import fuzzd.generator.ast.operators.BinaryOperator.Companion.isBinaryType
 import fuzzd.generator.ast.operators.BinaryOperator.ComparisonBinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DataStructureBinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DataStructureMembershipOperator
@@ -57,7 +56,9 @@ class SelectionManager(
 ) {
     fun selectType(context: GenerationContext, literalOnly: Boolean = false): Type {
         val selection = listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
-//            this::selectClassType to 0.2,
+            this::selectClassType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.classes()
+                    .isNotEmpty()
+            ) 0.07 else 0.0,
 //            this::selectTraitType to 0.0,
             this::selectArrayType to if (literalOnly || !context.onDemandIdentifiers) 0.0 else 0.1,
             this::selectDataStructureType to 0.15 / context.expressionDepth,
@@ -211,7 +212,6 @@ class SelectionManager(
             WHILE to whileStatementProbability,
             METHOD_CALL to methodCallProbability,
             MAP_ASSIGN to remainingProbability / 6,
-            DECLARATION to 0 * remainingProbability / 6,
             ASSIGN to 4 * remainingProbability / 6,
             CLASS_INSTANTIATION to remainingProbability / 6,
         )
@@ -228,19 +228,20 @@ class SelectionManager(
         )
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
-        val binaryProbability = if (targetType !is ArrayType && targetType != CharType) 0.4 / context.expressionDepth else 0.0
+        val binaryProbability =
+            if (targetType !is ArrayType && targetType !is ClassType && targetType != CharType) 0.4 / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
         val modulusProbability = if (targetType == IntType) 0.03 else 0.0
         val multisetConversionProbability = if (targetType is MultisetType) 0.03 else 0.0
         val functionCallProbability =
-            if (!targetType.hasArrayType() && context.onDemandIdentifiers && context.functionCalls) {
+            if (!targetType.hasHeapType() && context.onDemandIdentifiers && context.functionCalls) {
                 0.1 / context.expressionDepth
             } else {
                 0.0
             }
         val ternaryProbability = 0.07 / context.expressionDepth
         val assignProbability =
-            if ((targetType is MapType || targetType is MultisetType) && identifier) 0.1 / context.expressionDepth else 0.0
+            if ((targetType is MapType || targetType is MultisetType || targetType is SequenceType) && identifier) 0.1 / context.expressionDepth else 0.0
         val indexProbability = if (identifier) 0.1 / context.expressionDepth else 0.0
 
         val remainingProbability =
@@ -261,13 +262,14 @@ class SelectionManager(
             } else {
                 0.0
             }
-        val constructorProbability = if ((targetType is ArrayType && context.expressionDepth == 1) ||
-            (targetType !is LiteralType && targetType !is ArrayType)
-        ) {
-            if (identifier) remainingProbability / 3 else remainingProbability
-        } else {
-            0.0
-        }
+        val constructorProbability =
+            if (((targetType is ArrayType || targetType is ClassType) && context.expressionDepth == 1) ||
+                (targetType !is LiteralType && targetType !is ArrayType && targetType !is ClassType)
+            ) {
+                if (identifier) remainingProbability / 3 else remainingProbability
+            } else {
+                0.0
+            }
 
         val selection = listOf(
             CONSTRUCTOR to constructorProbability,
