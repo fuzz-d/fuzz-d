@@ -4,6 +4,7 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.Type
 import fuzzd.utils.unionAll
+import kotlin.reflect.KClass
 
 class SymbolTable(private val parent: SymbolTable? = null) {
     val symbolTable = mutableMapOf<IdentifierAST, Type>()

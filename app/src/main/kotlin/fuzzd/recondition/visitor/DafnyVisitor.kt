@@ -20,15 +20,15 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
-import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
+import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
-import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -63,9 +63,9 @@ import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.PlaceholderType
-import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
+import fuzzd.generator.ast.Type.StringType
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
@@ -98,11 +98,9 @@ import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.utils.ABSOLUTE
-import fuzzd.utils.SAFE_ADDITION_INT
+import fuzzd.utils.SAFE_ARRAY_INDEX
 import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
-import fuzzd.utils.SAFE_MULTIPLY_INT
-import fuzzd.utils.SAFE_SUBTRACT_INT
 import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
 
@@ -117,11 +115,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     /* ============================================ TOP LEVEL ============================================ */
     override fun visitProgram(ctx: ProgramContext): DafnyAST {
         listOf(
-            SAFE_ADDITION_INT,
+            SAFE_ARRAY_INDEX,
             SAFE_DIVISION_INT,
             SAFE_MODULO_INT,
-            SAFE_MULTIPLY_INT,
-            SAFE_SUBTRACT_INT,
             ABSOLUTE,
         ).forEach { functionMethodsTable.addEntry(it.name(), it.signature) }
 
@@ -395,11 +391,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             identifier
         } else {
             val index = visitExpression(ctx.expression(0))
-            when (identifier.type()) {
-                is ArrayType -> ArrayIndexAST(identifier, index)
-                is SequenceType -> SequenceIndexAST(identifier, index)
-                else -> IndexAST(identifier, index)
-            }
+            ArrayIndexAST(identifier, index)
         }
     }
 
@@ -473,7 +465,6 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitExpression(ctx: ExpressionContext): ExpressionAST = when {
         ctx.literal() != null -> visitLiteral(ctx.literal())
         ctx.functionCall() != null -> visitFunctionCall(ctx.functionCall())
-        ctx.declAssignLhs() != null -> visitDeclAssignLhs(ctx.declAssignLhs())
         ctx.unaryOperator() != null -> UnaryExpressionAST(
             visitExpression(ctx.expression(0)),
             visitUnaryOperator(ctx.unaryOperator()),
@@ -488,6 +479,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.setDisplay() != null -> visitSetDisplay(ctx.setDisplay())
         ctx.sequenceDisplay() != null -> visitSequenceDisplay(ctx.sequenceDisplay())
         ctx.mapConstructor() != null -> visitMapConstructor(ctx.mapConstructor())
+        ctx.identifier() != null -> visitIdentifier(ctx.identifier())
+        ctx.index() != null -> visitIndexExpression(ctx)
         ctx.indexAssign() != null -> visitIndexAssign(ctx.indexAssign())
 
         ctx.ADD() != null -> {
@@ -685,6 +678,17 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return SetDisplayAST(exprs, ctx.MULTISET() != null)
     }
 
+    private fun visitIndexExpression(ctx: ExpressionContext): ExpressionAST {
+        val expression = visitExpression(ctx.expression(0))
+        val index = visitExpression(ctx.index().expression(0))
+        return when (expression.type()) {
+            is ArrayType -> ArrayIndexAST(expression as IdentifierAST, index)
+            is MapType -> MapIndexAST(expression, index)
+            is MultisetType -> MultisetIndexAST(expression, index)
+            else -> SequenceIndexAST(expression, index)
+        }
+    }
+
     override fun visitSequenceDisplay(ctx: SequenceDisplayContext): SequenceDisplayAST {
         val exprs = ctx.expression().map(this::visitExpression)
         return SequenceDisplayAST(exprs)
@@ -742,9 +746,6 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitStringToken(ctx: StringTokenContext): StringLiteralAST =
         StringLiteralAST(ctx.text.substring(1, ctx.text.length - 1))
 
-    override fun visitRealLiteral(ctx: RealLiteralContext): RealLiteralAST =
-        RealLiteralAST(ctx.REAL_LITERAL().toString())
-
     override fun visitUnaryOperator(ctx: UnaryOperatorContext): UnaryOperator = when {
         ctx.NEG() != null -> NegationOperator
         ctx.NOT() != null -> NotOperator
@@ -763,7 +764,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.BOOL() != null -> BoolType
         ctx.INT() != null -> IntType
         ctx.CHAR() != null -> CharType
-        ctx.REAL() != null -> RealType
+        ctx.STRING() != null -> StringType
         ctx.arrayType() != null -> visitArrayType(ctx.arrayType())
         ctx.identifier() != null -> visitIdentifierType(ctx.identifier())
         ctx.mapType() != null -> visitMapType(ctx.mapType())

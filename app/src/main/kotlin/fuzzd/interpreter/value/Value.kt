@@ -2,6 +2,7 @@ package fuzzd.interpreter.value
 
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
+import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
@@ -97,6 +98,11 @@ sealed class Value {
         fun assign(key: Int, value: Value): SequenceValue =
             SequenceValue(seq.subList(0, key) + value + seq.subList(key + 1, seq.size))
 
+        fun asStringValue(): StringValue {
+            val chars = seq.map { (it as CharValue).value }.toCharArray()
+            return StringValue(chars.concatToString())
+        }
+
         override fun equals(other: Any?): Boolean = other is SequenceValue && seq == other.seq
         override fun hashCode(): Int = seq.hashCode()
 
@@ -185,10 +191,23 @@ sealed class Value {
         override fun hashCode(): Int = set.hashCode()
     }
 
-    data class StringValue(val value: String) : Value() {
+    data class StringValue(val value: String) : DataStructureValue() {
+        override fun contains(item: Value): BoolValue = BoolValue((item as CharValue).value in value)
+        override fun notContains(item: Value): BoolValue = BoolValue((item as CharValue).value !in value)
+        override fun modulus(): IntValue = IntValue(valueOf(value.length.toLong()))
+
+        fun concat(other: StringValue): StringValue = StringValue(value + other.value)
+        fun getIndex(index: Int): CharValue = CharValue(value[index])
+
+        override fun toExpressionAST(): ExpressionAST = StringLiteralAST(value)
         override fun equals(other: Any?): Boolean = other is StringValue && value == other.value
         override fun hashCode(): Int = value.hashCode()
-        override fun toExpressionAST(): ExpressionAST = StringLiteralAST(value)
+    }
+
+    data class CharValue(val value: Char) : Value() {
+        override fun toExpressionAST(): ExpressionAST = CharacterLiteralAST(value)
+        override fun equals(other: Any?): Boolean = other is CharValue && value == other.value
+        override fun hashCode(): Int = value.hashCode()
     }
 
     data class BoolValue(val value: Boolean) : Value() {

@@ -15,9 +15,9 @@ import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
-import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
+import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
@@ -77,8 +77,6 @@ interface ASTGenerator {
 
     fun generateMapAssign(context: GenerationContext): List<StatementAST>
 
-    fun generateChecksum(context: GenerationContext): List<StatementAST>
-
     /* ========================================== EXPRESSIONS ========================================== */
 
     fun generateExpression(context: GenerationContext, targetType: Type): Pair<ExpressionAST, List<StatementAST>>
@@ -104,7 +102,7 @@ interface ASTGenerator {
 
     fun generateMultisetConversion(
         context: GenerationContext,
-        targetType: Type
+        targetType: Type,
     ): Pair<MultisetConversionAST, List<StatementAST>>
 
     fun generateBinaryExpression(
@@ -152,9 +150,9 @@ interface ASTGenerator {
 
     fun generateBooleanLiteral(context: GenerationContext): Pair<BooleanLiteralAST, List<StatementAST>>
 
-    fun generateRealLiteral(context: GenerationContext): Pair<RealLiteralAST, List<StatementAST>>
-
     fun generateCharLiteral(context: GenerationContext): Pair<CharacterLiteralAST, List<StatementAST>>
+
+    fun generateStringLiteral(context: GenerationContext): Pair<StringLiteralAST, List<StatementAST>>
 
     /* ========================================== TYPE ========================================== */
 

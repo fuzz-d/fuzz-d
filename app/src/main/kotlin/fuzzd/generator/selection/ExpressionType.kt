@@ -13,3 +13,11 @@ enum class ExpressionType {
     INDEX_ASSIGN,
     LITERAL,
 }
+
+enum class IndexType {
+    ARRAY,
+    MAP,
+    MULTISET,
+    SEQUENCE,
+    STRING
+}

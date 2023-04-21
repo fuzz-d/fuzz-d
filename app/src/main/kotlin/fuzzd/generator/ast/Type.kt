@@ -72,7 +72,7 @@ sealed class Type : ASTElement {
         override fun hashCode(): Int = innerType.hashCode()
     }
 
-    class SequenceType(val innerType: Type) : Type() {
+    open class SequenceType(val innerType: Type) : Type() {
         override fun hasArrayType(): Boolean = innerType.hasArrayType()
 
         override fun toString(): String = "seq<$innerType>"
@@ -80,6 +80,10 @@ sealed class Type : ASTElement {
         override fun equals(other: Any?): Boolean = other is SequenceType && other.innerType == innerType
 
         override fun hashCode(): Int = innerType.hashCode()
+    }
+
+    object StringType : SequenceType(CharType) {
+        override fun toString(): String = "string"
     }
 
     class MethodReturnType(val types: List<Type>) : Type() {
@@ -96,16 +100,8 @@ sealed class Type : ASTElement {
         override fun toString(): String = "int"
     }
 
-    object RealType : LiteralType() {
-        override fun toString(): String = "real"
-    }
-
     object CharType : LiteralType() {
         override fun toString(): String = "char"
-    }
-
-    object StringType : LiteralType() {
-        override fun toString(): String = "string"
     }
 
     object PlaceholderType : Type() {
