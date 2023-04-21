@@ -58,8 +58,10 @@ class SelectionManager(
         val selection = listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
             this::selectClassType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.classes()
                     .isNotEmpty()
-            ) 0.07 else 0.0,
-//            this::selectTraitType to 0.0,
+            ) 0.05 else 0.0,
+            this::selectTraitType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.traits()
+                    .isNotEmpty()
+            ) 0.04 else 0.0,
             this::selectArrayType to if (literalOnly || !context.onDemandIdentifiers) 0.0 else 0.1,
             this::selectDataStructureType to 0.15 / context.expressionDepth,
             this::selectLiteralType to if (literalOnly) 0.85 else 0.75,
@@ -229,7 +231,9 @@ class SelectionManager(
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability =
-            if (targetType !is ArrayType && targetType !is ClassType && targetType != CharType) 0.4 / context.expressionDepth else 0.0
+            if (targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType && targetType != CharType) {
+                0.4 / context.expressionDepth
+            } else 0.0
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
         val modulusProbability = if (targetType == IntType) 0.03 else 0.0
         val multisetConversionProbability = if (targetType is MultisetType) 0.03 else 0.0
@@ -263,8 +267,8 @@ class SelectionManager(
                 0.0
             }
         val constructorProbability =
-            if (((targetType is ArrayType || targetType is ClassType) && context.expressionDepth == 1) ||
-                (targetType !is LiteralType && targetType !is ArrayType && targetType !is ClassType)
+            if (((targetType is ArrayType || targetType is ClassType || targetType is TraitType) && context.expressionDepth == 1) ||
+                (targetType !is LiteralType && targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType)
             ) {
                 if (identifier) remainingProbability / 3 else remainingProbability
             } else {
@@ -370,7 +374,7 @@ class SelectionManager(
         private const val MIN_ARRAY_LENGTH = 1
         private const val MAX_ARRAY_LENGTH = 30
         private const val MAX_INT_VALUE = 1000
-        private const val MAX_STRING_LENGTH = 6
+        private const val MAX_STRING_LENGTH = 10
         private const val MAX_PARAMETERS = 15
         private const val MAX_RETURNS = 15
         private const val MAX_FIELDS = 5

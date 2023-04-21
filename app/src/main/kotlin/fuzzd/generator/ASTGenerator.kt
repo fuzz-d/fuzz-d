@@ -40,7 +40,7 @@ interface ASTGenerator {
 
     fun generateTrait(context: GenerationContext): TraitAST
 
-    fun generateClass(context: GenerationContext): ClassAST
+    fun generateClass(context: GenerationContext, mustExtend: List<TraitAST> = emptyList()): ClassAST
 
     fun generateField(context: GenerationContext): IdentifierAST
 

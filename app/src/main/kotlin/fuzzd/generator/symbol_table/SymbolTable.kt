@@ -2,6 +2,7 @@ package fuzzd.generator.symbol_table
 
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.TraitInstanceAST
 import fuzzd.generator.ast.Type
 import fuzzd.utils.unionAll
 import kotlin.reflect.KClass
@@ -43,6 +44,9 @@ class SymbolTable(private val parent: SymbolTable? = null) {
 
     fun classInstances(): List<ClassInstanceAST> =
         (parent?.classInstances() ?: listOf()) + symbolTable.keys.filterIsInstance<ClassInstanceAST>()
+
+    fun traitInstances(): List<TraitInstanceAST> =
+        (parent?.traitInstances() ?: listOf()) + symbolTable.keys.filterIsInstance<TraitInstanceAST>()
 
     fun types(): List<Type> = typeTable.keys.toList()
 

@@ -13,11 +13,13 @@ import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.StringType
+import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidFormatException
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.utils.escape
+import org.intellij.lang.annotations.Identifier
 
 fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, context: String) {
     if (expected.size != actual.size) {
@@ -196,6 +198,23 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
+    class TraitInstanceAST(
+        val trait: TraitAST,
+        name: String,
+        mutable: Boolean = true,
+        initialised: Boolean = false
+    ) : IdentifierAST(name, TraitType(trait), mutable, initialised) {
+        override fun initialise(): IdentifierAST =
+            if (initialised()) this else TraitInstanceAST(trait, name, mutable, true)
+
+        val fields = trait.fields().map { ClassInstanceFieldAST(this, it) }
+        val functionMethods = trait.functionMethods().map { ClassInstanceFunctionMethodSignatureAST(this, it) }
+        val methods = trait.methods().map { ClassInstanceMethodSignatureAST(this, it) }
+
+        override fun equals(other: Any?): Boolean = other is TraitInstanceAST &&
+                trait == other.trait && name == other.name && initialised() == other.initialised() && mutable == other.mutable
+    }
+
     class ClassInstanceAST(
         val clazz: ClassAST,
         name: String,
@@ -215,9 +234,9 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
-                clazz == other.clazz &&
-                name == other.name && initialised() == other.initialised() &&
-                mutable == other.mutable
+                    clazz == other.clazz &&
+                    name == other.name && initialised() == other.initialised() &&
+                    mutable == other.mutable
 
         override fun hashCode(): Int {
             var result = super.hashCode()
