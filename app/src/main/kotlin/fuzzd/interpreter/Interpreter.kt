@@ -9,6 +9,7 @@ import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
+import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
@@ -18,8 +19,10 @@ import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
+import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
@@ -43,7 +46,6 @@ import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
-import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
@@ -76,6 +78,7 @@ import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.interpreter.value.Value
 import fuzzd.interpreter.value.Value.ArrayValue
 import fuzzd.interpreter.value.Value.BoolValue
+import fuzzd.interpreter.value.Value.CharValue
 import fuzzd.interpreter.value.Value.ClassValue
 import fuzzd.interpreter.value.Value.DataStructureValue
 import fuzzd.interpreter.value.Value.IntValue
@@ -153,7 +156,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
     private fun generateChecksumPrint(key: IdentifierAST, value: Value, context: InterpreterContext): List<PrintAST> =
         when (value) {
-            is MultiValue, is StringValue, is IntValue, is BoolValue -> listOf(PrintAST(key))
+            is MultiValue, is CharValue, is StringValue, is IntValue, is BoolValue -> listOf(PrintAST(key))
             is SetValue, is MultisetValue, is MapValue, is SequenceValue -> {
                 if (key.type().hasArrayType()) {
                     listOf(PrintAST(ModulusExpressionAST(key)))
@@ -304,7 +307,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                 arrayValue.setIndex(index.value.toInt(), value)
             }
 
-            is SequenceIndexAST, is IndexAST, is IndexAssignAST -> throw UnsupportedOperationException()
+            is IndexAssignAST -> throw UnsupportedOperationException()
 
             else -> if (isDeclaration) {
                 context.fields.declare(identifier, value)
@@ -339,6 +342,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is MapValue -> emitMapValue(value)
             is SequenceValue -> emitSequenceValue(value)
             is StringValue -> emitStringValue(value)
+            is CharValue -> emitCharValue(value)
             is IntValue -> emitIntValue(value)
             is BoolValue -> emitBoolValue(value)
         }
@@ -382,11 +386,23 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     private fun emitSequenceValue(sequenceValue: SequenceValue) {
-        sequenceValue.seq.forEach { emitOutput(it) }
+        if (sequenceValue.seq.isNotEmpty() && sequenceValue.seq[0] is CharValue) {
+            sequenceValue.seq.forEach { emitSeqCharValue(it as CharValue) }
+        } else {
+            sequenceValue.seq.forEach { emitOutput(it) }
+        }
     }
 
     private fun emitStringValue(stringValue: StringValue) {
         output.append(stringValue.value)
+    }
+
+    private fun emitSeqCharValue(charValue: CharValue) {
+        output.append("${charValue.value}")
+    }
+
+    private fun emitCharValue(charValue: CharValue) {
+        output.append("'${charValue.value}'")
     }
 
     private fun emitIntValue(intValue: IntValue) {
@@ -398,8 +414,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     /* ============================== EXPRESSIONS ============================ */
-    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value =
-        when (expression) {
+    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value {
+        return when (expression) {
             is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
             is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
             is ClassInstantiationAST -> interpretClassInstantiation(expression, context)
@@ -409,26 +425,35 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is ModulusExpressionAST -> interpretModulus(expression, context)
             is MultisetConversionAST -> interpretMultisetConversion(expression, context)
             is IdentifierAST -> interpretIdentifier(expression, context)
+            is IndexAST -> interpretIndex(expression, context)
             is SetDisplayAST -> interpretSetDisplay(expression, context)
             is SequenceDisplayAST -> interpretSequenceDisplay(expression, context)
             is MapConstructorAST -> interpretMapConstructor(expression, context)
             is ArrayLengthAST -> interpretArrayLength(expression, context)
             is ArrayInitAST -> interpretArrayInit(expression, context)
+            is CharacterLiteralAST -> interpretCharacterLiteral(expression, context)
             is StringLiteralAST -> interpretStringLiteral(expression, context)
             is IntegerLiteralAST -> interpretIntegerLiteral(expression, context)
             is BooleanLiteralAST -> interpretBooleanLiteral(expression, context)
             else -> throw UnsupportedOperationException()
         }
+    }
 
     override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, context: InterpreterContext): Value =
         if (functionCall.function is ClassInstanceFunctionMethodSignatureAST) {
             val functionSignature = functionCall.function
             val classValue = interpretIdentifier(functionSignature.classInstance, context) as ClassValue
-            interpretFunctionCall(
-                functionSignature.signature,
-                functionCall.params,
-                InterpreterContext(context.fields, context.functions, context.methods, classValue.classContext),
+            val functionContext = InterpreterContext(
+                ValueTable(classValue.classContext.fields),
+                context.functions,
+                context.methods,
+                classValue.classContext,
             )
+
+            setParams(functionSignature.params, functionCall.params, functionContext.fields, context)
+
+            val body = classValue.classContext.functions.get(functionSignature.signature)
+            interpretExpression(body, functionContext)
         } else {
             interpretFunctionCall(functionCall.function, functionCall.params, context)
         }
@@ -471,19 +496,34 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         }
     }
 
+    private fun interpretClassInstanceMethodCall(
+        methodSignature: ClassInstanceMethodSignatureAST,
+        params: List<ExpressionAST>,
+        returns: List<IdentifierAST>,
+        context: InterpreterContext,
+    ): ValueTable<IdentifierAST, Value> {
+        val classValue = interpretIdentifier(methodSignature.classInstance, context) as ClassValue
+        val methodContext = InterpreterContext(
+            ValueTable(classValue.classContext.fields),
+            context.functions,
+            context.methods,
+            classValue.classContext,
+        )
+
+        setParams(methodSignature.params, params, methodContext.fields, context)
+        returns.forEach { methodContext.fields.create(it) }
+        val body = classValue.classContext.methods.get(methodSignature.signature)
+        interpretSequence(body, methodContext)
+        return methodContext.fields
+    }
+
     private fun interpretMethodCall(
         methodSignature: MethodSignatureAST,
         params: List<ExpressionAST>,
         returns: List<IdentifierAST>,
         context: InterpreterContext,
     ): ValueTable<IdentifierAST, Value> = if (methodSignature is ClassInstanceMethodSignatureAST) {
-        val classValue = interpretIdentifier(methodSignature.classInstance, context) as ClassValue
-        interpretMethodCall(
-            methodSignature.signature,
-            params,
-            returns,
-            InterpreterContext(context.fields, context.functions, context.methods, classValue.classContext),
-        )
+        interpretClassInstanceMethodCall(methodSignature, params, returns, context)
     } else {
         val (methodContext, body) = if (context.methods.has(methodSignature)) {
             Pair(
@@ -605,12 +645,27 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         else -> throw UnsupportedOperationException()
     }
 
-    private fun interpretUnion(lhs: Value, rhs: Value): Value = when (lhs) {
-        is MultisetValue -> lhs.union(rhs as MultisetValue)
-        is SetValue -> lhs.union(rhs as SetValue)
-        is MapValue -> lhs.union(rhs as MapValue)
-        is SequenceValue -> lhs.union(rhs as SequenceValue)
-        else -> throw UnsupportedOperationException()
+    private fun interpretUnion(lhs: Value, rhs: Value): Value {
+        return when (lhs) {
+            is MultisetValue -> lhs.union(rhs as MultisetValue)
+            is SetValue -> lhs.union(rhs as SetValue)
+            is MapValue -> lhs.union(rhs as MapValue)
+            is StringValue -> {
+                val rhsAsStringValue = (if (rhs is SequenceValue) rhs.asStringValue() else rhs) as StringValue
+                lhs.concat(rhsAsStringValue)
+            }
+
+            is SequenceValue -> {
+                if (rhs is StringValue) {
+                    val lhsAsStringValue = lhs.asStringValue()
+                    lhsAsStringValue.concat(rhs)
+                } else {
+                    lhs.union(rhs as SequenceValue)
+                }
+            }
+
+            else -> throw UnsupportedOperationException()
+        }
     }
 
     private fun interpretDifference(lhs: Value, rhs: Value): Value = when (lhs) {
@@ -654,8 +709,10 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         multisetConversion: MultisetConversionAST,
         context: InterpreterContext,
     ): Value {
-        val sequenceValue = interpretExpression(multisetConversion.expr, context) as SequenceValue
-        return MultisetValue(sequenceValue.seq.toMultiset())
+        val value = interpretExpression(multisetConversion.expr, context)
+        val sequenceValues =
+            if (value is SequenceValue) value.seq else (value as StringValue).value.map { CharValue(it) }
+        return MultisetValue(sequenceValues.toMultiset())
     }
 
     override fun interpretIdentifier(identifier: IdentifierAST, context: InterpreterContext): Value =
@@ -671,26 +728,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is ArrayIndexAST -> {
                 val arrayValue = interpretIdentifier(identifier.array, context) as ArrayValue
                 val index = interpretExpression(identifier.index, context) as IntValue
-
                 arrayValue.getIndex(index.value.toInt())
-            }
-
-            is SequenceIndexAST -> {
-                val sequenceValue = interpretIdentifier(identifier.sequence, context) as SequenceValue
-                val index = interpretExpression(identifier.index, context) as IntValue
-
-                sequenceValue.getIndex(index.value.toInt())
-            }
-
-            is IndexAST -> {
-                val key = interpretExpression(identifier.key, context)
-                if (identifier.ident.type() is MapType) {
-                    val mapValue = interpretIdentifier(identifier.ident, context) as MapValue
-                    mapValue.get(key)
-                } else {
-                    val multisetValue = interpretIdentifier(identifier.ident, context) as MultisetValue
-                    multisetValue.get(key)
-                }
             }
 
             is IndexAssignAST -> interpretIndexAssign(identifier, context)
@@ -703,6 +741,32 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                 )
             }
         }
+
+    override fun interpretIndex(index: IndexAST, context: InterpreterContext): Value = when (index) {
+        is SequenceIndexAST -> {
+            val value = interpretExpression(index.sequence, context)
+            val key = interpretExpression(index.key, context) as IntValue
+            if (value is SequenceValue) {
+                value.getIndex(key.value.toInt())
+            } else {
+                (value as StringValue).getIndex(key.value.toInt())
+            }
+        }
+
+        is MapIndexAST -> {
+            val key = interpretExpression(index.key, context)
+            val mapValue = interpretExpression(index.map, context) as MapValue
+            mapValue.get(key)
+        }
+
+        is MultisetIndexAST -> {
+            val key = interpretExpression(index.key, context)
+            val multisetValue = interpretExpression(index.multiset, context) as MultisetValue
+            multisetValue.get(key)
+        }
+
+        else -> throw UnsupportedOperationException()
+    }
 
     private fun interpretIndexAssign(indexAssign: IndexAssignAST, context: InterpreterContext): Value {
         val key = interpretExpression(indexAssign.key, context)
@@ -741,6 +805,12 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
     override fun interpretArrayInit(arrayInit: ArrayInitAST, context: InterpreterContext): Value =
         ArrayValue(arrayInit.length)
+
+    override fun interpretCharacterLiteral(
+        characterLiteral: CharacterLiteralAST,
+        context: InterpreterContext,
+    ): CharValue =
+        CharValue(characterLiteral.value)
 
     override fun interpretStringLiteral(stringLiteral: StringLiteralAST, context: InterpreterContext): StringValue =
         StringValue(stringLiteral.value)

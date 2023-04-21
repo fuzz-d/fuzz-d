@@ -17,8 +17,10 @@ import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
+import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
@@ -309,6 +311,7 @@ class AdvancedReconditioner {
             is MultisetConversionAST -> reconditionMultisetConversion(expressionAST)
             is TernaryExpressionAST -> reconditionTernaryExpression(expressionAST)
             is IdentifierAST -> reconditionIdentifier(expressionAST)
+            is IndexAST -> reconditionIndex(expressionAST)
             is LiteralAST, is ArrayInitAST -> Pair(expressionAST, emptyList()) // do nothing
             is ClassInstantiationAST -> reconditionClassInstantiation(expressionAST)
             is ArrayLengthAST -> reconditionArrayLength(expressionAST)
@@ -317,7 +320,6 @@ class AdvancedReconditioner {
             is SetDisplayAST -> reconditionSetDisplay(expressionAST)
             is MapConstructorAST -> reconditionMapConstructor(expressionAST)
             is SequenceDisplayAST -> reconditionSequenceDisplay(expressionAST)
-            else -> throw UnsupportedOperationException()
         }
 
     fun reconditionBinaryExpression(binaryExpressionAST: BinaryExpressionAST): Pair<ExpressionAST, List<StatementAST>> {
@@ -401,30 +403,7 @@ class AdvancedReconditioner {
                 Pair(ArrayIndexAST(arr, temp), arrDependents + exprDependents + decl)
             }
 
-            is SequenceIndexAST -> {
-                val (seq, seqDependents) = reconditionIdentifier(identifierAST.sequence)
-                val (rexpr, exprDependents) = reconditionExpression(identifierAST.index)
-
-                val temp = IdentifierAST(tempGenerator.newValue(), IntType)
-                val safetyId = safetyIdGenerator.newValue()
-                idsMap[safetyId] = identifierAST
-
-                val methodCall = NonVoidMethodCallAST(
-                    ADVANCED_SAFE_ARRAY_INDEX.signature,
-                    listOf(rexpr, ModulusExpressionAST(seq), state, StringLiteralAST(safetyId)),
-                )
-
-                val decl = DeclarationAST(temp, methodCall)
-                Pair(SequenceIndexAST(seq, temp), seqDependents + exprDependents + decl)
-            }
-
             is IndexAssignAST -> reconditionIndexAssign(identifierAST)
-
-            is IndexAST -> {
-                val (map, mapDependents) = reconditionIdentifier(identifierAST.ident)
-                val (key, keyDependents) = reconditionExpression(identifierAST.key)
-                Pair(IndexAST(map, key), mapDependents + keyDependents)
-            }
 
             is ClassInstanceAST -> Pair(
                 ClassInstanceAST(classes.getValue(identifierAST.clazz.name), identifierAST.name),
@@ -440,6 +419,41 @@ class AdvancedReconditioner {
 
             else -> Pair(identifierAST, emptyList())
         }
+
+    fun reconditionIndex(indexAST: IndexAST): Pair<IndexAST, List<StatementAST>> = when (indexAST) {
+        is MapIndexAST -> {
+            val (map, mapDependents) = reconditionExpression(indexAST.map)
+            val (key, keyDependents) = reconditionExpression(indexAST.key)
+
+            Pair(MapIndexAST(map, key), mapDependents + keyDependents)
+        }
+
+        is MultisetIndexAST -> {
+            val (multiset, multisetDependents) = reconditionExpression(indexAST.multiset)
+            val (key, keyDependents) = reconditionExpression(indexAST.key)
+
+            Pair(MultisetIndexAST(multiset, key), multisetDependents + keyDependents)
+        }
+
+        is SequenceIndexAST -> {
+            val (seq, seqDependents) = reconditionExpression(indexAST.sequence)
+            val (rexpr, exprDependents) = reconditionExpression(indexAST.key)
+
+            val temp = IdentifierAST(tempGenerator.newValue(), IntType)
+            val safetyId = safetyIdGenerator.newValue()
+            idsMap[safetyId] = indexAST
+
+            val methodCall = NonVoidMethodCallAST(
+                ADVANCED_SAFE_ARRAY_INDEX.signature,
+                listOf(rexpr, ModulusExpressionAST(seq), state, StringLiteralAST(safetyId)),
+            )
+
+            val decl = DeclarationAST(temp, methodCall)
+            Pair(SequenceIndexAST(seq, temp), seqDependents + exprDependents + decl)
+        }
+
+        else -> throw UnsupportedOperationException()
+    }
 
     fun reconditionIndexAssign(indexAssignAST: IndexAssignAST): Pair<IndexAssignAST, List<StatementAST>> {
         val (ident, identDependents) = reconditionIdentifier(indexAssignAST.ident)

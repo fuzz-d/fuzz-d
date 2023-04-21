@@ -6,9 +6,11 @@ import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
+import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
@@ -32,6 +34,7 @@ import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.interpreter.value.Value
 import fuzzd.interpreter.value.Value.BoolValue
+import fuzzd.interpreter.value.Value.CharValue
 import fuzzd.interpreter.value.Value.IntValue
 import fuzzd.interpreter.value.Value.StringValue
 
@@ -85,6 +88,8 @@ interface ASTInterpreter {
 
     fun interpretIdentifier(identifier: IdentifierAST, context: InterpreterContext): Value
 
+    fun interpretIndex(index: IndexAST, context: InterpreterContext): Value
+
     fun interpretSetDisplay(setDisplay: SetDisplayAST, context: InterpreterContext): Value
 
     fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST, context: InterpreterContext): Value
@@ -94,6 +99,8 @@ interface ASTInterpreter {
     fun interpretArrayLength(arrayLength: ArrayLengthAST, context: InterpreterContext): Value
 
     fun interpretArrayInit(arrayInit: ArrayInitAST, context: InterpreterContext): Value
+
+    fun interpretCharacterLiteral(characterLiteral: CharacterLiteralAST, context: InterpreterContext): CharValue
 
     fun interpretStringLiteral(stringLiteral: StringLiteralAST, context: InterpreterContext): StringValue
 

@@ -16,12 +16,15 @@ import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
+import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
+import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
@@ -187,7 +190,8 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is MultisetConversionAST -> reconditionMultisetConversion(expression)
         is TernaryExpressionAST -> reconditionTernaryExpression(expression)
         is IdentifierAST -> reconditionIdentifier(expression)
-        is LiteralAST, is ArrayInitAST -> expression // don't need to do anything
+        is IndexAST -> reconditionIndex(expression)
+        is StringLiteralAST, is LiteralAST, is ArrayInitAST -> expression // don't need to do anything
         is ClassInstantiationAST -> reconditionClassInstantiation(expression)
         is ArrayLengthAST -> reconditionArrayLengthAST(expression)
         is NonVoidMethodCallAST -> reconditionNonVoidMethodCallAST(expression)
@@ -195,7 +199,6 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is SetDisplayAST -> reconditionSetDisplay(expression)
         is MapConstructorAST -> reconditionMapConstructor(expression)
         is SequenceDisplayAST -> reconditionSequenceDisplay(expression)
-        else -> throw UnsupportedOperationException() // TODO ??
     }
 
     override fun reconditionBinaryExpression(expression: BinaryExpressionAST): ExpressionAST {
@@ -272,16 +275,33 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             }
         }
 
+        is IndexAssignAST -> reconditionIndexAssign(identifierAST)
+
+        is ClassInstanceFieldAST -> ClassInstanceFieldAST(
+            reconditionIdentifier(identifierAST.classInstance),
+            reconditionIdentifier(identifierAST.classField),
+        )
+
+        else -> identifierAST
+    }
+
+    override fun reconditionIndex(indexAST: IndexAST): ExpressionAST = when (indexAST) {
+        is MapIndexAST -> MapIndexAST(reconditionExpression(indexAST.map), reconditionExpression(indexAST.key))
+        is MultisetIndexAST -> MultisetIndexAST(
+            reconditionExpression(indexAST.multiset),
+            reconditionExpression(indexAST.key),
+        )
+
         is SequenceIndexAST -> {
-            val reconditionedSequence = reconditionIdentifier(identifierAST.sequence)
-            val reconditionedIndex = reconditionExpression(identifierAST.index)
+            val reconditionedSequence = reconditionExpression(indexAST.sequence)
+            val reconditionedIndex = reconditionExpression(indexAST.key)
 
             val safetyId = safetyIdGenerator.newValue()
-            idsMap[safetyId] = identifierAST
+            idsMap[safetyId] = indexAST
 
             if (requiresSafety(safetyId)) {
                 if (ids != null) {
-                    logger.log { "$safetyId: Advanced reconditioning requires safety for array index $identifierAST" }
+                    logger.log { "$safetyId: Advanced reconditioning requires safety for array index $indexAST" }
                 }
 
                 SequenceIndexAST(
@@ -296,19 +316,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             }
         }
 
-        is IndexAssignAST -> reconditionIndexAssign(identifierAST)
-
-        is IndexAST -> IndexAST(
-            reconditionIdentifier(identifierAST.ident),
-            reconditionExpression(identifierAST.key),
-        )
-
-        is ClassInstanceFieldAST -> ClassInstanceFieldAST(
-            reconditionIdentifier(identifierAST.classInstance),
-            reconditionIdentifier(identifierAST.classField),
-        )
-
-        else -> identifierAST
+        else -> throw UnsupportedOperationException()
     }
 
     private fun reconditionIndexAssign(indexAssign: IndexAssignAST): IndexAssignAST {

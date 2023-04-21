@@ -5,9 +5,9 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
-import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
+import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.MethodAST
@@ -55,7 +55,7 @@ private val PRINT_UPDATE_STATE = IfStatementAST(
             NotOperator,
         ),
         DisjunctionOperator,
-        UnaryExpressionAST(IndexAST(ADVANCED_STATE_FIELD, ID), NotOperator),
+        UnaryExpressionAST(MapIndexAST(ADVANCED_STATE_FIELD, ID), NotOperator),
     ),
     SequenceAST(
         listOf(

@@ -2,15 +2,16 @@ package fuzzd.generator.selection
 
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
+import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MultisetType
-import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
+import fuzzd.generator.ast.Type.StringType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
@@ -36,6 +37,11 @@ import fuzzd.generator.selection.ExpressionType.LITERAL
 import fuzzd.generator.selection.ExpressionType.MODULUS
 import fuzzd.generator.selection.ExpressionType.TERNARY
 import fuzzd.generator.selection.ExpressionType.UNARY
+import fuzzd.generator.selection.IndexType.ARRAY
+import fuzzd.generator.selection.IndexType.MAP
+import fuzzd.generator.selection.IndexType.MULTISET
+import fuzzd.generator.selection.IndexType.SEQUENCE
+import fuzzd.generator.selection.IndexType.STRING
 import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.CLASS_INSTANTIATION
 import fuzzd.generator.selection.StatementType.DECLARATION
@@ -71,13 +77,16 @@ class SelectionManager(
         randomWeightedSelection(
             normaliseWeights(
                 listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
-                    this::selectSetType to 0.17,
-                    this::selectMultisetType to 0.17,
-                    this::selectMapType to 0.33,
-                    this::selectSequenceType to 0.33,
+                    this::selectSetType to 0.125,
+                    this::selectMultisetType to 0.125,
+                    this::selectMapType to 0.25,
+                    this::selectSequenceType to 0.25,
+                    this::selectStringType to 0.25,
                 ),
             ),
         ).invoke(context, literalOnly)
+
+    private fun selectStringType(context: GenerationContext, literalOnly: Boolean): StringType = StringType
 
     private fun selectSetType(context: GenerationContext, literalOnly: Boolean): SetType =
         SetType(selectType(context, literalOnly))
@@ -106,8 +115,17 @@ class SelectionManager(
     }
 
     @Suppress("UNUSED_PARAMETER")
-    private fun selectLiteralType(context: GenerationContext, literalOnly: Boolean): LiteralType =
-        randomSelection(LITERAL_TYPES)
+    private fun selectLiteralType(context: GenerationContext, literalOnly: Boolean): Type =
+        randomWeightedSelection(
+            normaliseWeights(
+                listOf(
+                    IntType to 0.4,
+                    BoolType to 0.4,
+                    CharType to 0.1,
+                    StringType to 0.1,
+                ),
+            ),
+        )
 
     fun selectMethodReturnType(context: GenerationContext): List<Type> {
         val numberOfReturns = random.nextInt(MAX_RETURNS)
@@ -172,7 +190,7 @@ class SelectionManager(
     fun selectUnaryOperator(targetType: Type): UnaryOperator =
         when (targetType) {
             BoolType -> NotOperator
-            IntType, RealType -> NegationOperator
+            IntType -> NegationOperator
             else -> throw InvalidInputException("Target type $targetType not supported for unary operations")
         }
 
@@ -210,20 +228,8 @@ class SelectionManager(
             ),
         )
 
-    fun generateNewMethod(context: GenerationContext): Boolean = false
-//    {
-//        val trueWeighting =
-//            0.2 / maxOf(context.statementDepth, context.expressionDepth, context.functionSymbolTable.methods().size)
-//
-//        return context.methodContext == null &&
-//            randomWeightedSelection(listOf(true to trueWeighting, false to 1 - trueWeighting))
-//    }
-
-    fun generateNewClass(context: GenerationContext): Boolean = false
-//        random.nextFloat() < (0.1 / context.functionSymbolTable.classes().size)
-
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
-        val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0
+        val binaryProbability = if (targetType !is ArrayType && targetType != CharType) 0.4 / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
         val modulusProbability = if (targetType == IntType) 0.03 else 0.0
         val multisetConversionProbability = if (targetType is MultisetType) 0.03 else 0.0
@@ -279,6 +285,18 @@ class SelectionManager(
 
         return randomWeightedSelection(normaliseWeights(selection))
     }
+
+    fun selectIndexType(context: GenerationContext, targetType: Type): IndexType = randomWeightedSelection(
+        normaliseWeights(
+            listOf(
+                ARRAY to if (context.onDemandIdentifiers) 0.2 else 0.0,
+                MAP to 0.2,
+                MULTISET to if (targetType == IntType) 0.2 else 0.0,
+                SEQUENCE to 0.2,
+                STRING to if (targetType == CharType) 0.2 else 0.0,
+            ),
+        ),
+    )
 
     fun <T> normaliseWeights(items: List<Pair<T, Double>>): List<Pair<T, Double>> {
         var weightSum = 0.0
@@ -340,7 +358,9 @@ class SelectionManager(
 
     fun selectDecimalLiteral(): Int = random.nextInt(0, MAX_INT_VALUE)
 
-    fun selectCharacter(): Char = random.nextInt(20, MAX_CHAR_VALUE).toChar()
+    fun selectStringLength(): Int = random.nextInt(0, MAX_STRING_LENGTH)
+
+    fun selectCharacter(): Char = random.nextInt('a'.code, 'z'.code).toChar()
 
     fun selectBoolean(): Boolean = random.nextBoolean()
 
@@ -349,7 +369,7 @@ class SelectionManager(
         private const val MIN_ARRAY_LENGTH = 1
         private const val MAX_ARRAY_LENGTH = 30
         private const val MAX_INT_VALUE = 1000
-        private const val MAX_CHAR_VALUE = 127
+        private const val MAX_STRING_LENGTH = 6
         private const val MAX_PARAMETERS = 15
         private const val MAX_RETURNS = 15
         private const val MAX_FIELDS = 5
@@ -359,7 +379,7 @@ class SelectionManager(
         private const val MAX_TRAITS = 3
         private const val MAX_TRAIT_INHERITS = 2
 
-        private val LITERAL_TYPES = listOf(IntType, BoolType)
+        private val LITERAL_TYPES = listOf(IntType, BoolType, CharType)
         private fun isLiteralType(type: Type) = type in LITERAL_TYPES
     }
 }

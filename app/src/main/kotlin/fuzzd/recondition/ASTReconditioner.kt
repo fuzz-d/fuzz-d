@@ -8,6 +8,7 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
@@ -80,6 +81,8 @@ interface ASTReconditioner {
     fun reconditionFunctionMethodCall(functionMethodCall: FunctionMethodCallAST): ExpressionAST
 
     fun reconditionIdentifier(identifierAST: IdentifierAST): ExpressionAST
+
+    fun reconditionIndex(indexAST: IndexAST): ExpressionAST
 
     fun reconditionTernaryExpression(ternaryExpression: TernaryExpressionAST): ExpressionAST
 

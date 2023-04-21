@@ -10,7 +10,6 @@ import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.PlaceholderType
-import fuzzd.generator.ast.Type.RealType
 import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.StringType
@@ -260,49 +259,53 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "$array[$index]"
     }
 
-    class SequenceIndexAST(
-        val sequence: IdentifierAST,
-        val index: ExpressionAST,
-    ) : IdentifierAST(sequence.name, (sequence.type() as SequenceType).innerType, initialised = true) {
-        init {
-            if (index.type() != IntType) {
-                throw InvalidInputException("Got invalid type for sequence index. Got ${index.type()}, expected int")
-            }
-        }
-
-        override fun toString(): String = "$sequence[$index]"
+    abstract class IndexAST(val dataStructure: ExpressionAST, val key: ExpressionAST) : ExpressionAST() {
+        override fun toString(): String = "$dataStructure[$key]"
     }
 
-    class IndexAST(
-        val ident: IdentifierAST,
-        val key: ExpressionAST,
-    ) : IdentifierAST(
-        ident.name,
-        if (ident.type() is MapType) (ident.type() as MapType).valueType else IntType,
-        initialised = true,
-    ) {
+    class SequenceIndexAST(val sequence: ExpressionAST, key: ExpressionAST) : IndexAST(sequence, key) {
         init {
-            when (val identType = ident.type()) {
-                is MapType -> {
-                    val expectedKeyType = identType.keyType
+            val sequenceType = sequence.type()
+            if (sequenceType !is SequenceType) {
+                throw InvalidInputException("Expected sequence type for sequence index. Got $sequenceType")
+            }
 
-                    if (key.type() != expectedKeyType) {
-                        throw InvalidInputException("Invalid key type for map IndexAST. Expected $expectedKeyType, got ${key.type()}")
-                    }
-                }
-
-                is MultisetType -> {
-                    val expectedKeyType = identType.innerType
-                    if (key.type() != expectedKeyType) {
-                        throw InvalidInputException("Invalid key type for multiset IndexAST. Expected $expectedKeyType, got ${key.type()}")
-                    }
-                }
-
-                else -> throw InvalidInputException("Expected map/multiset type for IndexAST identifier. Got ${ident.type()}")
+            if (key.type() != IntType) {
+                throw InvalidInputException("Got invalid type for sequence index. Got ${key.type()}, expected int")
             }
         }
 
-        override fun toString(): String = "$ident[$key]"
+        override fun type(): Type = (sequence.type() as SequenceType).innerType
+    }
+
+    class MapIndexAST(val map: ExpressionAST, key: ExpressionAST) : IndexAST(map, key) {
+        init {
+            val mapType = map.type()
+            if (mapType !is MapType) throw InvalidInputException("Expected map type for map index. Got $mapType")
+
+            val expectedKeyType = mapType.keyType
+
+            if (key.type() != expectedKeyType) {
+                throw InvalidInputException("Invalid key type for map IndexAST. Expected $expectedKeyType, got ${key.type()}")
+            }
+        }
+
+        override fun type(): Type = (map.type() as MapType).valueType
+    }
+
+    class MultisetIndexAST(val multiset: ExpressionAST, key: ExpressionAST) : IndexAST(multiset, key) {
+        init {
+            val multisetType = multiset.type()
+            if (multisetType !is MultisetType) {
+                throw InvalidInputException("Expected multiset type for multiset index. Got $multisetType")
+            }
+            val expectedKeyType = multisetType.innerType
+            if (key.type() != expectedKeyType) {
+                throw InvalidInputException("Invalid key type for multiset IndexAST. Expected $expectedKeyType, got ${key.type()}")
+            }
+        }
+
+        override fun type(): Type = IntType
     }
 
     class IndexAssignAST(
@@ -461,22 +464,7 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
-    /**
-     * grammar from documentation:
-     * decimaldigits = digit {['_'] digit} '.' digit {['_'] digit}
-     */
-    class RealLiteralAST(value: String) : LiteralAST(value, RealType) {
-        constructor(value: Float) : this(value.toString())
-
-        init {
-            if (!value.matches(Regex("(-)?[0-9]+.[0-9]+"))) {
-                println(value)
-                throw InvalidFormatException("Value passed (= $value) did not match supported float format")
-            }
-        }
-    }
-
-    class CharacterLiteralAST(char: Char) : LiteralAST("'${char.escape()}'", CharType)
+    class CharacterLiteralAST(val value: Char) : LiteralAST("'${value.escape()}'", CharType)
 
     class StringLiteralAST(val value: String) : LiteralAST("\"$value\"", StringType)
 }
