@@ -198,6 +198,8 @@ sealed class Value {
 
         fun concat(other: StringValue): StringValue = StringValue(value + other.value)
         fun getIndex(index: Int): CharValue = CharValue(value[index])
+        fun assign(index: Int, char: CharValue) =
+            StringValue(value.substring(0, index) + char.value + value.substring(index + 1))
 
         override fun toExpressionAST(): ExpressionAST = StringLiteralAST(value)
         override fun equals(other: Any?): Boolean = other is StringValue && value == other.value

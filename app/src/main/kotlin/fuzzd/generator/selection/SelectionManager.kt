@@ -110,7 +110,7 @@ class SelectionManager(
             if (withProbability(0.0 / depth)) {
                 selectArrayTypeWithDepth(context, depth + 1)
             } else {
-                selectLiteralType(context, false)
+                selectType(context, false)
             }
         return ArrayType(innerType)
     }
