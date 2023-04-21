@@ -122,7 +122,7 @@ class SelectionManager(
                 listOf(
                     IntType to 0.4,
                     BoolType to 0.4,
-                    CharType to 0.2,
+                    CharType to 0.0,
                 ),
             ),
         )
