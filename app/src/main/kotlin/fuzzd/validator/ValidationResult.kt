@@ -18,7 +18,7 @@ class ValidationResult(handlers: List<ExecutionHandler>, val targetOutput: Strin
             val c = h.compileResult(); !c.terminated || c.exitCode != 0
         }
 
-        succeededExecute = handlers.filter { h ->
+        succeededExecute = succeededCompile.filter { h ->
             val e = h.executeResult(); e.terminated && e.exitCode == 0
         }
 
