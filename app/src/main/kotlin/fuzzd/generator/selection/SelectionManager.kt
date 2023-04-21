@@ -57,7 +57,7 @@ class SelectionManager(
 ) {
     fun selectType(context: GenerationContext, literalOnly: Boolean = false): Type {
         val selection = listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
-//            this::selectClassType to 0.0,
+//            this::selectClassType to 0.2,
 //            this::selectTraitType to 0.0,
             this::selectArrayType to if (literalOnly || !context.onDemandIdentifiers) 0.0 else 0.1,
             this::selectDataStructureType to 0.15 / context.expressionDepth,
@@ -67,10 +67,10 @@ class SelectionManager(
         return randomWeightedSelection(normaliseWeights(selection)).invoke(context, literalOnly)
     }
 
-    private fun selectClassType(context: GenerationContext): ClassType =
+    private fun selectClassType(context: GenerationContext, literalOnly: Boolean): ClassType =
         ClassType(randomSelection(context.functionSymbolTable.classes().toList()))
 
-    private fun selectTraitType(context: GenerationContext): TraitType =
+    private fun selectTraitType(context: GenerationContext, literalOnly: Boolean): TraitType =
         TraitType(randomSelection(context.functionSymbolTable.traits().toList()))
 
     fun selectDataStructureType(context: GenerationContext, literalOnly: Boolean): Type =
@@ -357,7 +357,7 @@ class SelectionManager(
 
     fun selectDecimalLiteral(): Int = random.nextInt(0, MAX_INT_VALUE)
 
-    fun selectStringLength(): Int = random.nextInt(0, MAX_STRING_LENGTH)
+    fun selectStringLength(): Int = random.nextInt(1, MAX_STRING_LENGTH)
 
     fun selectCharacter(): Char = random.nextInt('a'.code, 'z'.code).toChar()
 
