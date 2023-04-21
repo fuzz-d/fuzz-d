@@ -115,14 +115,13 @@ class SelectionManager(
     }
 
     @Suppress("UNUSED_PARAMETER")
-    private fun selectLiteralType(context: GenerationContext, literalOnly: Boolean): Type =
+    private fun selectLiteralType(context: GenerationContext, literalOnly: Boolean): LiteralType =
         randomWeightedSelection(
             normaliseWeights(
                 listOf(
                     IntType to 0.4,
                     BoolType to 0.4,
-                    CharType to 0.1,
-                    StringType to 0.1,
+                    CharType to 0.2,
                 ),
             ),
         )
