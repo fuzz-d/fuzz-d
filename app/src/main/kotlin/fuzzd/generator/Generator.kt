@@ -231,7 +231,9 @@ class Generator(
         val selectedTraits = selectTraits(context, max(0, numberOfTraits - mustExtend.size)) + mustExtend
 
         // generate fields
-        val additionalFields = (1..selectionManager.selectNumberOfFields()).map { generateField(classContext) }.toSet()
+        val additionalFields = (1..selectionManager.selectNumberOfFields()).map { generateField(classContext) }
+            .filter { it.type() !is TraitType || it.type() is TraitType && (it.type() as TraitType).trait !in selectedTraits }
+            .toSet()
         val requiredFields = selectedTraits.map { it.fields() }.unionAll()
 
         classContext.symbolTable.addAll(additionalFields union requiredFields)
@@ -280,7 +282,10 @@ class Generator(
     }
 
     override fun generateField(context: GenerationContext) = paramIdentifierFromType(
-        selectionManager.selectType(context), fieldNameGenerator, mutable = true, initialised = true
+        selectionManager.selectType(context),
+        fieldNameGenerator,
+        mutable = true,
+        initialised = true,
     )
 
     override fun generateFunctionMethod(context: GenerationContext, targetType: Type?): FunctionMethodAST {
@@ -340,20 +345,23 @@ class Generator(
     private fun generateMethod(signature: MethodSignatureAST): MethodAST = MethodAST(signature)
 
     private fun paramIdentifierFromType(
-        type: Type, nameGenerator: NameGenerator, mutable: Boolean, initialised: Boolean
+        type: Type,
+        nameGenerator: NameGenerator,
+        mutable: Boolean,
+        initialised: Boolean,
     ): IdentifierAST = when (type) {
         is ClassType -> ClassInstanceAST(
             type.clazz,
             nameGenerator.newValue(),
             mutable = mutable,
-            initialised = initialised
+            initialised = initialised,
         )
 
         is TraitType -> TraitInstanceAST(
             type.trait,
             nameGenerator.newValue(),
             mutable = mutable,
-            initialised = initialised
+            initialised = initialised,
         )
 
         else -> IdentifierAST(nameGenerator.newValue(), type, mutable = mutable, initialised = initialised)
@@ -559,9 +567,11 @@ class Generator(
     @Throws(MethodOnDemandException::class)
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
-        val methods = (context.functionSymbolTable.methods().map { it.signature } +
+        val methods = (
+            context.functionSymbolTable.methods().map { it.signature } +
                 context.symbolTable.classInstances().map { it.methods }.unionAll() +
-                context.symbolTable.traitInstances().map { it.methods }.unionAll())
+                context.symbolTable.traitInstances().map { it.methods }.unionAll()
+            )
             .filter { method ->
                 context.methodContext == null || methodCallTable.canUseDependency(
                     context.methodContext,
@@ -629,8 +639,9 @@ class Generator(
         targetType: Type,
     ): Pair<ExpressionAST, List<StatementAST>> {
         return try {
+            val expressionType = selectionManager.selectExpressionType(targetType, context)
             generateExpressionFromType(
-                selectionManager.selectExpressionType(targetType, context),
+                expressionType,
                 context,
                 targetType,
             )
@@ -694,9 +705,11 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
-        (context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+        (
+            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
                 context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
-                context.symbolTable.traitInstances().map { it.functionMethods }.unionAll())
+                context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
+            )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
@@ -723,6 +736,7 @@ class Generator(
             context.symbolTable.withType(targetType)
                 .filter { (!mutableConstraint || it.mutable) && (!initialisedConstraint || it.initialised()) },
         )
+
         return Pair(identifier, deps)
     }
 
@@ -750,7 +764,7 @@ class Generator(
         val (exprs, exprDeps) = (1..numberOfExpressions).map {
             generateExpression(
                 context.increaseExpressionDepth(),
-                innerType
+                innerType,
             )
         }.foldPair()
         return Pair(SetDisplayAST(exprs, isMultiset), exprDeps)
@@ -765,7 +779,7 @@ class Generator(
         val (exprs, exprDeps) = (1..numberOfExpressions).map {
             generateExpression(
                 context.increaseExpressionDepth(),
-                seqType.innerType
+                seqType.innerType,
             )
         }.foldPair()
 
@@ -820,7 +834,10 @@ class Generator(
 
         val (typeSafeIndex, deps) = if (targetType.innerType !is LiteralType) {
             val keyIdent = paramIdentifierFromType(
-                targetType.innerType, context.identifierNameGenerator, mutable = true, initialised = true
+                targetType.innerType,
+                context.identifierNameGenerator,
+                mutable = true,
+                initialised = true,
             )
             context.symbolTable.add(keyIdent)
             Pair(keyIdent, listOf(DeclarationAST(keyIdent, index)))
@@ -988,28 +1005,30 @@ class Generator(
     }
 
     private fun generateClassConstructor(
-        context: GenerationContext, targetType: ClassType
+        context: GenerationContext,
+        targetType: ClassType,
     ): Pair<ClassInstantiationAST, List<StatementAST>> {
         val clazz = targetType.clazz
         val (params, paramDeps) = clazz.constructorFields.map {
-            generateExpression(
-                context.increaseExpressionDepth(), it.type()
-            )
+            generateExpression(context.increaseExpressionDepth(), it.type())
         }.foldPair()
 
         return Pair(ClassInstantiationAST(clazz, params), paramDeps)
     }
 
     private fun generateTraitConstructor(
-        context: GenerationContext, targetType: TraitType
+        context: GenerationContext,
+        targetType: TraitType,
     ): Pair<ClassInstantiationAST, List<StatementAST>> {
         val classes = context.functionSymbolTable.classes().filter { targetType.trait in it.extends }
         if (classes.isEmpty()) {
             generateClass(context, listOf(targetType.trait))
         }
 
-        val selectedClass = selectionManager.randomSelection(context.functionSymbolTable.classes()
-            .filter { targetType.trait in it.extends })
+        val selectedClass = selectionManager.randomSelection(
+            context.functionSymbolTable.classes().filter { targetType.trait in it.extends },
+        )
+
         return generateClassConstructor(context, ClassType(selectedClass))
     }
 

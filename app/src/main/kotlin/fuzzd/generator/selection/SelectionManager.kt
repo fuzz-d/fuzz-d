@@ -43,7 +43,6 @@ import fuzzd.generator.selection.IndexType.SEQUENCE
 import fuzzd.generator.selection.IndexType.STRING
 import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.CLASS_INSTANTIATION
-import fuzzd.generator.selection.StatementType.DECLARATION
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.MAP_ASSIGN
 import fuzzd.generator.selection.StatementType.METHOD_CALL
@@ -56,12 +55,16 @@ class SelectionManager(
 ) {
     fun selectType(context: GenerationContext, literalOnly: Boolean = false): Type {
         val selection = listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
-            this::selectClassType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.classes()
-                    .isNotEmpty()
-            ) 0.05 else 0.0,
-            this::selectTraitType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.traits()
-                    .isNotEmpty()
-            ) 0.04 else 0.0,
+            this::selectClassType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.classes().isNotEmpty()) {
+                0.05
+            } else {
+                0.0
+            },
+            this::selectTraitType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.traits().isNotEmpty()) {
+                0.04
+            } else {
+                0.0
+            },
             this::selectArrayType to if (literalOnly || !context.onDemandIdentifiers) 0.0 else 0.1,
             this::selectDataStructureType to 0.15 / context.expressionDepth,
             this::selectLiteralType to if (literalOnly) 0.85 else 0.75,
@@ -233,7 +236,9 @@ class SelectionManager(
         val binaryProbability =
             if (targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType && targetType != CharType) {
                 0.4 / context.expressionDepth
-            } else 0.0
+            } else {
+                0.0
+            }
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
         val modulusProbability = if (targetType == IntType) 0.03 else 0.0
         val multisetConversionProbability = if (targetType is MultisetType) 0.03 else 0.0

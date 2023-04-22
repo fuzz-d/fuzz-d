@@ -5,7 +5,6 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.TraitInstanceAST
 import fuzzd.generator.ast.Type
 import fuzzd.utils.unionAll
-import kotlin.reflect.KClass
 
 class SymbolTable(private val parent: SymbolTable? = null) {
     val symbolTable = mutableMapOf<IdentifierAST, Type>()
@@ -40,7 +39,8 @@ class SymbolTable(private val parent: SymbolTable? = null) {
     fun withType(type: Type): List<IdentifierAST> =
         (parent?.withType(type) ?: listOf()) +
             (typeTable[type] ?: listOf()) +
-            classInstances().map { it.fields }.unionAll().filter { it.type() == type }
+            classInstances().map { it.fields }.unionAll().filter { it.type() == type } +
+            traitInstances().map { it.fields }.unionAll().filter { it.type() == type }
 
     fun classInstances(): List<ClassInstanceAST> =
         (parent?.classInstances() ?: listOf()) + symbolTable.keys.filterIsInstance<ClassInstanceAST>()

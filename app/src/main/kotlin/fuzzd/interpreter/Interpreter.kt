@@ -29,6 +29,7 @@ import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.TraitInstanceAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
@@ -174,9 +175,14 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             }
 
             is ClassValue -> {
-                val classInstance = key as ClassInstanceAST
-                classInstance.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }
-                    .reduceLists()
+                if (key is ClassInstanceAST) {
+                    key.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }
+                        .reduceLists()
+                } else {
+                    val traitInstance = key as TraitInstanceAST
+                    traitInstance.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }
+                        .reduceLists()
+                }
             }
         }
 
@@ -414,7 +420,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     /* ============================== EXPRESSIONS ============================ */
-    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value = when (expression) {
+    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value =
+        when (expression) {
             is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
             is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
             is ClassInstantiationAST -> interpretClassInstantiation(expression, context)
