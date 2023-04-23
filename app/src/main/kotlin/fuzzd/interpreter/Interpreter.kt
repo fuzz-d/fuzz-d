@@ -29,6 +29,7 @@ import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.TraitInstanceAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
@@ -158,7 +159,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         when (value) {
             is MultiValue, is CharValue, is StringValue, is IntValue, is BoolValue -> listOf(PrintAST(key))
             is SetValue, is MultisetValue, is MapValue, is SequenceValue -> {
-                if (key.type().hasArrayType()) {
+                if (key.type().hasHeapType()) {
                     listOf(PrintAST(ModulusExpressionAST(key)))
                 } else {
                     listOf(PrintAST(BinaryExpressionAST(key, DataStructureEqualityOperator, value.toExpressionAST())))
@@ -174,9 +175,14 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             }
 
             is ClassValue -> {
-                val classInstance = key as ClassInstanceAST
-                classInstance.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }
-                    .reduceLists()
+                if (key is ClassInstanceAST) {
+                    key.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }
+                        .reduceLists()
+                } else {
+                    val traitInstance = key as TraitInstanceAST
+                    traitInstance.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }
+                        .reduceLists()
+                }
             }
         }
 
@@ -414,8 +420,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     /* ============================== EXPRESSIONS ============================ */
-    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value {
-        return when (expression) {
+    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value =
+        when (expression) {
             is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
             is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
             is ClassInstantiationAST -> interpretClassInstantiation(expression, context)
@@ -437,7 +443,6 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is BooleanLiteralAST -> interpretBooleanLiteral(expression, context)
             else -> throw UnsupportedOperationException()
         }
-    }
 
     override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, context: InterpreterContext): Value =
         if (functionCall.function is ClassInstanceFunctionMethodSignatureAST) {
@@ -771,11 +776,11 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     private fun interpretIndexAssign(indexAssign: IndexAssignAST, context: InterpreterContext): Value {
         val key = interpretExpression(indexAssign.key, context)
         val value = interpretExpression(indexAssign.value, context)
-
         return when (val ident = interpretExpression(indexAssign.ident, context)) {
             is MultisetValue -> ident.assign(key, (value as IntValue).value.toInt())
             is MapValue -> ident.assign(key, value)
             is SequenceValue -> ident.assign((key as IntValue).value.toInt(), value)
+            is StringValue -> ident.assign((key as IntValue).value.toInt(), value as CharValue)
             else -> throw UnsupportedOperationException()
         }
     }

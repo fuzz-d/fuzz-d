@@ -2,9 +2,11 @@ package fuzzd.generator.ast
 
 sealed class Type : ASTElement {
 
-    open fun hasArrayType(): Boolean = false
+    open fun hasHeapType(): Boolean = false
 
     class ClassType(val clazz: ClassAST) : Type() {
+        override fun hasHeapType(): Boolean = true
+
         override fun equals(other: Any?): Boolean = other is ClassType && other.clazz == this.clazz
 
         override fun hashCode(): Int = clazz.hashCode()
@@ -13,6 +15,8 @@ sealed class Type : ASTElement {
     }
 
     class TraitType(val trait: TraitAST) : Type() {
+        override fun hasHeapType(): Boolean = true
+
         override fun equals(other: Any?): Boolean = other is TraitType && other.trait == this.trait
 
         override fun hashCode(): Int = trait.hashCode()
@@ -22,7 +26,7 @@ sealed class Type : ASTElement {
 
     sealed class ConstructorType : Type() {
         class ArrayType(val internalType: Type) : ConstructorType() {
-            override fun hasArrayType() = true
+            override fun hasHeapType() = true
 
             override fun equals(other: Any?): Boolean {
                 return other != null && other is ArrayType &&
@@ -38,7 +42,7 @@ sealed class Type : ASTElement {
     }
 
     class MapType(val keyType: Type, val valueType: Type) : Type() {
-        override fun hasArrayType(): Boolean = keyType.hasArrayType() || valueType.hasArrayType()
+        override fun hasHeapType(): Boolean = keyType.hasHeapType() || valueType.hasHeapType()
 
         override fun toString() = "map<$keyType, $valueType>"
 
@@ -53,7 +57,7 @@ sealed class Type : ASTElement {
     }
 
     class SetType(val innerType: Type) : Type() {
-        override fun hasArrayType(): Boolean = innerType.hasArrayType()
+        override fun hasHeapType(): Boolean = innerType.hasHeapType()
 
         override fun toString(): String = "set<$innerType>"
 
@@ -63,7 +67,7 @@ sealed class Type : ASTElement {
     }
 
     class MultisetType(val innerType: Type) : Type() {
-        override fun hasArrayType(): Boolean = innerType.hasArrayType()
+        override fun hasHeapType(): Boolean = innerType.hasHeapType()
 
         override fun toString(): String = "multiset<$innerType>"
 
@@ -73,7 +77,7 @@ sealed class Type : ASTElement {
     }
 
     open class SequenceType(val innerType: Type) : Type() {
-        override fun hasArrayType(): Boolean = innerType.hasArrayType()
+        override fun hasHeapType(): Boolean = innerType.hasHeapType()
 
         override fun toString(): String = "seq<$innerType>"
 

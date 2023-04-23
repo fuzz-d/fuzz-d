@@ -13,6 +13,7 @@ import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.StringType
+import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidFormatException
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
@@ -192,6 +193,32 @@ sealed class ExpressionAST : ASTElement {
             var result = name.hashCode()
             result = 31 * result + type.hashCode()
             result = 31 * result + mutable.hashCode()
+            return result
+        }
+    }
+
+    class TraitInstanceAST(
+        val trait: TraitAST,
+        name: String,
+        mutable: Boolean = true,
+        initialised: Boolean = false,
+    ) : IdentifierAST(name, TraitType(trait), mutable, initialised) {
+        override fun initialise(): IdentifierAST =
+            if (initialised()) this else TraitInstanceAST(trait, name, mutable, true)
+
+        val fields = trait.fields().map { ClassInstanceFieldAST(this, it) }
+        val functionMethods = trait.functionMethods().map { ClassInstanceFunctionMethodSignatureAST(this, it) }
+        val methods = trait.methods().map { ClassInstanceMethodSignatureAST(this, it) }
+
+        override fun equals(other: Any?): Boolean = other is TraitInstanceAST &&
+            trait == other.trait && name == other.name && initialised() == other.initialised() && mutable == other.mutable
+
+        override fun hashCode(): Int {
+            var result = super.hashCode()
+            result = 31 * result + trait.hashCode()
+            result = 31 * result + fields.hashCode()
+            result = 31 * result + functionMethods.hashCode()
+            result = 31 * result + methods.hashCode()
             return result
         }
     }

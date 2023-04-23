@@ -27,6 +27,7 @@ import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.TraitInstanceAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
@@ -408,6 +409,11 @@ class AdvancedReconditioner {
             is ClassInstanceAST -> Pair(
                 ClassInstanceAST(classes.getValue(identifierAST.clazz.name), identifierAST.name),
                 emptyList(),
+            )
+
+            is TraitInstanceAST -> Pair(
+                TraitInstanceAST(traits.getValue(identifierAST.trait.name), identifierAST.name),
+                emptyList()
             )
 
             is ClassInstanceFieldAST -> {
