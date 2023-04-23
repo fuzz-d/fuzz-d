@@ -46,7 +46,7 @@ class ValidationResult(handlers: List<ExecutionHandler>, val targetOutput: Strin
         sb.appendLine("Target Output: $targetOutput")
         succeededExecute.forEach { h -> sb.append("${h.getCompileTarget()}:\n${indent(h.executeResult())}\n") }
 
-        sb.appendLine("Java Compiler crash: ${failedCompile.filterIsInstance<JavaExecutionHandler>().isNotEmpty()}")
+        sb.appendLine("Java crash: ${failedCompile.filterIsInstance<JavaExecutionHandler>().isNotEmpty()}")
         sb.appendLine("Compiler crash: ${failedCompile.filter { it !is JavaExecutionHandler }.isNotEmpty()}")
         sb.appendLine("Execute crash: ${failedExecute.isNotEmpty()}")
         sb.appendLine("Different output: ${differentOutput()}")
