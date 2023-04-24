@@ -2,8 +2,25 @@ package fuzzd.generator.ast
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.error.InvalidInputException
+import fuzzd.utils.indent
 
 sealed class StatementAST : ASTElement {
+    class MatchStatementAST(
+        val match: ExpressionAST,
+        val cases: List<Pair<ExpressionAST, SequenceAST>>
+    ) : StatementAST() {
+        override fun toString(): String {
+            val sb = StringBuilder()
+            sb.appendLine("match $match {")
+            cases.forEach { (case, seq) ->
+                sb.appendLine(indent("case $case =>"))
+                sb.appendLine(indent(indent(seq)))
+            }
+            sb.appendLine("};")
+            return sb.toString()
+        }
+    }
+
     class IfStatementAST(
         val condition: ExpressionAST,
         val ifBranch: SequenceAST,

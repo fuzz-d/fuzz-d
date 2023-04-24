@@ -5,6 +5,7 @@ import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
+import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MethodReturnType
@@ -19,6 +20,7 @@ import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.utils.escape
+import fuzzd.utils.indent
 
 fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, context: String) {
     if (expected.size != actual.size) {
@@ -49,6 +51,62 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): Type = ClassType(clazz)
 
         override fun toString(): String = "new ${clazz.name}(${params.joinToString(", ")})"
+    }
+
+    class DatatypeInstantiationAST(
+        val datatype: DatatypeAST,
+        val constructor: DatatypeConstructorAST,
+        val params: List<ExpressionAST>
+    ) : ExpressionAST() {
+        override fun type(): Type = DatatypeType(datatype)
+
+        override fun toString(): String = "${constructor.name}(${params.joinToString(", ")})"
+    }
+
+    class DatatypeDestructorAST(val datatypeInstance: ExpressionAST, val field: IdentifierAST) : ExpressionAST() {
+        override fun type(): Type = field.type()
+
+        override fun toString(): String = "$datatypeInstance.$field"
+    }
+
+    class DatatypeUpdateAST(
+        val datatypeInstance: ExpressionAST,
+        val updates: List<Pair<IdentifierAST, ExpressionAST>>
+    ) : ExpressionAST() {
+        init {
+            if (updates.isEmpty()) {
+                throw InvalidInputException("Datatype update requires at least 1 update")
+            }
+
+            updates.forEach { (identifier, expr) ->
+                if (identifier.type() != expr.type()) {
+                    throw InvalidInputException("Type mismatch for $identifier in update of $datatypeInstance. Got ${expr.type()}, expected ${identifier.type()}")
+                }
+            }
+        }
+
+        override fun type(): Type = datatypeInstance.type()
+
+        override fun toString(): String =
+            "$datatypeInstance.(${updates.joinToString(", ") { (ident, expr) -> "$ident := $expr" }})"
+    }
+
+    class MatchExpressionAST(
+        val match: ExpressionAST,
+        val type: Type,
+        val cases: List<Pair<ExpressionAST, ExpressionAST>>
+    ) : ExpressionAST() {
+        override fun type(): Type = type
+
+        override fun toString(): String {
+            val sb = StringBuilder()
+            sb.appendLine("match $match {")
+            cases.forEach { (case, expr) ->
+                sb.appendLine(indent("case $case => $expr"))
+            }
+            sb.append("}")
+            return sb.toString()
+        }
     }
 
     class NonVoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) :
@@ -209,7 +267,7 @@ sealed class ExpressionAST : ASTElement {
         val methods = trait.methods().map { ClassInstanceMethodSignatureAST(this, it) }
 
         override fun equals(other: Any?): Boolean = other is TraitInstanceAST &&
-            trait == other.trait && name == other.name && initialised() == other.initialised() && mutable == other.mutable
+                trait == other.trait && name == other.name && initialised() == other.initialised() && mutable == other.mutable
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -240,9 +298,9 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
-                clazz == other.clazz &&
-                name == other.name && initialised() == other.initialised() &&
-                mutable == other.mutable
+                    clazz == other.clazz &&
+                    name == other.name && initialised() == other.initialised() &&
+                    mutable == other.mutable
 
         override fun hashCode(): Int {
             var result = super.hashCode()
