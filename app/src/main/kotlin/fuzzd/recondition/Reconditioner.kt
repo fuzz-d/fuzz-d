@@ -3,6 +3,7 @@ package fuzzd.recondition
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
+import fuzzd.generator.ast.DatatypeAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
@@ -68,6 +69,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
     override fun recondition(dafnyAST: DafnyAST): DafnyAST {
         // needs to recondition in the same order as Advanced Reconditioning
+        val reconditionedDatatypes = dafnyAST.topLevelElements.filterIsInstance<DatatypeAST>()
         val reconditionedTraits = dafnyAST.topLevelElements.filterIsInstance<TraitAST>()
         val reconditionedClasses = dafnyAST.topLevelElements.filterIsInstance<ClassAST>().map(this::reconditionClass)
         val reconditionedMethods = dafnyAST.topLevelElements.filterIsInstance<MethodAST>().map(this::reconditionMethod)
@@ -77,11 +79,12 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             reconditionMainFunction(dafnyAST.topLevelElements.first { it is MainFunctionAST } as MainFunctionAST)
 
         return DafnyAST(
-            reconditionedTraits +
-                reconditionedClasses +
-                reconditionedFunctionMethods +
-                reconditionedMethods +
-                reconditionedMain,
+            reconditionedDatatypes +
+                    reconditionedTraits +
+                    reconditionedClasses +
+                    reconditionedFunctionMethods +
+                    reconditionedMethods +
+                    reconditionedMain,
         )
     }
 

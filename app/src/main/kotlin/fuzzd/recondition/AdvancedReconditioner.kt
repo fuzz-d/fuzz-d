@@ -3,6 +3,7 @@ package fuzzd.recondition
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
+import fuzzd.generator.ast.DatatypeAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
@@ -11,6 +12,9 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
@@ -18,6 +22,7 @@ import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
+import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
@@ -66,6 +71,7 @@ import fuzzd.utils.ADVANCED_RECONDITION_CLASS
 import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
+import fuzzd.utils.foldPair
 
 class AdvancedReconditioner {
     private val classes = mutableMapOf<String, ClassAST>()
@@ -79,6 +85,7 @@ class AdvancedReconditioner {
 
     fun recondition(dafnyAST: DafnyAST): DafnyAST {
         // get top level view of program
+        val reconditionedDatatypes = dafnyAST.topLevelElements.filterIsInstance<DatatypeAST>()
         val reconditionedTraits = dafnyAST.topLevelElements.filterIsInstance<TraitAST>().map(this::reconditionTrait)
         val methods = dafnyAST.topLevelElements.filterIsInstance<MethodAST>()
         val functionMethods = dafnyAST.topLevelElements.filterIsInstance<FunctionMethodAST>()
@@ -93,7 +100,13 @@ class AdvancedReconditioner {
         val reconditionedMain =
             reconditionMainFunction(dafnyAST.topLevelElements.first { it is MainFunctionAST } as MainFunctionAST)
 
-        return DafnyAST(reconditionedTraits + reconditionedClasses + reconditionedMethods + reconditionedMain)
+        return DafnyAST(
+            reconditionedDatatypes +
+                    reconditionedTraits +
+                    reconditionedClasses +
+                    reconditionedMethods +
+                    reconditionedMain
+        )
     }
 
     fun reconditionClass(classAST: ClassAST): ClassAST {
@@ -217,7 +230,7 @@ class AdvancedReconditioner {
         is MultiAssignmentAST -> reconditionMultiAssignment(statementAST)
         is MultiTypedDeclarationAST -> reconditionMultiTypedDeclaration(statementAST)
         is MultiDeclarationAST -> reconditionMultiDeclaration(statementAST)
-        is MatchStatementAST -> TODO()
+        is MatchStatementAST -> reconditionMatchStatement(statementAST)
         is IfStatementAST -> reconditionIfStatement(statementAST)
         is CounterLimitedWhileLoopAST -> reconditionCounterLimitedWhileLoop(statementAST)
         is WhileLoopAST -> reconditionWhileLoop(statementAST)
@@ -229,7 +242,7 @@ class AdvancedReconditioner {
         val (reconditionedIdentifier, identifierDependents) = reconditionIdentifier(declaration.identifier)
         val (reconditionedDataStructure, dataStructureDependents) = reconditionIdentifier(declaration.dataStructure)
         return identifierDependents + dataStructureDependents +
-            DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
+                DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
     }
 
     fun reconditionMultiAssignment(multiAssignmentAST: MultiAssignmentAST): List<StatementAST> {
@@ -237,7 +250,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
         return identifierDependents + exprDependents +
-            MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMultiTypedDeclaration(multiTypedDeclarationAST: MultiTypedDeclarationAST): List<StatementAST> {
@@ -255,7 +268,17 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
 
         return identifierDependents + exprDependents +
-            MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+    }
+
+    fun reconditionMatchStatement(matchStatementAST: MatchStatementAST): List<StatementAST> {
+        val (match, matchDependents) = reconditionExpression(matchStatementAST.match)
+        val cases = matchStatementAST.cases.map { (case, seq) ->
+            val rseq = reconditionSequence(seq)
+            Pair(case, rseq)
+        }
+
+        return matchDependents + MatchStatementAST(match, cases)
     }
 
     fun reconditionIfStatement(ifStatementAST: IfStatementAST): List<StatementAST> {
@@ -323,8 +346,47 @@ class AdvancedReconditioner {
             is SetDisplayAST -> reconditionSetDisplay(expressionAST)
             is MapConstructorAST -> reconditionMapConstructor(expressionAST)
             is SequenceDisplayAST -> reconditionSequenceDisplay(expressionAST)
-            else -> TODO()
+            is DatatypeDestructorAST -> reconditionDatatypeDestructor(expressionAST)
+            is DatatypeInstantiationAST -> reconditionDatatypeInstantiation(expressionAST)
+            is DatatypeUpdateAST -> reconditionDatatypeUpdate(expressionAST)
+            is MatchExpressionAST -> reconditionMatchExpression(expressionAST)
         }
+
+    fun reconditionDatatypeDestructor(destructorAST: DatatypeDestructorAST): Pair<DatatypeDestructorAST, List<StatementAST>> {
+        val (instance, instanceDeps) = reconditionExpression(destructorAST.datatypeInstance)
+        val (field, fieldDeps) = reconditionIdentifier(destructorAST.field)
+
+        return Pair(DatatypeDestructorAST(instance, field), instanceDeps + fieldDeps)
+    }
+
+    fun reconditionDatatypeInstantiation(instantiationAST: DatatypeInstantiationAST): Pair<DatatypeInstantiationAST, List<StatementAST>> {
+        val (params, paramDeps) = reconditionExpressionList(instantiationAST.params)
+
+        return Pair(
+            DatatypeInstantiationAST(instantiationAST.datatype, instantiationAST.constructor, params),
+            paramDeps
+        )
+    }
+
+    fun reconditionDatatypeUpdate(updateAST: DatatypeUpdateAST): Pair<DatatypeUpdateAST, List<StatementAST>> {
+        val (instance, instanceDeps) = reconditionExpression(updateAST.datatypeInstance)
+        val (updates, updateDeps) = updateAST.updates.map { (ident, expr) ->
+            val (rexpr, exprDeps) = reconditionExpression(expr)
+            Pair(Pair(ident, rexpr), exprDeps)
+        }.foldPair()
+
+        return Pair(DatatypeUpdateAST(instance, updates), instanceDeps + updateDeps)
+    }
+
+    fun reconditionMatchExpression(matchExpressionAST: MatchExpressionAST): Pair<MatchExpressionAST, List<StatementAST>> {
+        val (match, matchDeps) = reconditionExpression(matchExpressionAST.match)
+        val (cases, caseDeps) = matchExpressionAST.cases.map { (case, expr) ->
+            val (rexpr, exprDeps) = reconditionExpression(expr)
+            Pair(Pair(case, rexpr), exprDeps)
+        }.foldPair()
+
+        return Pair(MatchExpressionAST(match, matchExpressionAST.type, cases), matchDeps + caseDeps)
+    }
 
     fun reconditionBinaryExpression(binaryExpressionAST: BinaryExpressionAST): Pair<ExpressionAST, List<StatementAST>> {
         val (rexpr1, deps1) = reconditionExpression(binaryExpressionAST.expr1)
