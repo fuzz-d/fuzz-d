@@ -2,6 +2,8 @@ package fuzzd.generator
 
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
+import fuzzd.generator.ast.DatatypeAST
+import fuzzd.generator.ast.DatatypeConstructorAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
@@ -39,6 +41,8 @@ interface ASTGenerator {
     fun generateMainFunction(context: GenerationContext): MainFunctionAST
 
     fun generateTrait(context: GenerationContext): TraitAST
+
+    fun generateDatatype(context: GenerationContext): DatatypeAST
 
     fun generateClass(context: GenerationContext, mustExtend: List<TraitAST> = emptyList()): ClassAST
 

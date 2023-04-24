@@ -55,12 +55,16 @@ class SelectionManager(
 ) {
     fun selectType(context: GenerationContext, literalOnly: Boolean = false): Type {
         val selection = listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
-            this::selectClassType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.classes().isNotEmpty()) {
+            this::selectClassType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.classes()
+                    .isNotEmpty()
+            ) {
                 0.05
             } else {
                 0.0
             },
-            this::selectTraitType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.traits().isNotEmpty()) {
+            this::selectTraitType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.traits()
+                    .isNotEmpty()
+            ) {
                 0.04
             } else {
                 0.0
@@ -357,6 +361,9 @@ class SelectionManager(
                 ),
             ),
         )
+
+    fun selectNumberOfDatatypeConstructors() =
+        randomWeightedSelection(normaliseWeights(listOf(1 to 0.25, 2 to 0.4, 3 to 0.25, 4 to 0.1)))
 
     fun selectNumberOfFunctionMethods() = random.nextInt(0, MAX_FUNCTION_METHODS)
 

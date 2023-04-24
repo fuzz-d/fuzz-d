@@ -2,6 +2,8 @@ package fuzzd.generator
 
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
+import fuzzd.generator.ast.DatatypeAST
+import fuzzd.generator.ast.DatatypeConstructorAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
@@ -53,6 +55,7 @@ import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
+import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
@@ -66,6 +69,8 @@ import fuzzd.generator.ast.error.MethodOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ClassNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ControlFlowGenerator
+import fuzzd.generator.ast.identifier_generator.NameGenerator.DatatypeConstructorGenerator
+import fuzzd.generator.ast.identifier_generator.NameGenerator.DatatypeNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.FieldNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.FunctionMethodNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.MethodNameGenerator
@@ -122,6 +127,8 @@ class Generator(
     private val functionMethodNameGenerator = FunctionMethodNameGenerator()
     private val methodNameGenerator = MethodNameGenerator()
     private val traitNameGenerator = TraitNameGenerator()
+    private val datatypeNameGenerator = DatatypeNameGenerator()
+    private val datatypeConstructorGenerator = DatatypeConstructorGenerator()
     private val methodCallTable = DependencyTable<MethodSignatureAST>()
 
     private val controlFlowGenerator = ControlFlowGenerator()
@@ -291,6 +298,24 @@ class Generator(
     override fun generateFunctionMethod(context: GenerationContext, targetType: Type?): FunctionMethodAST {
         val functionMethodSignature = generateFunctionMethodSignature(context, targetType)
         return generateFunctionMethod(context, functionMethodSignature)
+    }
+
+    override fun generateDatatype(context: GenerationContext): DatatypeAST {
+        val datatypeName = datatypeNameGenerator.newValue()
+        val numberOfConstructors = selectionManager.selectNumberOfDatatypeConstructors()
+        val constructors = (1..numberOfConstructors).map { generateDataTypeConstructor(context) }
+        return DatatypeAST(datatypeName, constructors)
+    }
+
+    private fun generateDataTypeConstructor(context: GenerationContext): DatatypeConstructorAST {
+        val numberOfFields = selectionManager.selectNumberOfConstructorFields(context)
+        val constructorName = datatypeConstructorGenerator.newValue()
+        val parameterNameGenerator = ParameterNameGenerator()
+        val fields = (1..numberOfFields).map {
+            val type = selectionManager.selectType(context)
+            paramIdentifierFromType(type, parameterNameGenerator, mutable = true, initialised = true)
+        }
+        return DatatypeConstructorAST(constructorName, fields)
     }
 
     private fun generateFunctionMethod(
@@ -568,10 +593,10 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-            context.functionSymbolTable.methods().map { it.signature } +
-                context.symbolTable.classInstances().map { it.methods }.unionAll() +
-                context.symbolTable.traitInstances().map { it.methods }.unionAll()
-            )
+                context.functionSymbolTable.methods().map { it.signature } +
+                        context.symbolTable.classInstances().map { it.methods }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.methods }.unionAll()
+                )
             .filter { method ->
                 context.methodContext == null || methodCallTable.canUseDependency(
                     context.methodContext,
@@ -706,10 +731,10 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (
-            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
-                context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
-            )
+                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                        context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
+                )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)

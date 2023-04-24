@@ -1,5 +1,7 @@
 package fuzzd.generator.ast.identifier_generator
 
+import javax.naming.Name
+
 sealed class NameGenerator(private val namePrefix: String) {
     private var count: Int = 0
 
@@ -28,4 +30,8 @@ sealed class NameGenerator(private val namePrefix: String) {
     class SafetyIdGenerator : NameGenerator("safety")
 
     class ControlFlowGenerator : NameGenerator("ctr_flow")
+
+    class DatatypeNameGenerator : NameGenerator("D")
+
+    class DatatypeConstructorGenerator: NameGenerator("DC")
 }
