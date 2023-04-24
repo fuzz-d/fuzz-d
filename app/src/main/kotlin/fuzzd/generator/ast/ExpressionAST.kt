@@ -56,9 +56,9 @@ sealed class ExpressionAST : ASTElement {
     class DatatypeInstantiationAST(
         val datatype: DatatypeAST,
         val constructor: DatatypeConstructorAST,
-        val params: List<ExpressionAST>
+        val params: List<ExpressionAST>,
     ) : ExpressionAST() {
-        override fun type(): Type = DatatypeType(datatype)
+        override fun type(): Type = DatatypeType(datatype, constructor)
 
         override fun toString(): String = "${constructor.name}(${params.joinToString(", ")})"
     }
@@ -66,12 +66,19 @@ sealed class ExpressionAST : ASTElement {
     class DatatypeDestructorAST(val datatypeInstance: ExpressionAST, val field: IdentifierAST) : ExpressionAST() {
         override fun type(): Type = field.type()
 
-        override fun toString(): String = "$datatypeInstance.$field"
+        override fun toString(): String {
+            val shouldWrap = datatypeInstance !is IdentifierAST && datatypeInstance !is DatatypeInstantiationAST
+            return if (shouldWrap) {
+                "($datatypeInstance).$field"
+            } else {
+                "$datatypeInstance.$field"
+            }
+        }
     }
 
     class DatatypeUpdateAST(
         val datatypeInstance: ExpressionAST,
-        val updates: List<Pair<IdentifierAST, ExpressionAST>>
+        val updates: List<Pair<IdentifierAST, ExpressionAST>>,
     ) : ExpressionAST() {
         init {
             if (updates.isEmpty()) {
@@ -94,7 +101,7 @@ sealed class ExpressionAST : ASTElement {
     class MatchExpressionAST(
         val match: ExpressionAST,
         val type: Type,
-        val cases: List<Pair<ExpressionAST, ExpressionAST>>
+        val cases: List<Pair<ExpressionAST, ExpressionAST>>,
     ) : ExpressionAST() {
         override fun type(): Type = type
 
@@ -267,7 +274,7 @@ sealed class ExpressionAST : ASTElement {
         val methods = trait.methods().map { ClassInstanceMethodSignatureAST(this, it) }
 
         override fun equals(other: Any?): Boolean = other is TraitInstanceAST &&
-                trait == other.trait && name == other.name && initialised() == other.initialised() && mutable == other.mutable
+            trait == other.trait && name == other.name && initialised() == other.initialised() && mutable == other.mutable
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -298,9 +305,9 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
-                    clazz == other.clazz &&
-                    name == other.name && initialised() == other.initialised() &&
-                    mutable == other.mutable
+                clazz == other.clazz &&
+                name == other.name && initialised() == other.initialised() &&
+                mutable == other.mutable
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -312,10 +319,17 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
+    class DatatypeInstanceAST(
+        name: String,
+        datatype: DatatypeType,
+        mutable: Boolean = true,
+        initialised: Boolean = false,
+    ) : IdentifierAST(name, datatype, mutable, initialised)
+
     class ClassInstanceFieldAST(
         val classInstance: IdentifierAST,
         val classField: IdentifierAST,
-    ) : IdentifierAST("${classInstance.name}.$classField", classField.type(), initialised = true)
+    ) : IdentifierAST("$classInstance.$classField", classField.type(), mutable = true, initialised = true)
 
     class ArrayIndexAST(
         val array: IdentifierAST,

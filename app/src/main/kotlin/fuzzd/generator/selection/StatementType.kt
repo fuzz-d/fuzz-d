@@ -5,6 +5,7 @@ enum class StatementType {
     CLASS_INSTANTIATION,
     DECLARATION,
     IF,
+    MATCH,
     MAP_ASSIGN,
     METHOD_CALL,
     PRINT,

@@ -7,6 +7,7 @@ enum class ExpressionType {
     MULTISET_CONVERSION,
     BINARY,
     TERNARY,
+    MATCH,
     FUNCTION_METHOD_CALL,
     IDENTIFIER,
     INDEX,
@@ -19,5 +20,6 @@ enum class IndexType {
     MAP,
     MULTISET,
     SEQUENCE,
-    STRING
+    STRING,
+    DATATYPE
 }

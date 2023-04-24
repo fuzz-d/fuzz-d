@@ -1,6 +1,7 @@
 package fuzzd.generator.ast
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.error.InvalidInputException
 
 class DatatypeAST(val name: String, val constructors: List<DatatypeConstructorAST>) : TopLevelAST() {
@@ -9,6 +10,8 @@ class DatatypeAST(val name: String, val constructors: List<DatatypeConstructorAS
             throw InvalidInputException("Datatypes must have at least 1 constructor")
         }
     }
+
+    fun datatypes(): List<DatatypeType> = constructors.map { DatatypeType(this, it) }
 
     override fun toString(): String = "datatype $name = ${constructors.joinToString(" | ")}"
 
@@ -20,7 +23,6 @@ class DatatypeAST(val name: String, val constructors: List<DatatypeConstructorAS
         result = 31 * result + constructors.hashCode()
         return result
     }
-
 }
 
 class DatatypeConstructorAST(val name: String, val fields: List<IdentifierAST>) : ASTElement {

@@ -36,6 +36,7 @@ import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DataStructureMemberDeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
@@ -127,6 +128,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is MultiAssignmentAST -> reconditionMultiAssignmentAST(statement) // covers AssignmentAST
         is MultiTypedDeclarationAST -> reconditionMultiTypedDeclarationAST(statement)
         is MultiDeclarationAST -> reconditionMultiDeclarationAST(statement) // covers DeclarationAST
+        is MatchStatementAST -> TODO()
         is IfStatementAST -> reconditionIfStatement(statement)
         is WhileLoopAST -> reconditionWhileLoopAST(statement)
         is PrintAST -> reconditionPrintAST(statement)
@@ -199,6 +201,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is SetDisplayAST -> reconditionSetDisplay(expression)
         is MapConstructorAST -> reconditionMapConstructor(expression)
         is SequenceDisplayAST -> reconditionSequenceDisplay(expression)
+        else -> TODO()
     }
 
     override fun reconditionBinaryExpression(expression: BinaryExpressionAST): ExpressionAST {

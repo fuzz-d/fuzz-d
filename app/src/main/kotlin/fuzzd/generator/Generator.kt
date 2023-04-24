@@ -12,6 +12,10 @@ import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstanceAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
@@ -20,6 +24,7 @@ import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
+import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
@@ -43,6 +48,7 @@ import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.TypedDeclarationAST
@@ -69,6 +75,7 @@ import fuzzd.generator.ast.error.MethodOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ClassNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ControlFlowGenerator
+import fuzzd.generator.ast.identifier_generator.NameGenerator.DatatypeConstructorFieldGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.DatatypeConstructorGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.DatatypeNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.FieldNameGenerator
@@ -91,11 +98,13 @@ import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.INDEX
 import fuzzd.generator.selection.ExpressionType.INDEX_ASSIGN
 import fuzzd.generator.selection.ExpressionType.LITERAL
+import fuzzd.generator.selection.ExpressionType.MATCH
 import fuzzd.generator.selection.ExpressionType.MODULUS
 import fuzzd.generator.selection.ExpressionType.MULTISET_CONVERSION
 import fuzzd.generator.selection.ExpressionType.TERNARY
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.IndexType.ARRAY
+import fuzzd.generator.selection.IndexType.DATATYPE
 import fuzzd.generator.selection.IndexType.MAP
 import fuzzd.generator.selection.IndexType.MULTISET
 import fuzzd.generator.selection.IndexType.SEQUENCE
@@ -137,6 +146,8 @@ class Generator(
 
     override fun generate(): DafnyAST {
         val context = GenerationContext(FunctionSymbolTable())
+
+        (1..selectionManager.selectNumberOfFields()).map { generateDatatype(context) }
 
         val globalFields = (1..selectionManager.selectNumberOfGlobalFields()).map { generateField(context) }.toSet()
         val globalStateClass = ClassAST.builder().withName(GLOBAL_STATE).withFields(globalFields).build()
@@ -304,20 +315,49 @@ class Generator(
     override fun generateDatatype(context: GenerationContext): DatatypeAST {
         val datatypeName = datatypeNameGenerator.newValue()
         val numberOfConstructors = selectionManager.selectNumberOfDatatypeConstructors()
-        val constructors = (1..numberOfConstructors).map { generateDataTypeConstructor(context) }
+        val fieldNameGenerator = DatatypeConstructorFieldGenerator()
+        val constructors =
+            (1..numberOfConstructors).map { generateDatatypeConstructor(context, fieldNameGenerator) }
         val datatype = DatatypeAST(datatypeName, constructors)
 
         context.functionSymbolTable.addDatatype(datatype)
         return datatype
     }
 
-    private fun generateDataTypeConstructor(context: GenerationContext): DatatypeConstructorAST {
-        val numberOfFields = selectionManager.selectNumberOfConstructorFields(context)
+    private fun generateDatatype(context: GenerationContext, requiresConstructorType: Type): DatatypeAST {
+        val datatypeName = datatypeNameGenerator.newValue()
+        val fieldNameGenerator = DatatypeConstructorFieldGenerator()
+        val compulsoryConstructor = DatatypeConstructorAST(
+            datatypeConstructorGenerator.newValue(),
+            listOf(
+                paramIdentifierFromType(
+                    requiresConstructorType,
+                    fieldNameGenerator,
+                    mutable = true,
+                    initialised = true,
+                ),
+            ),
+        )
+
+        val numberOfConstructors = selectionManager.selectNumberOfDatatypeConstructors() - 1
+        val otherConstructors = (1..numberOfConstructors).map {
+            generateDatatypeConstructor(context, fieldNameGenerator)
+        }
+        val datatype = DatatypeAST(datatypeName, otherConstructors + compulsoryConstructor)
+
+        context.functionSymbolTable.addDatatype(datatype)
+        return datatype
+    }
+
+    private fun generateDatatypeConstructor(
+        context: GenerationContext,
+        fieldNameGenerator: NameGenerator,
+    ): DatatypeConstructorAST {
+        val numberOfFields = selectionManager.selectNumberOfDatatypeFields()
         val constructorName = datatypeConstructorGenerator.newValue()
-        val parameterNameGenerator = ParameterNameGenerator()
         val fields = (1..numberOfFields).map {
             val type = selectionManager.selectType(context)
-            paramIdentifierFromType(type, parameterNameGenerator, mutable = true, initialised = true)
+            paramIdentifierFromType(type, fieldNameGenerator, mutable = true, initialised = true)
         }
         return DatatypeConstructorAST(constructorName, fields)
     }
@@ -462,6 +502,23 @@ class Generator(
         METHOD_CALL -> generateMethodCall(context)
         PRINT -> generatePrintStatement(context)
         WHILE -> generateWhileStatement(context)
+        StatementType.MATCH -> generateMatchStatement(context)
+    }
+
+    override fun generateMatchStatement(context: GenerationContext): List<StatementAST> {
+        if (!context.functionSymbolTable.hasDatatypes()) {
+            generateDatatype(context)
+        }
+        val datatype = selectionManager.selectDatatypeType(context, literalOnly = false)
+        val (match, matchDeps) = generateExpression(context, datatype)
+
+        val cases = datatype.datatype.datatypes().map { dtype ->
+            val case = generateCaseMatchForDatatype(dtype)
+            val seq = generateSequence(context.increaseStatementDepth(), maxStatements = 4)
+            Pair(case, seq)
+        }
+
+        return matchDeps + MatchStatementAST(match, cases)
     }
 
     override fun generateIfStatement(context: GenerationContext): List<StatementAST> {
@@ -541,6 +598,7 @@ class Generator(
         val identifier = when (targetType) {
             is ClassType -> ClassInstanceAST(targetType.clazz, identifierName, mutable = true, initialised = true)
             is TraitType -> TraitInstanceAST(targetType.trait, identifierName, mutable = true, initialised = true)
+            is DatatypeType -> DatatypeInstanceAST(identifierName, targetType, mutable = true, initialised = true)
             else -> IdentifierAST(identifierName, targetType, initialised = true)
         }
 
@@ -597,10 +655,10 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-                context.functionSymbolTable.methods().map { it.signature } +
-                        context.symbolTable.classInstances().map { it.methods }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.methods }.unionAll()
-                )
+            context.functionSymbolTable.methods().map { it.signature } +
+                context.symbolTable.classInstances().map { it.methods }.unionAll() +
+                context.symbolTable.traitInstances().map { it.methods }.unionAll()
+            )
             .filter { method ->
                 context.methodContext == null || methodCallTable.canUseDependency(
                     context.methodContext,
@@ -666,8 +724,8 @@ class Generator(
     override fun generateExpression(
         context: GenerationContext,
         targetType: Type,
-    ): Pair<ExpressionAST, List<StatementAST>> {
-        return try {
+    ): Pair<ExpressionAST, List<StatementAST>> =
+        try {
             val expressionType = selectionManager.selectExpressionType(targetType, context)
             generateExpressionFromType(
                 expressionType,
@@ -681,6 +739,46 @@ class Generator(
                 targetType,
             )
         }
+
+    override fun generateDatatypeInstantiation(
+        context: GenerationContext,
+        targetType: DatatypeType,
+    ): Pair<DatatypeInstantiationAST, List<StatementAST>> {
+        val datatype = targetType.datatype
+        val constructor = targetType.constructor
+
+        val (params, paramDeps) = constructor.fields.map {
+            generateExpression(
+                context.increaseExpressionDepth(),
+                it.type(),
+            )
+        }.foldPair()
+
+        return Pair(DatatypeInstantiationAST(datatype, constructor, params), paramDeps)
+    }
+
+    private fun generateCaseMatchForDatatype(datatype: DatatypeType): DatatypeInstantiationAST =
+        DatatypeInstantiationAST(datatype.datatype, datatype.constructor, datatype.constructor.fields)
+
+    override fun generateMatchExpression(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<MatchExpressionAST, List<StatementAST>> {
+        if (!context.functionSymbolTable.hasDatatypes()) {
+            generateDatatype(context)
+        }
+
+        val datatype = selectionManager.selectDatatypeType(context, literalOnly = false)
+        val (match, matchDeps) = generateExpression(context.increaseExpressionDepth(), datatype)
+        val (cases, caseDeps) = datatype.datatype.datatypes().map { dtype ->
+            val caseMatch = generateCaseMatchForDatatype(dtype)
+            val exprContext = context.increaseExpressionDepth()
+//            dtype.constructor.fields.forEach { exprContext.symbolTable.add(it) }
+            val (expr, exprDeps) = generateExpression(exprContext, targetType)
+            Pair(Pair(caseMatch, expr), exprDeps)
+        }.foldPair()
+
+        return Pair(MatchExpressionAST(match, targetType, cases), matchDeps + caseDeps)
     }
 
     private fun generateExpressionFromType(
@@ -694,6 +792,7 @@ class Generator(
         MULTISET_CONVERSION -> generateMultisetConversion(context, targetType)
         BINARY -> generateBinaryExpression(context, targetType)
         TERNARY -> generateTernaryExpression(context, targetType)
+        MATCH -> generateMatchExpression(context, targetType)
         FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
         IDENTIFIER -> generateIdentifier(context, targetType, initialisedConstraint = true)
         LITERAL -> generateLiteralForType(context, targetType as LiteralType)
@@ -735,10 +834,10 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (
-                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                        context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
-                )
+            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
+                context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
+            )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
@@ -835,10 +934,11 @@ class Generator(
     override fun generateIndexAssign(
         context: GenerationContext,
         targetType: Type,
-    ): Pair<IndexAssignAST, List<StatementAST>> = when (targetType) {
+    ): Pair<ExpressionAST, List<StatementAST>> = when (targetType) {
         is MapType -> generateMapIndexAssign(context, targetType)
         is MultisetType -> generateMultisetIndexAssign(context, targetType)
         is SequenceType -> generateSequenceIndexAssign(context, targetType)
+        is DatatypeType -> generateDatatypeUpdate(context, targetType)
         else -> throw UnsupportedOperationException()
     }
 
@@ -887,6 +987,24 @@ class Generator(
         return Pair(IndexAssignAST(ident, index, newValue), identDeps + indexDeps + newValueDeps)
     }
 
+    private fun generateDatatypeUpdate(
+        context: GenerationContext,
+        targetType: DatatypeType,
+    ): Pair<DatatypeUpdateAST, List<StatementAST>> {
+        val (datatypeInstance, instanceDeps) = generateExpression(context.increaseExpressionDepth(), targetType)
+        val numberOfUpdates = selectionManager.selectInt(1, targetType.constructor.fields.size)
+        val updateFields = (1..numberOfUpdates)
+            .map { selectionManager.randomSelection(targetType.constructor.fields) }
+            .toSet()
+
+        val (updates, updateDeps) = updateFields.map { field ->
+            val (expr, exprDeps) = generateExpression(context.increaseExpressionDepth(), field.type())
+            Pair(Pair(field, expr), exprDeps)
+        }.foldPair()
+
+        return Pair(DatatypeUpdateAST(datatypeInstance, updates), instanceDeps + updateDeps)
+    }
+
     override fun generateIndex(context: GenerationContext, targetType: Type): Pair<ExpressionAST, List<StatementAST>> =
         when (selectionManager.selectIndexType(context, targetType)) {
             ARRAY -> generateIdentifier(context, targetType)
@@ -903,7 +1021,33 @@ class Generator(
             SEQUENCE -> generateSequenceIndex(context, targetType)
 
             STRING -> generateStringIndex(context)
+
+            DATATYPE -> generateDatatypeDestructor(context, targetType)
         }
+
+    private fun datatypesWithType(context: GenerationContext, type: Type): List<DatatypeType> =
+        context.functionSymbolTable.datatypes()
+            .map { datatype -> datatype.constructors.map { DatatypeType(datatype, it) } }.reduceLists()
+            .filter { datatype -> datatype.constructor.fields.any { it.type() == type } }
+
+    private fun generateDatatypeDestructor(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<ExpressionAST, List<StatementAST>> {
+        var availableDatatypes = datatypesWithType(context, targetType)
+        if (availableDatatypes.isEmpty()) {
+            generateDatatype(context, targetType)
+            availableDatatypes = datatypesWithType(context, targetType)
+        }
+
+        val selectedDatatype = selectionManager.randomSelection(availableDatatypes)
+        val (datatypeInstance, instanceDeps) = generateExpression(context.increaseExpressionDepth(), selectedDatatype)
+        val field = selectionManager.randomSelection(
+            selectedDatatype.constructor.fields.filter { it.type() == targetType },
+        )
+
+        return Pair(DatatypeDestructorAST(datatypeInstance, field), instanceDeps)
+    }
 
     private fun generateMapIndex(
         context: GenerationContext,
@@ -997,7 +1141,7 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): Pair<TernaryExpressionAST, List<StatementAST>> {
-        val (condition, conditionDeps) = generateExpression(context, BoolType)
+        val (condition, conditionDeps) = generateExpression(context.increaseExpressionDepth(), BoolType)
         val (ifExpr, ifExprDeps) = generateExpression(context.increaseExpressionDepth(), targetType)
         val (elseExpr, elseExprDeps) = generateExpression(context.increaseExpressionDepth(), targetType)
 
@@ -1012,8 +1156,10 @@ class Generator(
         is ArrayType -> generateArrayInitialisation(context, targetType)
         is ClassType -> generateClassConstructor(context, targetType)
         is TraitType -> generateTraitConstructor(context, targetType)
+        is DatatypeType -> generateDatatypeInstantiation(context, targetType)
         is MapType -> generateMapConstructor(context, targetType)
         is SetType, is MultisetType -> generateSetDisplay(context, targetType)
+        is StringType -> generateStringLiteral(context)
         is SequenceType -> generateSequenceDisplay(context, targetType)
         // should not be possible to reach here
         else -> throw UnsupportedOperationException("Trying to generate base for non-base type $targetType")
@@ -1025,6 +1171,7 @@ class Generator(
     ): Pair<ExpressionAST, List<StatementAST>> = when (targetType) {
         is ClassType -> generateClassConstructor(context, targetType)
         is TraitType -> generateTraitConstructor(context, targetType)
+        is DatatypeType -> generateDatatypeInstantiation(context, targetType)
         is ArrayType -> generateArrayInitialisation(context, targetType)
         is MapType -> generateMapConstructor(context, targetType)
         is SetType, is MultisetType -> generateSetDisplay(context, targetType)

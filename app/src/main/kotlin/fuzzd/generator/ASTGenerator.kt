@@ -3,18 +3,18 @@ package fuzzd.generator
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.DatatypeAST
-import fuzzd.generator.ast.DatatypeConstructorAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
-import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
@@ -32,6 +32,7 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
+import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.context.GenerationContext
 
 interface ASTGenerator {
@@ -65,6 +66,8 @@ interface ASTGenerator {
 
     fun generateStatement(context: GenerationContext): List<StatementAST>
 
+    fun generateMatchStatement(context: GenerationContext): List<StatementAST>
+
     fun generateIfStatement(context: GenerationContext): List<StatementAST>
 
     fun generateWhileStatement(context: GenerationContext): List<StatementAST>
@@ -84,6 +87,16 @@ interface ASTGenerator {
     /* ========================================== EXPRESSIONS ========================================== */
 
     fun generateExpression(context: GenerationContext, targetType: Type): Pair<ExpressionAST, List<StatementAST>>
+
+    fun generateDatatypeInstantiation(
+        context: GenerationContext,
+        targetType: DatatypeType,
+    ): Pair<DatatypeInstantiationAST, List<StatementAST>>
+
+    fun generateMatchExpression(
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<MatchExpressionAST, List<StatementAST>>
 
     fun generateFunctionMethodCall(
         context: GenerationContext,
@@ -141,7 +154,7 @@ interface ASTGenerator {
     fun generateIndexAssign(
         context: GenerationContext,
         targetType: Type,
-    ): Pair<IndexAssignAST, List<StatementAST>>
+    ): Pair<ExpressionAST, List<StatementAST>>
 
     fun generateIndex(context: GenerationContext, targetType: Type): Pair<ExpressionAST, List<StatementAST>>
 

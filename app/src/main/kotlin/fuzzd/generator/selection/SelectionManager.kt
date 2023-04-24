@@ -5,6 +5,7 @@ import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
+import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
@@ -33,10 +34,12 @@ import fuzzd.generator.selection.ExpressionType.IDENTIFIER
 import fuzzd.generator.selection.ExpressionType.INDEX
 import fuzzd.generator.selection.ExpressionType.INDEX_ASSIGN
 import fuzzd.generator.selection.ExpressionType.LITERAL
+import fuzzd.generator.selection.ExpressionType.MATCH
 import fuzzd.generator.selection.ExpressionType.MODULUS
 import fuzzd.generator.selection.ExpressionType.TERNARY
 import fuzzd.generator.selection.ExpressionType.UNARY
 import fuzzd.generator.selection.IndexType.ARRAY
+import fuzzd.generator.selection.IndexType.DATATYPE
 import fuzzd.generator.selection.IndexType.MAP
 import fuzzd.generator.selection.IndexType.MULTISET
 import fuzzd.generator.selection.IndexType.SEQUENCE
@@ -54,21 +57,16 @@ class SelectionManager(
     private val random: Random,
 ) {
     fun selectType(context: GenerationContext, literalOnly: Boolean = false): Type {
+        val classTypeProb =
+            if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.hasClasses()) 0.05 else 0.0
+        val traitTypeProb =
+            if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.hasTraits()) 0.04 else 0.0
+        val datatypeProb = if (context.functionSymbolTable.hasDatatypes()) 0.03 else 0.0
+
         val selection = listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
-            this::selectClassType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.classes()
-                    .isNotEmpty()
-            ) {
-                0.05
-            } else {
-                0.0
-            },
-            this::selectTraitType to if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.traits()
-                    .isNotEmpty()
-            ) {
-                0.04
-            } else {
-                0.0
-            },
+            this::selectClassType to classTypeProb,
+            this::selectTraitType to traitTypeProb,
+            this::selectDatatypeType to datatypeProb,
             this::selectArrayType to if (literalOnly || !context.onDemandIdentifiers) 0.0 else 0.1,
             this::selectDataStructureType to 0.15 / context.expressionDepth,
             this::selectLiteralType to if (literalOnly) 0.85 else 0.75,
@@ -82,6 +80,12 @@ class SelectionManager(
 
     private fun selectTraitType(context: GenerationContext, literalOnly: Boolean): TraitType =
         TraitType(randomSelection(context.functionSymbolTable.traits().toList()))
+
+    fun selectDatatypeType(context: GenerationContext, literalOnly: Boolean): DatatypeType {
+        val datatype = randomSelection(context.functionSymbolTable.datatypes().toList())
+        val constructor = randomSelection(datatype.constructors)
+        return DatatypeType(datatype, constructor)
+    }
 
     fun selectDataStructureType(context: GenerationContext, literalOnly: Boolean): Type =
         randomWeightedSelection(
@@ -206,6 +210,7 @@ class SelectionManager(
     fun selectStatementType(context: GenerationContext, methodCalls: Boolean = true): StatementType {
         val ifStatementProbability =
             if (context.statementDepth < MAX_STATEMENT_DEPTH) 0.1 / context.statementDepth else 0.0
+        val matchProbability = if (context.statementDepth < MAX_STATEMENT_DEPTH) 0.1 / context.statementDepth else 0.0
         val whileStatementProbability = if (context.statementDepth == 1) 0.07 else 0.0
 
         val methodCallProbability = if (methodCalls) {
@@ -214,12 +219,14 @@ class SelectionManager(
             0.0 // TODO() is there a better heuristic?
         }
 
-        val remainingProbability = 1 - methodCallProbability - whileStatementProbability - ifStatementProbability
+        val remainingProbability =
+            1 - listOf(methodCallProbability, matchProbability, whileStatementProbability, ifStatementProbability).sum()
 
         val selection = listOf(
             IF to ifStatementProbability,
             WHILE to whileStatementProbability,
             METHOD_CALL to methodCallProbability,
+            StatementType.MATCH to matchProbability,
             MAP_ASSIGN to remainingProbability / 6,
             ASSIGN to 4 * remainingProbability / 6,
             CLASS_INSTANTIATION to remainingProbability / 6,
@@ -236,13 +243,15 @@ class SelectionManager(
             ),
         )
 
+    private fun isBinaryType(targetType: Type): Boolean =
+        targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType &&
+            targetType !is DatatypeType && targetType != CharType
+
+    private fun isAssignType(targetType: Type): Boolean =
+        targetType is MapType || targetType is MultisetType || targetType is SequenceType || targetType is DatatypeType
+
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
-        val binaryProbability =
-            if (targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType && targetType != CharType) {
-                0.4 / context.expressionDepth
-            } else {
-                0.0
-            }
+        val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) 0.15 / context.expressionDepth else 0.0
         val modulusProbability = if (targetType == IntType) 0.03 else 0.0
         val multisetConversionProbability = if (targetType is MultisetType) 0.03 else 0.0
@@ -252,9 +261,13 @@ class SelectionManager(
             } else {
                 0.0
             }
-        val ternaryProbability = 0.07 / context.expressionDepth
-        val assignProbability =
-            if ((targetType is MapType || targetType is MultisetType || targetType is SequenceType) && identifier) 0.1 / context.expressionDepth else 0.0
+        val ternaryProbability = 0.05 / context.expressionDepth
+        val matchProbability = if (context.expressionDepth == 1) 0.05 else 0.0
+        val assignProbability = if (isAssignType(targetType) && context.symbolTable.hasType(targetType)) {
+            0.1 / context.expressionDepth
+        } else {
+            0.0
+        }
         val indexProbability = if (identifier) 0.1 / context.expressionDepth else 0.0
 
         val remainingProbability =
@@ -265,6 +278,7 @@ class SelectionManager(
                 multisetConversionProbability,
                 functionCallProbability,
                 ternaryProbability,
+                matchProbability,
                 assignProbability,
                 indexProbability,
             ).sum()
@@ -288,6 +302,7 @@ class SelectionManager(
             CONSTRUCTOR to constructorProbability,
             LITERAL to literalProbability,
             TERNARY to ternaryProbability,
+            MATCH to matchProbability,
             IDENTIFIER to identifierProbability,
             FUNCTION_METHOD_CALL to functionCallProbability,
             UNARY to unaryProbability,
@@ -308,6 +323,7 @@ class SelectionManager(
                 MULTISET to if (targetType == IntType) 0.2 else 0.0,
                 SEQUENCE to 0.2,
                 STRING to if (targetType == CharType) 0.2 else 0.0,
+                DATATYPE to 0.2,
             ),
         ),
     )
@@ -365,6 +381,9 @@ class SelectionManager(
     fun selectNumberOfDatatypeConstructors() =
         randomWeightedSelection(normaliseWeights(listOf(1 to 0.25, 2 to 0.4, 3 to 0.25, 4 to 0.1)))
 
+    fun selectNumberOfDatatypeFields() =
+        randomWeightedSelection(normaliseWeights(listOf(0 to 0.1, 1 to 0.2, 2 to 0.2, 3 to 0.2, 4 to 0.1, 5 to 0.1)))
+
     fun selectNumberOfFunctionMethods() = random.nextInt(0, MAX_FUNCTION_METHODS)
 
     fun selectNumberOfMethods() = random.nextInt(0, MAX_METHODS)
@@ -380,6 +399,8 @@ class SelectionManager(
     fun selectCharacter(): Char = random.nextInt('a'.code, 'z'.code).toChar()
 
     fun selectBoolean(): Boolean = random.nextBoolean()
+
+    fun selectInt(min: Int, max: Int): Int = if (min == max) min else random.nextInt(min, max)
 
     companion object {
         private const val MAX_STATEMENT_DEPTH = 5

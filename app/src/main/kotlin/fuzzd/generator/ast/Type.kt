@@ -4,25 +4,14 @@ sealed class Type : ASTElement {
 
     open fun hasHeapType(): Boolean = false
 
-    class DatatypeType(val datatype: DatatypeAST) : Type() {
-        override fun hasHeapType(): Boolean =
-            datatype.constructors.any { c -> c.fields.any { it.type().hasHeapType() } }
-
-        override fun equals(other: Any?): Boolean = other is DatatypeType && other.datatype == this.datatype
-
-        override fun hashCode(): Int = datatype.hashCode()
-
-        override fun toString(): String = datatype.name
-    }
-
-    class DatatypeConstructorType(val constructor: DatatypeConstructorAST) : Type() {
+    class DatatypeType(val datatype: DatatypeAST, val constructor: DatatypeConstructorAST) : Type() {
         override fun hasHeapType(): Boolean = constructor.fields.any { it.type().hasHeapType() }
 
-        override fun equals(other: Any?): Boolean = other is DatatypeConstructorType && other.constructor == constructor
+        override fun equals(other: Any?): Boolean = other is DatatypeType && other.constructor == constructor
 
         override fun hashCode(): Int = constructor.hashCode()
 
-        override fun toString(): String = constructor.name
+        override fun toString(): String = datatype.name
     }
 
     class ClassType(val clazz: ClassAST) : Type() {
@@ -51,7 +40,7 @@ sealed class Type : ASTElement {
 
             override fun equals(other: Any?): Boolean {
                 return other != null && other is ArrayType &&
-                        other.internalType == internalType
+                    other.internalType == internalType
             }
 
             override fun hashCode(): Int {

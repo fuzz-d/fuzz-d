@@ -50,6 +50,8 @@ class FunctionSymbolTable(private val parent: FunctionSymbolTable? = null) {
 
     fun traits(): Set<TraitAST> = traits union (parent?.traits() ?: setOf())
 
+    fun hasTraits(): Boolean = traits.isNotEmpty()
+
     fun addClasses(classes: Collection<ClassAST>) {
         classes.forEach(this::addClass)
     }
@@ -68,5 +70,5 @@ class FunctionSymbolTable(private val parent: FunctionSymbolTable? = null) {
 
     fun hasDatatypes(): Boolean = datatypes.isNotEmpty() || parent?.hasDatatypes() ?: false
 
-    fun datatypes() : Set<DatatypeAST> = datatypes union (parent?.datatypes() ?: setOf())
+    fun datatypes(): Set<DatatypeAST> = datatypes union (parent?.datatypes() ?: setOf())
 }

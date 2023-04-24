@@ -42,6 +42,7 @@ import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DataStructureMemberDeclarationAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
@@ -216,6 +217,7 @@ class AdvancedReconditioner {
         is MultiAssignmentAST -> reconditionMultiAssignment(statementAST)
         is MultiTypedDeclarationAST -> reconditionMultiTypedDeclaration(statementAST)
         is MultiDeclarationAST -> reconditionMultiDeclaration(statementAST)
+        is MatchStatementAST -> TODO()
         is IfStatementAST -> reconditionIfStatement(statementAST)
         is CounterLimitedWhileLoopAST -> reconditionCounterLimitedWhileLoop(statementAST)
         is WhileLoopAST -> reconditionWhileLoop(statementAST)
@@ -321,6 +323,7 @@ class AdvancedReconditioner {
             is SetDisplayAST -> reconditionSetDisplay(expressionAST)
             is MapConstructorAST -> reconditionMapConstructor(expressionAST)
             is SequenceDisplayAST -> reconditionSequenceDisplay(expressionAST)
+            else -> TODO()
         }
 
     fun reconditionBinaryExpression(binaryExpressionAST: BinaryExpressionAST): Pair<ExpressionAST, List<StatementAST>> {
