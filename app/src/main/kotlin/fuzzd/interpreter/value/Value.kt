@@ -234,7 +234,7 @@ sealed class Value {
         fun subtract(other: IntValue): IntValue = IntValue(value - other.value)
         fun multiply(other: IntValue): IntValue = IntValue(value * other.value)
         fun divide(other: IntValue): IntValue = IntValue(divideEuclidean(value, other.value))
-        fun modulo(other: IntValue): IntValue = IntValue(value % other.value)
+        fun modulo(other: IntValue): IntValue = IntValue(value - divideEuclidean(value, other.value) * other.value)
         fun lessThan(other: IntValue): BoolValue = BoolValue(value < other.value)
         fun lessThanEquals(other: IntValue): BoolValue = BoolValue(value <= other.value)
         fun greaterThanEquals(other: IntValue): BoolValue = BoolValue(value >= other.value)
