@@ -356,7 +356,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
                 identifier
             } else {
-                IdentifierAST(lhs[i].name, rhsTypes[i], mutable = true, initialised = true)
+                IdentifierAST(lhs[i].name, type, mutable = true, initialised = true)
             }
 
             identifiersTable.addEntry(identifier.name, identifier)
@@ -479,7 +479,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.setDisplay() != null -> visitSetDisplay(ctx.setDisplay())
         ctx.sequenceDisplay() != null -> visitSequenceDisplay(ctx.sequenceDisplay())
         ctx.mapConstructor() != null -> visitMapConstructor(ctx.mapConstructor())
-        ctx.identifier() != null -> visitIdentifier(ctx.identifier())
+        ctx.identifiers() != null -> visitIdentifiers(ctx.identifiers())
+
         ctx.index() != null -> visitIndexExpression(ctx)
         ctx.indexAssign() != null -> visitIndexAssign(ctx.indexAssign())
 
@@ -657,6 +658,13 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return ArrayInitAST(dimension, ArrayType(innerType))
     }
 
+    override fun visitIdentifiers(ctx: IdentifiersContext): IdentifierAST =
+        if (ctx.identifiers() != null) {
+            ClassInstanceFieldAST(visitIdentifier(ctx.identifier()), visitIdentifiers(ctx.identifiers()))
+        } else {
+            visitIdentifier(ctx.identifier())
+        }
+
     override fun visitArrayLength(ctx: ArrayLengthContext): ArrayLengthAST =
         ArrayLengthAST(visitDeclAssignLhs(ctx.declAssignLhs()))
 
@@ -737,11 +745,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitIntLiteral(ctx: IntLiteralContext): IntegerLiteralAST =
         IntegerLiteralAST(ctx.INT_LITERAL().toString().toHexInt())
 
-    override fun visitCharLiteral(ctx: CharLiteralContext): CharacterLiteralAST = if (ctx.CHAR_CHAR() != null) {
-        CharacterLiteralAST(ctx.CHAR_CHAR().toString()[0])
-    } else {
-        CharacterLiteralAST(ctx.ESCAPED_CHAR().toString()[0])
-    }
+    override fun visitCharLiteral(ctx: CharLiteralContext): CharacterLiteralAST =
+        CharacterLiteralAST(ctx.CHAR_LITERAL().toString()[1])
 
     override fun visitStringToken(ctx: StringTokenContext): StringLiteralAST =
         StringLiteralAST(ctx.text.substring(1, ctx.text.length - 1))

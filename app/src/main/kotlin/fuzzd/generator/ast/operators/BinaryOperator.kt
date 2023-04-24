@@ -114,7 +114,7 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
 
     object UnionOperator : DataStructureMathematicalOperator(6, "+") {
         override fun supportsInput(t1: Type, t2: Type): Boolean =
-            t1 == t2 && (t1 is SetType || t1 is MultisetType || t1 is MapType || t1 is SequenceType)
+            t1 == t2 || (t1 is SetType || t1 is MultisetType || t1 is MapType || t1 is SequenceType)
     }
 
     object DifferenceOperator : DataStructureMathematicalOperator(6, "-") {
