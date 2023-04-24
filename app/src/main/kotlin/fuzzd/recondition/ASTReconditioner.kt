@@ -6,10 +6,14 @@ import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
@@ -24,6 +28,7 @@ import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.DataStructureMemberDeclarationAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
@@ -59,6 +64,8 @@ interface ASTReconditioner {
 
     fun reconditionMultiDeclarationAST(multiDeclarationAST: MultiDeclarationAST): MultiDeclarationAST
 
+    fun reconditionMatchStatement(matchStatement: MatchStatementAST): MatchStatementAST
+
     fun reconditionIfStatement(ifStatementAST: IfStatementAST): IfStatementAST
 
     fun reconditionWhileLoopAST(whileLoopAST: WhileLoopAST): WhileLoopAST
@@ -69,6 +76,14 @@ interface ASTReconditioner {
 
     /* ========================================== EXPRESSIONS ========================================== */
     fun reconditionExpression(expression: ExpressionAST): ExpressionAST
+
+    fun reconditionDatatypeDestructor(destructor: DatatypeDestructorAST): DatatypeDestructorAST
+
+    fun reconditionDatatypeInstantiation(instantiation: DatatypeInstantiationAST): DatatypeInstantiationAST
+
+    fun reconditionDatatypeUpdate(update: DatatypeUpdateAST): DatatypeUpdateAST
+
+    fun reconditionMatchExpression(matchExpression: MatchExpressionAST): MatchExpressionAST
 
     fun reconditionBinaryExpression(expression: BinaryExpressionAST): ExpressionAST
 

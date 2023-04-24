@@ -10,6 +10,9 @@ import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
@@ -17,6 +20,7 @@ import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
+import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
@@ -128,7 +132,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is MultiAssignmentAST -> reconditionMultiAssignmentAST(statement) // covers AssignmentAST
         is MultiTypedDeclarationAST -> reconditionMultiTypedDeclarationAST(statement)
         is MultiDeclarationAST -> reconditionMultiDeclarationAST(statement) // covers DeclarationAST
-        is MatchStatementAST -> TODO()
+        is MatchStatementAST -> reconditionMatchStatement(statement)
         is IfStatementAST -> reconditionIfStatement(statement)
         is WhileLoopAST -> reconditionWhileLoopAST(statement)
         is PrintAST -> reconditionPrintAST(statement)
@@ -155,6 +159,13 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
     override fun reconditionMultiDeclarationAST(multiDeclarationAST: MultiDeclarationAST) = MultiDeclarationAST(
         multiDeclarationAST.identifiers.map(this::reconditionIdentifier),
         multiDeclarationAST.exprs.map(this::reconditionExpression),
+    )
+
+    override fun reconditionMatchStatement(matchStatement: MatchStatementAST): MatchStatementAST = MatchStatementAST(
+        reconditionExpression(matchStatement.match),
+        matchStatement.cases.map { (case, seq) ->
+            Pair(case, reconditionSequence(seq))
+        },
     )
 
     override fun reconditionIfStatement(ifStatementAST: IfStatementAST) = IfStatementAST(
@@ -201,8 +212,41 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is SetDisplayAST -> reconditionSetDisplay(expression)
         is MapConstructorAST -> reconditionMapConstructor(expression)
         is SequenceDisplayAST -> reconditionSequenceDisplay(expression)
-        else -> TODO()
+        is DatatypeDestructorAST -> reconditionDatatypeDestructor(expression)
+        is DatatypeInstantiationAST -> reconditionDatatypeInstantiation(expression)
+        is DatatypeUpdateAST -> reconditionDatatypeUpdate(expression)
+        is MatchExpressionAST -> reconditionMatchExpression(expression)
     }
+
+    override fun reconditionDatatypeDestructor(destructor: DatatypeDestructorAST): DatatypeDestructorAST =
+        DatatypeDestructorAST(
+            reconditionExpression(destructor.datatypeInstance),
+            reconditionIdentifier(destructor.field),
+        )
+
+    override fun reconditionDatatypeInstantiation(instantiation: DatatypeInstantiationAST): DatatypeInstantiationAST =
+        DatatypeInstantiationAST(
+            instantiation.datatype,
+            instantiation.constructor,
+            instantiation.params.map(this::reconditionExpression),
+        )
+
+    override fun reconditionDatatypeUpdate(update: DatatypeUpdateAST): DatatypeUpdateAST =
+        DatatypeUpdateAST(
+            reconditionExpression(update.datatypeInstance),
+            update.updates.map { (ident, expr) ->
+                Pair(ident, reconditionExpression(expr))
+            },
+        )
+
+    override fun reconditionMatchExpression(matchExpression: MatchExpressionAST): MatchExpressionAST =
+        MatchExpressionAST(
+            reconditionExpression(matchExpression.match),
+            matchExpression.type,
+            matchExpression.cases.map { (case, expr) ->
+                Pair(case, reconditionExpression(expr))
+            },
+        )
 
     override fun reconditionBinaryExpression(expression: BinaryExpressionAST): ExpressionAST {
         val rexpr1 = reconditionExpression(expression.expr1)
