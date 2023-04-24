@@ -1,6 +1,7 @@
 package fuzzd.generator.symbol_table
 
 import fuzzd.generator.ast.ClassAST
+import fuzzd.generator.ast.DatatypeAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.TraitAST
@@ -12,6 +13,8 @@ class FunctionSymbolTable(private val parent: FunctionSymbolTable? = null) {
 
     private val traits = mutableSetOf<TraitAST>()
     private val classes = mutableSetOf<ClassAST>()
+
+    private val datatypes = mutableSetOf<DatatypeAST>()
 
     fun topLevel(): FunctionSymbolTable = parent?.topLevel() ?: this
 
@@ -25,7 +28,7 @@ class FunctionSymbolTable(private val parent: FunctionSymbolTable? = null) {
     fun withFunctionMethodType(type: Type): List<FunctionMethodAST> =
         functionMethods.filter { it.returnType() == type } + (parent?.withFunctionMethodType(type) ?: listOf())
 
-    fun functionMethods(): Set<FunctionMethodAST> = functionMethods union (parent?.functionMethods() ?: listOf())
+    fun functionMethods(): Set<FunctionMethodAST> = functionMethods union (parent?.functionMethods() ?: setOf())
 
     fun addMethods(allMethods: Collection<MethodAST>) {
         allMethods.forEach(this::addMethod)
@@ -35,7 +38,7 @@ class FunctionSymbolTable(private val parent: FunctionSymbolTable? = null) {
         methods.add(method)
     }
 
-    fun methods(): Set<MethodAST> = methods union (parent?.methods() ?: listOf())
+    fun methods(): Set<MethodAST> = methods union (parent?.methods() ?: setOf())
 
     fun addTraits(traits: Collection<TraitAST>) {
         traits.forEach(this::addTrait)
@@ -45,7 +48,7 @@ class FunctionSymbolTable(private val parent: FunctionSymbolTable? = null) {
         parent?.addTrait(trait) ?: traits.add(trait)
     }
 
-    fun traits(): Set<TraitAST> = traits union (parent?.traits() ?: listOf())
+    fun traits(): Set<TraitAST> = traits union (parent?.traits() ?: setOf())
 
     fun addClasses(classes: Collection<ClassAST>) {
         classes.forEach(this::addClass)
@@ -57,5 +60,13 @@ class FunctionSymbolTable(private val parent: FunctionSymbolTable? = null) {
 
     fun hasClasses(): Boolean = classes.isNotEmpty() || parent?.hasClasses() ?: false
 
-    fun classes(): Set<ClassAST> = classes union (parent?.classes() ?: listOf())
+    fun classes(): Set<ClassAST> = classes union (parent?.classes() ?: setOf())
+
+    fun addDatatype(datatype: DatatypeAST) {
+        parent?.addDatatype(datatype) ?: datatypes.add(datatype)
+    }
+
+    fun hasDatatypes(): Boolean = datatypes.isNotEmpty() || parent?.hasDatatypes() ?: false
+
+    fun datatypes() : Set<DatatypeAST> = datatypes union (parent?.datatypes() ?: setOf())
 }

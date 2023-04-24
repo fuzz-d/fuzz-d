@@ -129,8 +129,8 @@ class Generator(
     private val traitNameGenerator = TraitNameGenerator()
     private val datatypeNameGenerator = DatatypeNameGenerator()
     private val datatypeConstructorGenerator = DatatypeConstructorGenerator()
-    private val methodCallTable = DependencyTable<MethodSignatureAST>()
 
+    private val methodCallTable = DependencyTable<MethodSignatureAST>()
     private val controlFlowGenerator = ControlFlowGenerator()
 
     /* ==================================== TOP LEVEL ==================================== */
@@ -164,6 +164,7 @@ class Generator(
             methodBodyQueue.addAll(context.functionSymbolTable.methods() subtract methodBodyQueue.toSet() subtract visitedMethods)
         }
 
+        ast.addAll(context.functionSymbolTable.datatypes())
         ast.add(context.globalState())
         ast.addAll(context.functionSymbolTable.functionMethods())
         ast.addAll(context.functionSymbolTable.methods())
@@ -304,7 +305,10 @@ class Generator(
         val datatypeName = datatypeNameGenerator.newValue()
         val numberOfConstructors = selectionManager.selectNumberOfDatatypeConstructors()
         val constructors = (1..numberOfConstructors).map { generateDataTypeConstructor(context) }
-        return DatatypeAST(datatypeName, constructors)
+        val datatype = DatatypeAST(datatypeName, constructors)
+
+        context.functionSymbolTable.addDatatype(datatype)
+        return datatype
     }
 
     private fun generateDataTypeConstructor(context: GenerationContext): DatatypeConstructorAST {
