@@ -3,6 +3,7 @@ package fuzzd.interpreter.value
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
@@ -47,16 +48,14 @@ fun divideEuclidean(a: BigInteger, b: BigInteger): BigInteger =
     }
 
 sealed class Value {
-    abstract fun toExpressionAST(): ExpressionAST
+    open fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
 
-    data class MultiValue(val values: List<Value>) : Value() {
-        override fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
-    }
+    data class DatatypeValue(val constructorName: String, val values: ValueTable<IdentifierAST, Value>) : Value()
+
+    data class MultiValue(val values: List<Value>) : Value()
 
     // classContext stores class fields, methods and functions
-    data class ClassValue(val classContext: InterpreterContext) : Value() {
-        override fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
-    }
+    data class ClassValue(val classContext: InterpreterContext) : Value()
 
     class ArrayValue(length: Int) : Value() {
         val arr = Array<Value?>(length) { null }
@@ -69,8 +68,6 @@ sealed class Value {
             arr[index] ?: throw UnsupportedOperationException("Array index $index was null")
 
         fun length(): IntValue = IntValue(valueOf(arr.size.toLong()))
-
-        override fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
     }
 
     sealed class DataStructureValue : Value() {

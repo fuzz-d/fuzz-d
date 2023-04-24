@@ -13,13 +13,18 @@ import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
+import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
+import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
@@ -41,6 +46,7 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
@@ -82,6 +88,7 @@ import fuzzd.interpreter.value.Value.BoolValue
 import fuzzd.interpreter.value.Value.CharValue
 import fuzzd.interpreter.value.Value.ClassValue
 import fuzzd.interpreter.value.Value.DataStructureValue
+import fuzzd.interpreter.value.Value.DatatypeValue
 import fuzzd.interpreter.value.Value.IntValue
 import fuzzd.interpreter.value.Value.MapValue
 import fuzzd.interpreter.value.Value.MultiValue
@@ -184,6 +191,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                         .reduceLists()
                 }
             }
+
+            is DatatypeValue -> TODO()
         }
 
     override fun interpretSequence(sequence: SequenceAST, context: InterpreterContext) {
@@ -200,6 +209,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                 doBreak = true
             }
 
+            is MatchStatementAST -> TODO()
             is IfStatementAST -> interpretIfStatement(statement, context)
             is CounterLimitedWhileLoopAST -> interpretCounterLimitedWhileStatement(statement, context)
             is WhileLoopAST -> interpretWhileStatement(statement, context)
@@ -340,6 +350,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
     private fun emitOutput(value: Value) {
         when (value) {
+            is DatatypeValue -> emitDatatypeValue(value)
             is ClassValue -> emitClassValue(value)
             is ArrayValue -> emitArrayValue(value)
             is SetValue -> emitSetValue(value)
@@ -352,6 +363,10 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is IntValue -> emitIntValue(value)
             is BoolValue -> emitBoolValue(value)
         }
+    }
+
+    private fun emitDatatypeValue(datatypeValue: DatatypeValue) {
+        TODO()
     }
 
     private fun emitClassValue(classValue: ClassValue) {
@@ -441,6 +456,10 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is StringLiteralAST -> interpretStringLiteral(expression, context)
             is IntegerLiteralAST -> interpretIntegerLiteral(expression, context)
             is BooleanLiteralAST -> interpretBooleanLiteral(expression, context)
+            is DatatypeDestructorAST -> TODO()
+            is DatatypeInstantiationAST -> TODO()
+            is DatatypeUpdateAST -> TODO()
+            is MatchExpressionAST -> TODO()
             else -> throw UnsupportedOperationException()
         }
 
