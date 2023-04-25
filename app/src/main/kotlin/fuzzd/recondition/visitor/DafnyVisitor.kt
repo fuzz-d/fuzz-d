@@ -8,6 +8,8 @@ import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.ClassInstanceFunctionMethodSignatureAST
 import fuzzd.generator.ast.ClassInstanceMethodSignatureAST
 import fuzzd.generator.ast.DafnyAST
+import fuzzd.generator.ast.DatatypeAST
+import fuzzd.generator.ast.DatatypeConstructorAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
@@ -18,6 +20,10 @@ import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstanceAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
@@ -34,6 +40,7 @@ import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.TraitInstanceAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
@@ -57,6 +64,7 @@ import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
+import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
@@ -66,6 +74,8 @@ import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.StringType
+import fuzzd.generator.ast.Type.TopLevelDatatypeType
+import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
@@ -105,6 +115,9 @@ import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
 
 class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
+    private val topLevelDatatypes = mutableListOf<DatatypeDeclContext>()
+
+    private val datatypesTable = VisitorSymbolTable<DatatypeAST>()
     private val classesTable = VisitorSymbolTable<ClassAST>()
     private val classFieldsTable = VisitorSymbolTable<IdentifierAST>()
     private val traitsTable = VisitorSymbolTable<TraitAST>()
@@ -121,11 +134,21 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             ABSOLUTE,
         ).forEach { functionMethodsTable.addEntry(it.name(), it.signature) }
 
+        topLevelDatatypes.addAll(ctx.topDecl().mapNotNull { it.datatypeDecl() })
+
         val globalStateCtx = ctx.topDecl().first {
-            it.classDecl() != null && visitIdentifierName(it.classDecl().identifier(0)) == GLOBAL_STATE
+            it.classDecl() != null && visitUpperIdentifierName(it.classDecl().upperIdentifier(0)) == GLOBAL_STATE
         }
 
         visitClassDecl(globalStateCtx.classDecl())
+
+        val advancedStateCtx = ctx.topDecl().filter {
+            it.classDecl() != null && visitUpperIdentifierName(it.classDecl().upperIdentifier(0)) == ADVANCED_STATE
+        }
+
+        if (advancedStateCtx.isNotEmpty()) {
+            visitClassDecl(advancedStateCtx[0].classDecl())
+        }
 
         val topLevelContexts = ctx.topDecl().filter { it.topDeclMember() != null }.map { it.topDeclMember() }
 
@@ -135,7 +158,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val classes = ctx.topDecl().filter { it.classDecl() != null }.map { visitClassDecl(it.classDecl()) }
         val topLevelMembers = topLevelContexts.map { visitTopDeclMember(it) }
 
-        return DafnyAST(topLevelMembers + traits + classes)
+        return DafnyAST(datatypesTable.values() + topLevelMembers + traits + classes)
     }
 
     private fun visitTopDeclMemberPrimaryPass(ctx: TopDeclMemberContext) {
@@ -148,11 +171,26 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitTopDecl(ctx: TopDeclContext): TopLevelAST = super.visitTopDecl(ctx) as TopLevelAST
 
-    override fun visitClassDecl(ctx: ClassDeclContext): ClassAST {
-        val name = visitIdentifierName(ctx.identifier(0))
+    override fun visitDatatypeDecl(ctx: DatatypeDeclContext): DatatypeAST {
+        val name = visitUpperIdentifierName(ctx.upperIdentifier())
+        val constructors = ctx.datatypeConstructor().map(this::visitDatatypeConstructor)
+        val datatype = DatatypeAST(name, constructors)
+        datatypesTable.addEntry(name, datatype)
+        return datatype
+    }
 
-        val extends = ctx.identifier().slice(1 until ctx.identifier().size)
-            .map { identifierCtx -> visitIdentifierName(identifierCtx) }
+    override fun visitDatatypeConstructor(ctx: DatatypeConstructorContext): DatatypeConstructorAST {
+        val name = visitUpperIdentifierName(ctx.upperIdentifier())
+        val fields = visitParametersList(ctx.parameters())
+
+        return DatatypeConstructorAST(name, fields)
+    }
+
+    override fun visitClassDecl(ctx: ClassDeclContext): ClassAST {
+        val name = visitUpperIdentifierName(ctx.upperIdentifier(0))
+
+        val extends = ctx.upperIdentifier().subList(1, ctx.upperIdentifier().size)
+            .map { identifierCtx -> visitUpperIdentifierName(identifierCtx) }
             .map { identifierStr -> traitsTable.getEntry(identifierStr) }.toSet()
 
         functionMethodsTable = functionMethodsTable.increaseDepth()
@@ -193,10 +231,10 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     }
 
     override fun visitTraitDecl(ctx: TraitDeclContext): TraitAST {
-        val name = visitIdentifierName(ctx.identifier(0))
+        val name = visitUpperIdentifierName(ctx.upperIdentifier(0))
 
-        val extends = ctx.identifier().slice(1 until ctx.identifier().size)
-            .map { identifierCtx -> visitIdentifierName(identifierCtx) }
+        val extends = ctx.upperIdentifier().subList(1, ctx.upperIdentifier().size)
+            .map { identifierCtx -> visitUpperIdentifierName(identifierCtx) }
             .map { identifierStr -> traitsTable.getEntry(identifierStr) }.toSet()
 
         val fields = mutableSetOf<IdentifierAST>()
@@ -247,7 +285,11 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     }
 
     override fun visitFunctionSignatureDecl(ctx: FunctionSignatureDeclContext): FunctionMethodSignatureAST {
-        val name = visitIdentifierName(ctx.identifier())
+        val name = if (ctx.identifier() != null) {
+            visitIdentifierName(ctx.identifier())
+        } else {
+            visitUpperIdentifierName(ctx.upperIdentifier())
+        }
 
         if (functionMethodsTable.hasEntry(name)) {
             return functionMethodsTable.getEntry(name)
@@ -278,7 +320,11 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     }
 
     override fun visitMethodSignatureDecl(ctx: MethodSignatureDeclContext): MethodSignatureAST {
-        val name = visitIdentifierName(ctx.identifier())
+        val name = if (ctx.identifier() != null) {
+            visitIdentifierName(ctx.identifier())
+        } else {
+            visitUpperIdentifierName(ctx.upperIdentifier())
+        }
 
         if (methodsTable.hasEntry(name)) {
             return methodsTable.getEntry(name)
@@ -315,8 +361,15 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitSequence(ctx: SequenceContext): SequenceAST =
         SequenceAST(ctx.statement().map(this::visitStatement))
 
-    override fun visitIdentifierType(ctx: IdentifierTypeContext): IdentifierAST =
-        IdentifierAST(visitIdentifierName(ctx.identifier()), visitType(ctx.type()))
+    override fun visitIdentifierType(ctx: IdentifierTypeContext): IdentifierAST {
+        val type = visitType(ctx.type())
+        val name = visitIdentifierName(ctx.identifier())
+        return when (type) {
+            is ClassType -> ClassInstanceAST(type.clazz, name)
+            is TraitType -> TraitInstanceAST(type.trait, name)
+            else -> IdentifierAST(visitIdentifierName(ctx.identifier()), visitType(ctx.type()))
+        }
+    }
 
     /* ============================================ STATEMENTS ========================================= */
 
@@ -338,25 +391,41 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         val identifiers = lhs.indices.map { i ->
             val type = rhsTypes[i]
-            val identifier = if (type is ClassType) {
-                val identifier = ClassInstanceAST(type.clazz, lhs[i].name)
+            val identifier = when (type) {
+                is ClassType -> {
+                    val identifier = ClassInstanceAST(type.clazz, lhs[i].name)
 
-                type.clazz.fields.map { ident -> ClassInstanceFieldAST(identifier, ident) }
-                    .forEach { identifiersTable.addEntry(it.name, it) }
+                    type.clazz.fields.map { ident -> ClassInstanceFieldAST(identifier, ident) }
+                        .forEach { identifiersTable.addEntry(it.name, it) }
 
-                type.clazz.functionMethods.map { fm ->
-                    ClassInstanceFunctionMethodSignatureAST(
-                        identifier,
-                        fm.signature,
-                    )
-                }.forEach { functionMethodsTable.addEntry(it.name, it) }
+                    type.clazz.functionMethods.map { fm ->
+                        ClassInstanceFunctionMethodSignatureAST(identifier, fm.signature)
+                    }.forEach { functionMethodsTable.addEntry(it.name, it) }
 
-                type.clazz.methods.map { m -> ClassInstanceMethodSignatureAST(identifier, m.signature) }
-                    .forEach { methodsTable.addEntry(it.name, it) }
+                    type.clazz.methods.map { m -> ClassInstanceMethodSignatureAST(identifier, m.signature) }
+                        .forEach { methodsTable.addEntry(it.name, it) }
 
-                identifier
-            } else {
-                IdentifierAST(lhs[i].name, type, mutable = true, initialised = true)
+                    identifier
+                }
+
+                is TraitType -> {
+                    val identifier = TraitInstanceAST(type.trait, lhs[i].name)
+
+                    type.trait.fields().map { ident -> ClassInstanceFieldAST(identifier, ident) }
+                        .forEach { identifiersTable.addEntry(it.name, it) }
+
+                    type.trait.functionMethods().map { fm -> ClassInstanceFunctionMethodSignatureAST(identifier, fm) }
+                        .forEach { functionMethodsTable.addEntry(it.name, it) }
+
+                    type.trait.methods().map { m -> ClassInstanceMethodSignatureAST(identifier, m) }
+                        .forEach { methodsTable.addEntry(it.name, it) }
+
+                    identifier
+                }
+
+                is DatatypeType -> DatatypeInstanceAST(lhs[i].name, type, mutable = true, initialised = true)
+
+                else -> IdentifierAST(lhs[i].name, type, mutable = true, initialised = true)
             }
 
             identifiersTable.addEntry(identifier.name, identifier)
@@ -474,15 +543,18 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.multisetConversion() != null -> visitMultisetConversion(ctx.multisetConversion())
 
         ctx.classInstantiation() != null -> visitClassInstantiation(ctx.classInstantiation())
+        ctx.datatypeInstantiation() != null -> visitDatatypeInstantiation(ctx.datatypeInstantiation())
         ctx.ternaryExpression() != null -> visitTernaryExpression(ctx.ternaryExpression())
         ctx.arrayLength() != null -> visitArrayLength(ctx.arrayLength())
         ctx.setDisplay() != null -> visitSetDisplay(ctx.setDisplay())
         ctx.sequenceDisplay() != null -> visitSequenceDisplay(ctx.sequenceDisplay())
         ctx.mapConstructor() != null -> visitMapConstructor(ctx.mapConstructor())
-        ctx.identifiers() != null -> visitIdentifiers(ctx.identifiers())
 
+        ctx.identifier() != null -> visitIdentifier(ctx.identifier())
         ctx.index() != null -> visitIndexExpression(ctx)
-        ctx.indexAssign() != null -> visitIndexAssign(ctx.indexAssign())
+        ctx.indexElem() != null -> visitIndexAssign(ctx)
+        ctx.datatypeFieldUpdate().isNotEmpty() -> visitDatatypeUpdate(ctx)
+        ctx.DOT() != null -> visitDotExpression(ctx)
 
         ctx.ADD() != null -> {
             val expr1 = visitExpression(ctx.expression(0))
@@ -636,7 +708,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     }
 
     override fun visitClassInstantiation(ctx: ClassInstantiationContext): ClassInstantiationAST {
-        val className = visitIdentifierName(ctx.identifier())
+        val className = visitUpperIdentifierName(ctx.upperIdentifier())
         val callParams = visitParametersForCall(ctx.callParameters())
 
         if (!classesTable.hasEntry(className)) {
@@ -645,6 +717,27 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         return ClassInstantiationAST(classesTable.getEntry(className), callParams)
     }
+
+    override fun visitDatatypeInstantiation(ctx: DatatypeInstantiationContext): DatatypeInstantiationAST {
+        val datatypeConstructorName = visitUpperIdentifierName(ctx.upperIdentifier())
+        val datatype = datatypesTable.values().first { d ->
+            d.constructors.map { it.name }.contains(datatypeConstructorName)
+        }
+        val constructor = datatype.constructors.first { it.name == datatypeConstructorName }
+        val params = visitParametersForCall(ctx.callParameters())
+
+        return DatatypeInstantiationAST(datatype, constructor, params)
+    }
+
+    private fun visitDatatypeUpdate(ctx: ExpressionContext): DatatypeUpdateAST {
+        val datatypeInstance = visitExpression(ctx.expression(0))
+        val updates = ctx.datatypeFieldUpdate().map(this::visitDatatypeFieldUpdatePair)
+
+        return DatatypeUpdateAST(datatypeInstance, updates)
+    }
+
+    private fun visitDatatypeFieldUpdatePair(ctx: DatatypeFieldUpdateContext): Pair<IdentifierAST, ExpressionAST> =
+        Pair(visitIdentifier(ctx.identifier()), visitExpression(ctx.expression()))
 
     override fun visitTernaryExpression(ctx: TernaryExpressionContext): TernaryExpressionAST {
         val visitedExprs = ctx.expression().map { expr -> visitExpression(expr) }
@@ -658,12 +751,17 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return ArrayInitAST(dimension, ArrayType(innerType))
     }
 
-    override fun visitIdentifiers(ctx: IdentifiersContext): IdentifierAST =
-        if (ctx.identifiers() != null) {
-            ClassInstanceFieldAST(visitIdentifier(ctx.identifier()), visitIdentifiers(ctx.identifiers()))
-        } else {
-            visitIdentifier(ctx.identifier())
+    private fun visitDotExpression(ctx: ExpressionContext): ExpressionAST {
+        val beforeDot = visitExpression(ctx.expression(0))
+        val afterDot = visitExpression(ctx.expression(1)) as IdentifierAST
+
+        return when (beforeDot.type()) {
+            is ClassType -> ClassInstanceFieldAST(beforeDot as IdentifierAST, afterDot)
+            is TraitType -> ClassInstanceFieldAST(beforeDot as IdentifierAST, afterDot)
+            is DatatypeType -> DatatypeDestructorAST(beforeDot, afterDot)
+            else -> throw UnsupportedOperationException()
         }
+    }
 
     override fun visitArrayLength(ctx: ArrayLengthContext): ArrayLengthAST =
         ArrayLengthAST(visitDeclAssignLhs(ctx.declAssignLhs()))
@@ -722,8 +820,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return findIdentifier(name) // return actual identifier or one with dummy type
     }
 
-    override fun visitIndexAssign(ctx: IndexAssignContext): IndexAssignAST {
-        val ident = visitDeclAssignLhs(ctx.declAssignLhs())
+    private fun visitIndexAssign(ctx: ExpressionContext): IndexAssignAST {
+        val ident = visitExpression(ctx.expression(0)) as IdentifierAST // TODO: expand to not need Identifier
         val assign = visitIndexElement(ctx.indexElem())
 
         return IndexAssignAST(ident, assign.first, assign.second)
@@ -771,7 +869,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.CHAR() != null -> CharType
         ctx.STRING() != null -> StringType
         ctx.arrayType() != null -> visitArrayType(ctx.arrayType())
-        ctx.identifier() != null -> visitIdentifierType(ctx.identifier())
+        ctx.upperIdentifier() != null -> visitUpperIdentifierType(ctx.upperIdentifier())
         ctx.mapType() != null -> visitMapType(ctx.mapType())
         ctx.setType() != null -> visitSetType(ctx.setType())
         ctx.multisetType() != null -> visitMultisetType(ctx.multisetType())
@@ -784,9 +882,20 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return ArrayType(innerType)
     }
 
-    private fun visitIdentifierType(ctx: IdentifierContext): ClassType {
-        val name = visitIdentifierName(ctx)
-        return ClassType(classesTable.getEntry(name))
+    private fun visitUpperIdentifierType(ctx: UpperIdentifierContext): Type {
+        val name = visitUpperIdentifierName(ctx)
+        return if (classesTable.hasEntry(name)) {
+            ClassType(classesTable.getEntry(name))
+        } else if (traitsTable.hasEntry(name)) {
+            TraitType(traitsTable.getEntry(name))
+        } else {
+            if (!datatypesTable.hasEntry(name)) {
+                val datatype = topLevelDatatypes.first { visitUpperIdentifierName(it.upperIdentifier()) == name }
+                visitDatatypeDecl(datatype)
+            }
+
+            TopLevelDatatypeType(datatypesTable.getEntry(name))
+        }
     }
 
     override fun visitMapType(ctx: MapTypeContext): MapType {
@@ -809,5 +918,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitSequenceType(ctx: SequenceTypeContext): SequenceType {
         val innerType = visitType(ctx.genericInstantiation().type(0))
         return SequenceType(innerType)
+    }
+
+    companion object {
+        const val ADVANCED_STATE = "AdvancedReconditionState"
     }
 }
