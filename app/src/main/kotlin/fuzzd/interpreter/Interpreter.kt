@@ -194,10 +194,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             }
 
             is DatatypeValue -> {
-                val instance = key as DatatypeInstanceAST
-                val datatypeType = instance.type() as DatatypeType
-                datatypeType.constructor.fields.map { field ->
-                    val destructor = DatatypeDestructorAST(instance, field)
+                value.fields().map { field ->
+                    val destructor = DatatypeDestructorAST(key, field)
                     generateChecksumPrint(destructor, interpretIdentifier(destructor, context), context)
                 }.reduceLists()
             }
@@ -456,7 +454,6 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
     /* ============================== EXPRESSIONS ============================ */
     override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value {
-        println(expression)
         return when (expression) {
             is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
             is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
