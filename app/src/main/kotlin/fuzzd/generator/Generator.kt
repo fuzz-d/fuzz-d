@@ -301,7 +301,7 @@ class Generator(
     }
 
     override fun generateField(context: GenerationContext) = paramIdentifierFromType(
-        selectionManager.selectType(context),
+        generateType(context),
         fieldNameGenerator,
         mutable = true,
         initialised = true,
@@ -356,7 +356,7 @@ class Generator(
         val numberOfFields = selectionManager.selectNumberOfDatatypeFields()
         val constructorName = datatypeConstructorGenerator.newValue()
         val fields = (1..numberOfFields).map {
-            val type = selectionManager.selectType(context)
+            val type = generateType(context)
             paramIdentifierFromType(type, fieldNameGenerator, mutable = true, initialised = true)
         }
         return DatatypeConstructorAST(constructorName, fields)
@@ -703,8 +703,8 @@ class Generator(
     }
 
     override fun generateMapAssign(context: GenerationContext): List<StatementAST> {
-        val keyType = selectionManager.selectType(context)
-        val valueType = selectionManager.selectType(context)
+        val keyType = generateType(context)
+        val valueType = generateType(context)
         val mapType = MapType(keyType, valueType)
 
         val (map, mapDeps) = generateIdentifier(
@@ -1009,12 +1009,12 @@ class Generator(
         when (selectionManager.selectIndexType(context, targetType)) {
             ARRAY -> generateIdentifier(context, targetType)
             MAP -> {
-                val keyType = selectionManager.selectType(context, false)
+                val keyType = generateType(context, false)
                 generateMapIndex(context, keyType, targetType)
             }
 
             MULTISET -> {
-                val keyType = selectionManager.selectType(context, false)
+                val keyType = generateType(context, false)
                 generateMultisetIndex(context, keyType)
             }
 
@@ -1142,6 +1142,7 @@ class Generator(
         targetType: Type,
     ): Pair<TernaryExpressionAST, List<StatementAST>> {
         val (condition, conditionDeps) = generateExpression(context.increaseExpressionDepth(), BoolType)
+        println("$targetType, ${context.onDemandIdentifiers}")
         val (ifExpr, ifExprDeps) = generateExpression(context.increaseExpressionDepth(), targetType)
         val (elseExpr, elseExprDeps) = generateExpression(context.increaseExpressionDepth(), targetType)
 
