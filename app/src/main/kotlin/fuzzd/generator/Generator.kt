@@ -1142,7 +1142,6 @@ class Generator(
         targetType: Type,
     ): Pair<TernaryExpressionAST, List<StatementAST>> {
         val (condition, conditionDeps) = generateExpression(context.increaseExpressionDepth(), BoolType)
-        println("$targetType, ${context.onDemandIdentifiers}")
         val (ifExpr, ifExprDeps) = generateExpression(context.increaseExpressionDepth(), targetType)
         val (elseExpr, elseExprDeps) = generateExpression(context.increaseExpressionDepth(), targetType)
 

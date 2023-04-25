@@ -80,11 +80,11 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
         return DafnyAST(
             reconditionedDatatypes +
-                    reconditionedTraits +
-                    reconditionedClasses +
-                    reconditionedFunctionMethods +
-                    reconditionedMethods +
-                    reconditionedMain,
+                reconditionedTraits +
+                reconditionedClasses +
+                reconditionedFunctionMethods +
+                reconditionedMethods +
+                reconditionedMain,
         )
     }
 
@@ -215,7 +215,6 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is SetDisplayAST -> reconditionSetDisplay(expression)
         is MapConstructorAST -> reconditionMapConstructor(expression)
         is SequenceDisplayAST -> reconditionSequenceDisplay(expression)
-        is DatatypeDestructorAST -> reconditionDatatypeDestructor(expression)
         is DatatypeInstantiationAST -> reconditionDatatypeInstantiation(expression)
         is DatatypeUpdateAST -> reconditionDatatypeUpdate(expression)
         is MatchExpressionAST -> reconditionMatchExpression(expression)
@@ -331,6 +330,8 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             reconditionIdentifier(identifierAST.classInstance),
             reconditionIdentifier(identifierAST.classField),
         )
+
+        is DatatypeDestructorAST -> reconditionDatatypeDestructor(identifierAST)
 
         else -> identifierAST
     }

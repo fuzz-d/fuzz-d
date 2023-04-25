@@ -63,19 +63,6 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "${constructor.name}(${params.joinToString(", ")})"
     }
 
-    class DatatypeDestructorAST(val datatypeInstance: ExpressionAST, val field: IdentifierAST) : ExpressionAST() {
-        override fun type(): Type = field.type()
-
-        override fun toString(): String {
-            val shouldWrap = datatypeInstance !is IdentifierAST && datatypeInstance !is DatatypeInstantiationAST
-            return if (shouldWrap) {
-                "($datatypeInstance).$field"
-            } else {
-                "$datatypeInstance.$field"
-            }
-        }
-    }
-
     class DatatypeUpdateAST(
         val datatypeInstance: ExpressionAST,
         val updates: List<Pair<IdentifierAST, ExpressionAST>>,
@@ -250,7 +237,7 @@ sealed class ExpressionAST : ASTElement {
         fun initialised(): Boolean = initialised
 
         override fun equals(other: Any?): Boolean =
-            other is IdentifierAST && other.name == this.name && other.type == this.type && other.mutable == this.mutable
+            other is IdentifierAST && other.name == this.name && other.type == this.type
 
         override fun hashCode(): Int {
             var result = name.hashCode()
@@ -330,6 +317,22 @@ sealed class ExpressionAST : ASTElement {
         val classInstance: IdentifierAST,
         val classField: IdentifierAST,
     ) : IdentifierAST("$classInstance.$classField", classField.type(), mutable = true, initialised = true)
+
+    class DatatypeDestructorAST(
+        val datatypeInstance: ExpressionAST,
+        val field: IdentifierAST,
+    ) : IdentifierAST("$datatypeInstance.$field", field.type(), true, true) {
+        override fun type(): Type = field.type()
+
+        override fun toString(): String {
+            val shouldWrap = datatypeInstance !is IdentifierAST && datatypeInstance !is DatatypeInstantiationAST
+            return if (shouldWrap) {
+                "($datatypeInstance).$field"
+            } else {
+                "$datatypeInstance.$field"
+            }
+        }
+    }
 
     class ArrayIndexAST(
         val array: IdentifierAST,
