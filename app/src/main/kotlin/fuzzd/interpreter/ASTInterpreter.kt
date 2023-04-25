@@ -8,11 +8,15 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
+import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
@@ -26,6 +30,7 @@ import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
+import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
@@ -50,6 +55,8 @@ interface ASTInterpreter {
 
     fun interpretStatement(statement: StatementAST, context: InterpreterContext)
 
+    fun interpretMatchStatement(matchStatement: MatchStatementAST, context: InterpreterContext)
+
     fun interpretIfStatement(ifStatement: IfStatementAST, context: InterpreterContext)
 
     fun interpretCounterLimitedWhileStatement(whileStatement: CounterLimitedWhileLoopAST, context: InterpreterContext)
@@ -69,6 +76,14 @@ interface ASTInterpreter {
     /* ============================= EXPRESSIONS ============================= */
 
     fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value
+
+    fun interpretDatatypeInstantiation(instantiation: DatatypeInstantiationAST, context: InterpreterContext): Value
+
+    fun interpretDatatypeUpdate(update: DatatypeUpdateAST, context: InterpreterContext): Value
+
+    fun interpretDatatypeDestructor(destructor: DatatypeDestructorAST, context: InterpreterContext): Value
+
+    fun interpretMatchExpression(matchExpression: MatchExpressionAST, context: InterpreterContext): Value
 
     fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, context: InterpreterContext): Value
 

@@ -50,7 +50,15 @@ fun divideEuclidean(a: BigInteger, b: BigInteger): BigInteger =
 sealed class Value {
     open fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
 
-    data class DatatypeValue(val constructorName: String, val values: ValueTable<IdentifierAST, Value>) : Value()
+    data class DatatypeValue(val constructorName: String, val values: ValueTable<IdentifierAST, Value>) : Value() {
+        fun assign(assigns: List<Pair<IdentifierAST, Value>>): DatatypeValue {
+            val valueTable = values.clone()
+            assigns.forEach { (identifier, value) -> valueTable.assign(identifier, value) }
+            return DatatypeValue(constructorName, valueTable)
+        }
+
+        fun fields(): Set<IdentifierAST> = values.keys()
+    }
 
     data class MultiValue(val values: List<Value>) : Value()
 

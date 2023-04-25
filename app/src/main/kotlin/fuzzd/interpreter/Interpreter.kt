@@ -21,7 +21,6 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
-import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
@@ -209,7 +208,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                 doBreak = true
             }
 
-            is MatchStatementAST -> TODO()
+            is MatchStatementAST -> interpretMatchStatement(statement, context)
             is IfStatementAST -> interpretIfStatement(statement, context)
             is CounterLimitedWhileLoopAST -> interpretCounterLimitedWhileStatement(statement, context)
             is WhileLoopAST -> interpretWhileStatement(statement, context)
@@ -220,6 +219,17 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is PrintAST -> interpretPrint(statement, context)
             else -> throw UnsupportedOperationException()
         }
+    }
+
+    override fun interpretMatchStatement(matchStatement: MatchStatementAST, context: InterpreterContext) {
+        val datatypeValue = interpretExpression(matchStatement.match, context) as DatatypeValue
+        val (_, seq) = matchStatement.cases.map { (case, seq) ->
+            Pair(interpretExpression(case, context) as DatatypeValue, seq)
+        }.first { (value, _) ->
+            datatypeValue.constructorName == value.constructorName && datatypeValue.fields() == value.fields()
+        }
+
+        interpretSequence(seq, context.increaseDepth())
     }
 
     override fun interpretIfStatement(ifStatement: IfStatementAST, context: InterpreterContext) {
@@ -456,12 +466,49 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is StringLiteralAST -> interpretStringLiteral(expression, context)
             is IntegerLiteralAST -> interpretIntegerLiteral(expression, context)
             is BooleanLiteralAST -> interpretBooleanLiteral(expression, context)
-            is DatatypeDestructorAST -> TODO()
-            is DatatypeInstantiationAST -> TODO()
-            is DatatypeUpdateAST -> TODO()
-            is MatchExpressionAST -> TODO()
+            is DatatypeDestructorAST -> interpretDatatypeDestructor(expression, context)
+            is DatatypeInstantiationAST -> interpretDatatypeInstantiation(expression, context)
+            is DatatypeUpdateAST -> interpretDatatypeUpdate(expression, context)
+            is MatchExpressionAST -> interpretMatchExpression(expression, context)
             else -> throw UnsupportedOperationException()
         }
+
+    override fun interpretDatatypeInstantiation(
+        instantiation: DatatypeInstantiationAST,
+        context: InterpreterContext,
+    ): Value {
+        val constructor = instantiation.constructor
+        val constructorName = constructor.name
+        val identifiers = constructor.fields
+
+        val values = instantiation.params.map { interpretExpression(it, context) }
+        val datatypeValueTable = ValueTable<IdentifierAST, Value>()
+
+        identifiers.zip(values).forEach { (identifier, value) -> datatypeValueTable.declare(identifier, value) }
+        return DatatypeValue(constructorName, datatypeValueTable)
+    }
+
+    override fun interpretDatatypeUpdate(update: DatatypeUpdateAST, context: InterpreterContext): Value {
+        val datatypeValue = interpretExpression(update.datatypeInstance, context) as DatatypeValue
+        val assigns = update.updates.map { (identifier, expr) -> Pair(identifier, interpretExpression(expr, context)) }
+        return datatypeValue.assign(assigns)
+    }
+
+    override fun interpretDatatypeDestructor(destructor: DatatypeDestructorAST, context: InterpreterContext): Value {
+        val datatypeValue = interpretExpression(destructor.datatypeInstance, context) as DatatypeValue
+        return datatypeValue.values.get(destructor.field) // might need to swap to interpretIdentifier
+    }
+
+    override fun interpretMatchExpression(matchExpression: MatchExpressionAST, context: InterpreterContext): Value {
+        val datatypeValue = interpretExpression(matchExpression.match, context) as DatatypeValue
+        val (_, expr) = matchExpression.cases.map { (case, seq) ->
+            Pair(interpretExpression(case, context) as DatatypeValue, seq)
+        }.first { (value, _) ->
+            datatypeValue.constructorName == value.constructorName && datatypeValue.fields() == value.fields()
+        }
+
+        return interpretExpression(expr, context)
+    }
 
     override fun interpretFunctionMethodCall(functionCall: FunctionMethodCallAST, context: InterpreterContext): Value =
         if (functionCall.function is ClassInstanceFunctionMethodSignatureAST) {

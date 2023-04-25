@@ -9,6 +9,8 @@ class ValueTable<T, U>(private val parent: ValueTable<T, U>? = null) {
 
     fun topLevel(): ValueTable<T, U> = parent?.topLevel() ?: this
 
+    fun keys(): Set<T> = values.keys
+
     fun withParent(parent: ValueTable<T, U>) = ValueTable(parent, values)
 
     fun has(item: T): Boolean = item in values || parent?.has(item) == true
@@ -29,5 +31,11 @@ class ValueTable<T, U>(private val parent: ValueTable<T, U>? = null) {
 
     fun declare(item: T, value: U) {
         values[item] = value
+    }
+
+    fun clone(): ValueTable<T, U> {
+        val valueTable = ValueTable(parent)
+        values.forEach { (k, v) -> if (v != null) valueTable.declare(k, v) else valueTable.create(k) }
+        return valueTable
     }
 }
