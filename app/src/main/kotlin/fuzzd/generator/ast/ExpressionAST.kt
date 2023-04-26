@@ -360,7 +360,12 @@ sealed class ExpressionAST : ASTElement {
     }
 
     abstract class IndexAST(val dataStructure: ExpressionAST, val key: ExpressionAST) : ExpressionAST() {
-        override fun toString(): String = "$dataStructure[$key]"
+        override fun toString(): String =
+            if (dataStructure !is IdentifierAST) {
+                "($dataStructure)[$key]"
+            } else {
+                "$dataStructure[$key]"
+            }
     }
 
     class SequenceIndexAST(val sequence: ExpressionAST, key: ExpressionAST) : IndexAST(sequence, key) {
@@ -451,7 +456,11 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): Type = expression.type()
 
-        override fun toString(): String = "$expression[$key := $value]"
+        override fun toString(): String = if (expression !is IdentifierAST) {
+            "($expression)[$key := $value]"
+        } else {
+            "$expression[$key := $value]"
+        }
     }
 
     class MapConstructorAST(
