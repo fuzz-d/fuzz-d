@@ -6,6 +6,8 @@ import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
+import fuzzd.generator.ast.Type.DatatypeType
+import fuzzd.utils.reduceLists
 
 class FunctionSymbolTable(private val parent: FunctionSymbolTable? = null) {
     private val functionMethods = mutableSetOf<FunctionMethodAST>()
@@ -71,4 +73,10 @@ class FunctionSymbolTable(private val parent: FunctionSymbolTable? = null) {
     fun hasDatatypes(): Boolean = datatypes.isNotEmpty() || parent?.hasDatatypes() ?: false
 
     fun datatypes(): Set<DatatypeAST> = datatypes union (parent?.datatypes() ?: setOf())
+
+    fun hasAvailableDatatypes(onDemand: Boolean) = availableDatatypes(onDemand).isNotEmpty()
+
+    fun availableDatatypes(onDemand: Boolean): List<DatatypeType> = datatypes.map { d ->
+        d.datatypes().filter { onDemand || it.constructor.fields.none { f -> f.type().hasHeapType() } }
+    }.reduceLists() + (parent?.availableDatatypes(onDemand) ?: listOf())
 }

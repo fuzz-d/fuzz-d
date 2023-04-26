@@ -61,7 +61,8 @@ class SelectionManager(
             if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.hasClasses()) 0.05 else 0.0
         val traitTypeProb =
             if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.hasTraits()) 0.04 else 0.0
-        val datatypeProb = if (context.functionSymbolTable.hasDatatypes()) 0.03 else 0.0
+        val datatypeProb =
+            if (context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) 0.03 else 0.0
 
         val selection = listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
             this::selectClassType to classTypeProb,
@@ -81,11 +82,8 @@ class SelectionManager(
     private fun selectTraitType(context: GenerationContext, literalOnly: Boolean): TraitType =
         TraitType(randomSelection(context.functionSymbolTable.traits().toList()))
 
-    fun selectDatatypeType(context: GenerationContext, literalOnly: Boolean): DatatypeType {
-        val datatype = randomSelection(context.functionSymbolTable.datatypes().toList())
-        val constructor = randomSelection(datatype.constructors)
-        return DatatypeType(datatype, constructor)
-    }
+    fun selectDatatypeType(context: GenerationContext, literalOnly: Boolean): DatatypeType =
+        randomSelection(context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers))
 
     fun selectDataStructureType(context: GenerationContext, literalOnly: Boolean): Type =
         randomWeightedSelection(
@@ -245,11 +243,11 @@ class SelectionManager(
 
     private fun isBinaryType(targetType: Type): Boolean =
         targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType &&
-            targetType !is DatatypeType && targetType != CharType
+                targetType !is DatatypeType && targetType != CharType
 
     private fun isAssignType(targetType: Type): Boolean =
         targetType is MapType || targetType is MultisetType || targetType is SequenceType ||
-            (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
+                (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0
