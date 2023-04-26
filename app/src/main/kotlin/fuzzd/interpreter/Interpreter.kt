@@ -234,7 +234,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             val datatypeType = case.type() as DatatypeType
             Pair(datatypeType, seq)
         }.first { (type, _) ->
-            datatypeValue.constructorName == type.constructor.name && datatypeValue.fields() == type.constructor.fields.toSet()
+            datatypeValue.constructor.name == type.constructor.name && datatypeValue.fields() == type.constructor.fields.toSet()
         }
 
         interpretSequence(seq, context.increaseDepth())
@@ -474,7 +474,6 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is StringLiteralAST -> interpretStringLiteral(expression, context)
             is IntegerLiteralAST -> interpretIntegerLiteral(expression, context)
             is BooleanLiteralAST -> interpretBooleanLiteral(expression, context)
-            is DatatypeDestructorAST -> interpretDatatypeDestructor(expression, context)
             is DatatypeInstantiationAST -> interpretDatatypeInstantiation(expression, context)
             is DatatypeUpdateAST -> interpretDatatypeUpdate(expression, context)
             is MatchExpressionAST -> interpretMatchExpression(expression, context)
@@ -487,14 +486,13 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         context: InterpreterContext,
     ): Value {
         val constructor = instantiation.constructor
-        val constructorName = constructor.name
         val identifiers = constructor.fields
 
         val values = instantiation.params.map { interpretExpression(it, context) }
         val datatypeValueTable = ValueTable<IdentifierAST, Value>()
 
         identifiers.zip(values).forEach { (identifier, value) -> datatypeValueTable.declare(identifier, value) }
-        return DatatypeValue(constructorName, datatypeValueTable)
+        return DatatypeValue(instantiation.datatype, constructor, datatypeValueTable)
     }
 
     override fun interpretDatatypeUpdate(update: DatatypeUpdateAST, context: InterpreterContext): Value {
@@ -514,7 +512,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             val datatypeType = case.type() as DatatypeType
             Pair(datatypeType, seq)
         }.first { (type, _) ->
-            datatypeValue.constructorName == type.constructor.name && datatypeValue.fields() == type.constructor.fields.toSet()
+            datatypeValue.constructor.name == type.constructor.name && datatypeValue.fields() == type.constructor.fields.toSet()
         }
 
         return interpretExpression(expr, context)

@@ -1,8 +1,11 @@
 package fuzzd.interpreter.value
 
+import fuzzd.generator.ast.DatatypeAST
+import fuzzd.generator.ast.DatatypeConstructorAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
@@ -16,6 +19,7 @@ import java.math.BigInteger
 import java.math.BigInteger.ONE
 import java.math.BigInteger.ZERO
 import java.math.BigInteger.valueOf
+import javax.xml.crypto.Data
 
 fun <T> multisetDifference(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
     val diff = mutableMapOf<T, Int>()
@@ -50,14 +54,31 @@ fun divideEuclidean(a: BigInteger, b: BigInteger): BigInteger =
 sealed class Value {
     open fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
 
-    data class DatatypeValue(val constructorName: String, val values: ValueTable<IdentifierAST, Value>) : Value() {
+    data class DatatypeValue(
+        val datatype: DatatypeAST,
+        val constructor: DatatypeConstructorAST,
+        val values: ValueTable<IdentifierAST, Value>
+    ) : Value() {
+        override fun toExpressionAST(): ExpressionAST =
+            DatatypeInstantiationAST(datatype, constructor, values.values.mapNotNull { (_, v) -> v?.toExpressionAST() })
+
         fun assign(assigns: List<Pair<IdentifierAST, Value>>): DatatypeValue {
             val valueTable = values.clone()
             assigns.forEach { (identifier, value) -> valueTable.assign(identifier, value) }
-            return DatatypeValue(constructorName, valueTable)
+            return DatatypeValue(datatype, constructor, valueTable)
         }
 
         fun fields(): Set<IdentifierAST> = values.keys()
+
+        override fun equals(other: Any?): Boolean = other is DatatypeValue && other.datatype == datatype &&
+                other.constructor == constructor && other.values == values
+
+        override fun hashCode(): Int {
+            var result = datatype.hashCode()
+            result = 31 * result + constructor.hashCode()
+            result = 31 * result + values.hashCode()
+            return result
+        }
     }
 
     data class MultiValue(val values: List<Value>) : Value()

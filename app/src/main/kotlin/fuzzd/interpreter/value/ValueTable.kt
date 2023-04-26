@@ -38,4 +38,13 @@ class ValueTable<T, U>(private val parent: ValueTable<T, U>? = null) {
         values.forEach { (k, v) -> if (v != null) valueTable.declare(k, v) else valueTable.create(k) }
         return valueTable
     }
+
+    override fun equals(other: Any?): Boolean =
+        other is ValueTable<*, *> && other.parent == parent && other.values == values
+
+    override fun hashCode(): Int {
+        var result = parent?.hashCode() ?: 0
+        result = 31 * result + values.hashCode()
+        return result
+    }
 }
