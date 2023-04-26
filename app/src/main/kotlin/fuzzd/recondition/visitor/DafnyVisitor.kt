@@ -874,10 +874,10 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     }
 
     private fun visitIndexAssign(ctx: ExpressionContext): IndexAssignAST {
-        val ident = visitExpression(ctx.expression(0)) as IdentifierAST // TODO: expand to not need Identifier
+        val expression = visitExpression(ctx.expression(0))
         val assign = visitIndexElement(ctx.indexElem())
 
-        return IndexAssignAST(ident, assign.first, assign.second)
+        return IndexAssignAST(expression, assign.first, assign.second)
     }
 
     private fun findIdentifier(name: String): IdentifierAST =

@@ -14,7 +14,6 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
-import fuzzd.generator.ast.ExpressionAST.DatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
@@ -341,8 +340,6 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                 arrayValue.setIndex(index.value.toInt(), value)
             }
 
-            is IndexAssignAST -> throw UnsupportedOperationException()
-
             else -> if (isDeclaration) {
                 context.fields.declare(identifier, value)
             } else {
@@ -453,8 +450,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     /* ============================== EXPRESSIONS ============================ */
-    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value {
-        return when (expression) {
+    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value =
+        when (expression) {
             is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
             is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
             is ClassInstantiationAST -> interpretClassInstantiation(expression, context)
@@ -465,6 +462,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is MultisetConversionAST -> interpretMultisetConversion(expression, context)
             is IdentifierAST -> interpretIdentifier(expression, context)
             is IndexAST -> interpretIndex(expression, context)
+            is IndexAssignAST -> interpretIndexAssign(expression, context)
             is SetDisplayAST -> interpretSetDisplay(expression, context)
             is SequenceDisplayAST -> interpretSequenceDisplay(expression, context)
             is MapConstructorAST -> interpretMapConstructor(expression, context)
@@ -479,7 +477,6 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is MatchExpressionAST -> interpretMatchExpression(expression, context)
             else -> throw UnsupportedOperationException()
         }
-    }
 
     override fun interpretDatatypeInstantiation(
         instantiation: DatatypeInstantiationAST,
@@ -810,8 +807,6 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                 arrayValue.getIndex(index.value.toInt())
             }
 
-            is IndexAssignAST -> interpretIndexAssign(identifier, context)
-
             is DatatypeDestructorAST -> interpretDatatypeDestructor(identifier, context)
 
             else -> if (context.fields.has(identifier)) {
@@ -850,7 +845,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     private fun interpretIndexAssign(indexAssign: IndexAssignAST, context: InterpreterContext): Value {
         val key = interpretExpression(indexAssign.key, context)
         val value = interpretExpression(indexAssign.value, context)
-        return when (val ident = interpretExpression(indexAssign.ident, context)) {
+        return when (val ident = interpretExpression(indexAssign.expression, context)) {
             is MultisetValue -> ident.assign(key, (value as IntValue).value.toInt())
             is MapValue -> ident.assign(key, value)
             is SequenceValue -> ident.assign((key as IntValue).value.toInt(), value)

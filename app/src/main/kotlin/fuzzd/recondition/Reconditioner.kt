@@ -80,11 +80,11 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
         return DafnyAST(
             reconditionedDatatypes +
-                reconditionedTraits +
-                reconditionedClasses +
-                reconditionedFunctionMethods +
-                reconditionedMethods +
-                reconditionedMain,
+                    reconditionedTraits +
+                    reconditionedClasses +
+                    reconditionedFunctionMethods +
+                    reconditionedMethods +
+                    reconditionedMain,
         )
     }
 
@@ -207,6 +207,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is TernaryExpressionAST -> reconditionTernaryExpression(expression)
         is IdentifierAST -> reconditionIdentifier(expression)
         is IndexAST -> reconditionIndex(expression)
+        is IndexAssignAST -> reconditionIndexAssign(expression)
         is StringLiteralAST, is LiteralAST, is ArrayInitAST -> expression // don't need to do anything
         is ClassInstantiationAST -> reconditionClassInstantiation(expression)
         is ArrayLengthAST -> reconditionArrayLengthAST(expression)
@@ -324,8 +325,6 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             }
         }
 
-        is IndexAssignAST -> reconditionIndexAssign(identifierAST)
-
         is ClassInstanceFieldAST -> ClassInstanceFieldAST(
             reconditionIdentifier(identifierAST.classInstance),
             reconditionIdentifier(identifierAST.classField),
@@ -371,7 +370,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
     }
 
     private fun reconditionIndexAssign(indexAssign: IndexAssignAST): IndexAssignAST {
-        val ident = reconditionIdentifier(indexAssign.ident)
+        val ident = reconditionExpression(indexAssign.expression)
         val key = reconditionExpression(indexAssign.key)
         val value = reconditionExpression(indexAssign.value)
 

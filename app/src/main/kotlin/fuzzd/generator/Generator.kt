@@ -679,7 +679,7 @@ class Generator(
         }
 
         val (params, paramDeps) = method.params.subList(0, method.params.size - 1)
-            .map { param -> generateExpression(context, param.type()) }.foldPair()
+            .map { param -> generateExpression(context.increaseExpressionDepth(), param.type()) }.foldPair()
 
         // add call for method context
         if (context.methodContext != null) {
@@ -946,7 +946,7 @@ class Generator(
         context: GenerationContext,
         targetType: MapType,
     ): Pair<IndexAssignAST, List<StatementAST>> {
-        val (ident, identDeps) = generateIdentifier(context, targetType, initialisedConstraint = true)
+        val (ident, identDeps) = generateExpression(context.increaseExpressionDepth(), targetType)
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), targetType.keyType)
         val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), targetType.valueType)
 
@@ -957,7 +957,7 @@ class Generator(
         context: GenerationContext,
         targetType: MultisetType,
     ): Pair<IndexAssignAST, List<StatementAST>> {
-        val (ident, identDeps) = generateIdentifier(context, targetType, initialisedConstraint = true)
+        val (ident, identDeps) = generateExpression(context.increaseExpressionDepth(), targetType)
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), targetType.innerType)
         val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
 
@@ -980,7 +980,7 @@ class Generator(
         context: GenerationContext,
         targetType: SequenceType,
     ): Pair<IndexAssignAST, List<StatementAST>> {
-        val (ident, identDeps) = generateIdentifier(context, targetType, initialisedConstraint = true)
+        val (ident, identDeps) = generateExpression(context, targetType)
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
         val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), targetType.innerType)
 

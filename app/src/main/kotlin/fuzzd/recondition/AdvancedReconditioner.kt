@@ -338,6 +338,7 @@ class AdvancedReconditioner {
             is TernaryExpressionAST -> reconditionTernaryExpression(expressionAST)
             is IdentifierAST -> reconditionIdentifier(expressionAST)
             is IndexAST -> reconditionIndex(expressionAST)
+            is IndexAssignAST -> reconditionIndexAssign(expressionAST)
             is LiteralAST, is ArrayInitAST -> Pair(expressionAST, emptyList()) // do nothing
             is ClassInstantiationAST -> reconditionClassInstantiation(expressionAST)
             is ArrayLengthAST -> reconditionArrayLength(expressionAST)
@@ -468,8 +469,6 @@ class AdvancedReconditioner {
                 Pair(ArrayIndexAST(arr, temp), arrDependents + exprDependents + decl)
             }
 
-            is IndexAssignAST -> reconditionIndexAssign(identifierAST)
-
             is ClassInstanceAST -> Pair(
                 ClassInstanceAST(classes.getValue(identifierAST.clazz.name), identifierAST.name),
                 emptyList(),
@@ -528,7 +527,7 @@ class AdvancedReconditioner {
     }
 
     fun reconditionIndexAssign(indexAssignAST: IndexAssignAST): Pair<IndexAssignAST, List<StatementAST>> {
-        val (ident, identDependents) = reconditionIdentifier(indexAssignAST.ident)
+        val (ident, identDependents) = reconditionExpression(indexAssignAST.expression)
         val (key, keyDependents) = reconditionExpression(indexAssignAST.key)
         val (value, valueDependents) = reconditionExpression(indexAssignAST.value)
 

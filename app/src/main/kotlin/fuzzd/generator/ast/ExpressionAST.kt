@@ -409,25 +409,25 @@ sealed class ExpressionAST : ASTElement {
     }
 
     class IndexAssignAST(
-        val ident: IdentifierAST,
+        val expression: ExpressionAST,
         val key: ExpressionAST,
         val value: ExpressionAST,
-    ) : IdentifierAST(ident.name, ident.type(), initialised = true) {
+    ) : ExpressionAST() {
         init {
-            when (val identType = ident.type()) {
+            when (val type = expression.type()) {
                 is MapType -> {
-                    if (key.type() != identType.keyType) {
-                        throw InvalidInputException("Invalid key type for multiset IndexAssignAST. Expected ${identType.keyType}, got ${key.type()}")
+                    if (key.type() != type.keyType) {
+                        throw InvalidInputException("Invalid key type for multiset IndexAssignAST. Expected ${type.keyType}, got ${key.type()}")
                     }
 
-                    if (value.type() != identType.valueType) {
-                        throw InvalidInputException("Invalid value type for multiset IndexAssignAST. Expected ${identType.valueType}, got ${value.type()}")
+                    if (value.type() != type.valueType) {
+                        throw InvalidInputException("Invalid value type for multiset IndexAssignAST. Expected ${type.valueType}, got ${value.type()}")
                     }
                 }
 
                 is MultisetType -> {
-                    if (key.type() != identType.innerType) {
-                        throw InvalidInputException("Invalid key type for multiset IndexAssignAST. Expected ${identType.innerType}, got ${value.type()}")
+                    if (key.type() != type.innerType) {
+                        throw InvalidInputException("Invalid key type for multiset IndexAssignAST. Expected ${type.innerType}, got ${value.type()}")
                     }
 
                     if (value.type() != IntType) {
@@ -440,16 +440,18 @@ sealed class ExpressionAST : ASTElement {
                         throw InvalidInputException("Invalid key type for sequence IndexAssignAST. Expected int, got ${key.type()}")
                     }
 
-                    if (value.type() != identType.innerType) {
-                        throw InvalidInputException("Invalid value type for sequence IndexAssignAST. Expected ${identType.innerType}, got ${value.type()}")
+                    if (value.type() != type.innerType) {
+                        throw InvalidInputException("Invalid value type for sequence IndexAssignAST. Expected ${type.innerType}, got ${value.type()}")
                     }
                 }
 
-                else -> throw InvalidInputException("Invalid identifier type for IndexAssignAST. Expected map or multiset, got $identType")
+                else -> throw InvalidInputException("Invalid identifier type for IndexAssignAST. Expected map or multiset, got $type")
             }
         }
 
-        override fun toString(): String = "$ident[$key := $value]"
+        override fun type(): Type = expression.type()
+
+        override fun toString(): String = "$expression[$key := $value]"
     }
 
     class MapConstructorAST(
