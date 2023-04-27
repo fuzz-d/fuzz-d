@@ -450,9 +450,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     /* ============================== EXPRESSIONS ============================ */
-    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value {
-        println(expression)
-        return when (expression) {
+    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value =
+        when (expression) {
             is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
             is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
             is ClassInstantiationAST -> interpretClassInstantiation(expression, context)
@@ -478,7 +477,6 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is MatchExpressionAST -> interpretMatchExpression(expression, context)
             else -> throw UnsupportedOperationException()
         }
-    }
 
     override fun interpretDatatypeInstantiation(
         instantiation: DatatypeInstantiationAST,
