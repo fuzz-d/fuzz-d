@@ -1,6 +1,7 @@
 package fuzzd.generator
 
 import fuzzd.generator.ast.ClassAST
+import fuzzd.generator.ast.ClassInstanceMethodSignatureAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.DatatypeAST
 import fuzzd.generator.ast.DatatypeConstructorAST
@@ -356,7 +357,7 @@ class Generator(
                 generateType(context.disableOnDemand()),
                 parameterNameGenerator,
                 mutable = false,
-                initialised = true
+                initialised = true,
             )
         }
 
@@ -655,15 +656,16 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-                context.functionSymbolTable.methods().map { it.signature } +
-                        context.symbolTable.classInstances().map { it.methods }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.methods }.unionAll()
-                )
+            context.functionSymbolTable.methods().map { it.signature } +
+                context.symbolTable.classInstances().map { it.methods }.unionAll() +
+                context.symbolTable.traitInstances().map { it.methods }.unionAll()
+            )
             .filter { method ->
-                context.methodContext == null || methodCallTable.canUseDependency(
-                    context.methodContext,
-                    method,
-                )
+                context.methodContext == null ||
+                    method is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method.signature) ||
+                    method !is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method)
             }
 
         // no support for on demand method generation within methods
@@ -748,10 +750,7 @@ class Generator(
         val constructor = targetType.constructor
 
         val (params, paramDeps) = constructor.fields.map {
-            generateExpression(
-                context.increaseExpressionDepth(),
-                it.type(),
-            )
+            generateExpression(context.increaseExpressionDepth(), it.type())
         }.foldPair()
 
         return Pair(DatatypeInstantiationAST(datatype, constructor, params), paramDeps)
@@ -834,10 +833,10 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (
-                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                        context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
-                )
+            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
+                context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
+            )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)

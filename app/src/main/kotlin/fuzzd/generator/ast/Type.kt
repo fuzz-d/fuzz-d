@@ -12,11 +12,12 @@ sealed class Type : ASTElement {
         override fun hashCode(): Int = datatype.hashCode()
     }
 
-    class DatatypeType(datatype: DatatypeAST, val constructor: DatatypeConstructorAST) : TopLevelDatatypeType(datatype) {
+    class DatatypeType(datatype: DatatypeAST, val constructor: DatatypeConstructorAST) :
+        TopLevelDatatypeType(datatype) {
         override fun hasHeapType(): Boolean = constructor.fields.any { it.type().hasHeapType() }
 
-        override fun equals(other: Any?): Boolean = other is DatatypeType && other.datatype == datatype && other.constructor == constructor ||
-            other is TopLevelDatatypeType && other.datatype == datatype
+        override fun equals(other: Any?): Boolean =
+            other is DatatypeType && other.datatype == datatype && other.constructor == constructor
 
         override fun hashCode(): Int = constructor.hashCode()
 

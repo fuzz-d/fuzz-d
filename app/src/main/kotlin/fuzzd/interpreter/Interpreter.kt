@@ -502,6 +502,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
     override fun interpretDatatypeDestructor(destructor: DatatypeDestructorAST, context: InterpreterContext): Value {
         val datatypeValue = interpretExpression(destructor.datatypeInstance, context) as DatatypeValue
+        println(datatypeValue.values.values)
         return datatypeValue.values.get(destructor.field)!! // might need to swap to interpretIdentifier
     }
 
