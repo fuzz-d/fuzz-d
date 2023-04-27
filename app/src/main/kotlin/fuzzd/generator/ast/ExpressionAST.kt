@@ -14,6 +14,7 @@ import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.StringType
+import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidFormatException
 import fuzzd.generator.ast.error.InvalidInputException
@@ -305,6 +306,13 @@ sealed class ExpressionAST : ASTElement {
             return result
         }
     }
+
+    open class TopLevelDatatypeInstanceAST(
+        name: String,
+        datatype: TopLevelDatatypeType,
+        mutable: Boolean = true,
+        initialised: Boolean = false,
+    ) : IdentifierAST(name, datatype, mutable, initialised)
 
     class DatatypeInstanceAST(
         name: String,

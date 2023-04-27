@@ -233,7 +233,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             val datatypeType = case.type() as DatatypeType
             Pair(datatypeType, seq)
         }.first { (type, _) ->
-            datatypeValue.constructor.name == type.constructor.name && datatypeValue.fields() == type.constructor.fields.toSet()
+            datatypeValue.fields() == type.constructor.fields.toSet()
         }
 
         interpretSequence(seq, context.increaseDepth())
@@ -450,8 +450,9 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     /* ============================== EXPRESSIONS ============================ */
-    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value =
-        when (expression) {
+    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value {
+        println(expression)
+        return when (expression) {
             is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
             is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
             is ClassInstantiationAST -> interpretClassInstantiation(expression, context)
@@ -477,6 +478,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is MatchExpressionAST -> interpretMatchExpression(expression, context)
             else -> throw UnsupportedOperationException()
         }
+    }
 
     override fun interpretDatatypeInstantiation(
         instantiation: DatatypeInstantiationAST,
@@ -486,10 +488,12 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         val identifiers = constructor.fields
 
         val values = instantiation.params.map { interpretExpression(it, context) }
-        val datatypeValueTable = ValueTable<IdentifierAST, Value>()
+        val datatypeValueTable = ValueTable<IdentifierAST, Value?>()
 
+        instantiation.datatype.constructors.forEach { c -> c.fields.forEach { datatypeValueTable.create(it) } }
         identifiers.zip(values).forEach { (identifier, value) -> datatypeValueTable.declare(identifier, value) }
-        return DatatypeValue(instantiation.datatype, constructor, datatypeValueTable)
+
+        return DatatypeValue(instantiation.datatype, datatypeValueTable)
     }
 
     override fun interpretDatatypeUpdate(update: DatatypeUpdateAST, context: InterpreterContext): Value {
@@ -500,7 +504,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
     override fun interpretDatatypeDestructor(destructor: DatatypeDestructorAST, context: InterpreterContext): Value {
         val datatypeValue = interpretExpression(destructor.datatypeInstance, context) as DatatypeValue
-        return datatypeValue.values.get(destructor.field) // might need to swap to interpretIdentifier
+        return datatypeValue.values.get(destructor.field)!! // might need to swap to interpretIdentifier
     }
 
     override fun interpretMatchExpression(matchExpression: MatchExpressionAST, context: InterpreterContext): Value {
@@ -509,7 +513,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             val datatypeType = case.type() as DatatypeType
             Pair(datatypeType, seq)
         }.first { (type, _) ->
-            datatypeValue.constructor.name == type.constructor.name && datatypeValue.fields() == type.constructor.fields.toSet()
+            datatypeValue.fields() == type.constructor.fields.toSet()
         }
 
         return interpretExpression(expr, context)

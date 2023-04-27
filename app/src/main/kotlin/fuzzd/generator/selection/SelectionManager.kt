@@ -243,11 +243,11 @@ class SelectionManager(
 
     private fun isBinaryType(targetType: Type): Boolean =
         targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType &&
-                targetType !is DatatypeType && targetType != CharType
+            targetType !is DatatypeType && targetType != CharType
 
     private fun isAssignType(targetType: Type): Boolean =
         targetType is MapType || targetType is MultisetType || targetType is SequenceType ||
-                (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
+            (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability = if (isBinaryType(targetType)) 0.4 / context.expressionDepth else 0.0

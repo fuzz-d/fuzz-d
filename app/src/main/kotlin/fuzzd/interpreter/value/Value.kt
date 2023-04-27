@@ -1,7 +1,6 @@
 package fuzzd.interpreter.value
 
 import fuzzd.generator.ast.DatatypeAST
-import fuzzd.generator.ast.DatatypeConstructorAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
@@ -19,7 +18,6 @@ import java.math.BigInteger
 import java.math.BigInteger.ONE
 import java.math.BigInteger.ZERO
 import java.math.BigInteger.valueOf
-import javax.xml.crypto.Data
 
 fun <T> multisetDifference(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
     val diff = mutableMapOf<T, Int>()
@@ -56,26 +54,31 @@ sealed class Value {
 
     data class DatatypeValue(
         val datatype: DatatypeAST,
-        val constructor: DatatypeConstructorAST,
-        val values: ValueTable<IdentifierAST, Value>
+        val values: ValueTable<IdentifierAST, Value?>,
     ) : Value() {
-        override fun toExpressionAST(): ExpressionAST =
-            DatatypeInstantiationAST(datatype, constructor, values.values.mapNotNull { (_, v) -> v?.toExpressionAST() })
+        override fun toExpressionAST(): ExpressionAST {
+            val fields = fields()
+            val constructor = datatype.constructors.first { it.fields.containsAll(fields) }
+            return DatatypeInstantiationAST(
+                datatype,
+                constructor,
+                values.values.mapNotNull { (_, v) -> v?.toExpressionAST() },
+            )
+        }
 
         fun assign(assigns: List<Pair<IdentifierAST, Value>>): DatatypeValue {
             val valueTable = values.clone()
             assigns.forEach { (identifier, value) -> valueTable.assign(identifier, value) }
-            return DatatypeValue(datatype, constructor, valueTable)
+            return DatatypeValue(datatype, valueTable)
         }
 
-        fun fields(): Set<IdentifierAST> = values.keys()
+        fun fields(): Set<IdentifierAST> = values.values.filter { (_, v) -> v != null }.keys
 
-        override fun equals(other: Any?): Boolean = other is DatatypeValue && other.datatype == datatype &&
-                other.constructor == constructor && other.values == values
+        override fun equals(other: Any?): Boolean =
+            other is DatatypeValue && other.datatype == datatype && other.values == values
 
         override fun hashCode(): Int {
             var result = datatype.hashCode()
-            result = 31 * result + constructor.hashCode()
             result = 31 * result + values.hashCode()
             return result
         }
