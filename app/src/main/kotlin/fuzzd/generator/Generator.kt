@@ -1118,7 +1118,7 @@ class Generator(
         targetType: Type,
     ): Pair<MultisetConversionAST, List<StatementAST>> {
         val multisetType = targetType as MultisetType
-        val (expr, exprDeps) = generateExpression(context, SetType(multisetType.innerType))
+        val (expr, exprDeps) = generateExpression(context, SequenceType(multisetType.innerType))
 
         return Pair(MultisetConversionAST(expr), exprDeps)
     }
