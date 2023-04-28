@@ -3,6 +3,7 @@ package fuzzd.interpreter
 import fuzzd.generator.ast.ClassInstanceFunctionMethodSignatureAST
 import fuzzd.generator.ast.ClassInstanceMethodSignatureAST
 import fuzzd.generator.ast.DafnyAST
+import fuzzd.generator.ast.DatatypeAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
@@ -233,7 +234,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             val datatypeType = case.type() as DatatypeType
             Pair(datatypeType, seq)
         }.first { (type, _) ->
-            datatypeValue.fields() == type.constructor.fields.toSet()
+            datatypeValue.fields() == type.constructor.fields
         }
 
         interpretSequence(seq, context.increaseDepth())
@@ -511,7 +512,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             val datatypeType = case.type() as DatatypeType
             Pair(datatypeType, seq)
         }.first { (type, _) ->
-            datatypeValue.fields() == type.constructor.fields.toSet()
+            datatypeValue.fields() == type.constructor.fields
         }
 
         return interpretExpression(expr, context)

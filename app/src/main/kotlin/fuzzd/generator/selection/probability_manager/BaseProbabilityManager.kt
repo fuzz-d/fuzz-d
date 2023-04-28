@@ -22,13 +22,13 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun charType() = 0.0
 
     // statements
-    override fun ifStatement() = 0.1
-    override fun matchStatement() = 0.1
-    override fun whileStatement() = 0.07
-    override fun methodCall() = 0.05
-    override fun mapAssign() = 0.2
-    override fun assignStatement() = 0.7
-    override fun classInstantiation() = 0.2
+    override fun ifStatement() = 0.13
+    override fun matchStatement() = 0.05
+    override fun whileStatement() = 0.12
+    override fun methodCall() = 0.1
+    override fun mapAssign() = 0.05
+    override fun assignStatement() = 0.6
+    override fun classInstantiation() = 0.05
 
     // assign type
     override fun assignIdentifier() = 0.8

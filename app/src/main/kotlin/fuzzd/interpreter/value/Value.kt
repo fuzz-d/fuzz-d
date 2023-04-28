@@ -58,11 +58,13 @@ sealed class Value {
     ) : Value() {
         override fun toExpressionAST(): ExpressionAST {
             val fields = fields()
-            val constructor = datatype.constructors.first { it.fields.containsAll(fields) }
+            val constructor = datatype.constructors.first { it.fields == fields }
+            println(constructor.name)
+            println(constructor.fields.joinToString(", ") { "${it.name}: ${it.type()} --> ${values.values[it]}" })
             return DatatypeInstantiationAST(
                 datatype,
                 constructor,
-                values.values.mapNotNull { (_, v) -> v?.toExpressionAST() },
+                constructor.fields.map { values.get(it)!!.toExpressionAST() },
             )
         }
 
@@ -72,7 +74,7 @@ sealed class Value {
             return DatatypeValue(datatype, valueTable)
         }
 
-        fun fields(): Set<IdentifierAST> = values.values.filter { (_, v) -> v != null }.keys
+        fun fields(): List<IdentifierAST> = values.values.filter { (_, v) -> v != null }.keys.toList()
 
         override fun equals(other: Any?): Boolean =
             other is DatatypeValue && other.datatype == datatype && other.values == values

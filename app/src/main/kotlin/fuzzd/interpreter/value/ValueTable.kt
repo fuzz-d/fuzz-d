@@ -47,4 +47,6 @@ class ValueTable<T, U>(private val parent: ValueTable<T, U>? = null) {
         result = 31 * result + values.hashCode()
         return result
     }
+
+    override fun toString() = values.toString()
 }
