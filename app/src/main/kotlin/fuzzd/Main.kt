@@ -24,6 +24,7 @@ class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
         "i",
         "Instrument control flow with print statements for debugging program paths",
     )
+    private val swarm by option(ArgType.Boolean, "swarm", "sw", "Run with swarm testing enabled")
     private val noRun by option(
         ArgType.Boolean,
         "noRun",
@@ -44,6 +45,7 @@ class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
                 advanced == true,
                 instrument == true,
                 noRun != true,
+                swarm == true
             )
         } catch (e: Exception) {
             e.printStackTrace()
