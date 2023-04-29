@@ -28,7 +28,7 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun methodCall() = 0.1
     override fun mapAssign() = 0.05
     override fun assignStatement() = 0.6
-    override fun classInstantiation() = 0.05
+    override fun classInstantiation() = 0.1
 
     // assign type
     override fun assignIdentifier() = 0.8
