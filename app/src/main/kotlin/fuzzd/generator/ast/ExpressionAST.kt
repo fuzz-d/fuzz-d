@@ -309,7 +309,7 @@ sealed class ExpressionAST : ASTElement {
 
     open class TopLevelDatatypeInstanceAST(
         name: String,
-        datatype: TopLevelDatatypeType,
+        val datatype: TopLevelDatatypeType,
         mutable: Boolean = true,
         initialised: Boolean = false,
     ) : IdentifierAST(name, datatype, mutable, initialised)
@@ -319,12 +319,7 @@ sealed class ExpressionAST : ASTElement {
         datatype: DatatypeType,
         mutable: Boolean = true,
         initialised: Boolean = false,
-    ) : IdentifierAST(name, datatype, mutable, initialised)
-
-    class DatatypeInstanceFieldAST(
-        val datatypeInstance: IdentifierAST,
-        val datatypeField: IdentifierAST,
-    ) : IdentifierAST("$datatypeInstance.$datatypeField", datatypeField.type(), mutable = true, initialised = true)
+    ) : TopLevelDatatypeInstanceAST(name, datatype, mutable, initialised)
 
     class ClassInstanceFieldAST(
         val classInstance: IdentifierAST,
