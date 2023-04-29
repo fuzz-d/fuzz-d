@@ -117,6 +117,8 @@ import fuzzd.utils.unionAll
 
 class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     private val topLevelDatatypes = mutableListOf<DatatypeDeclContext>()
+    private val topLevelClasses = mutableListOf<ClassDeclContext>()
+    val topLevelTraits = mutableListOf<TraitDeclContext>()
 
     private val datatypesTable = VisitorSymbolTable<DatatypeAST>()
     private val classesTable = VisitorSymbolTable<ClassAST>()
@@ -136,6 +138,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ).forEach { functionMethodsTable.addEntry(it.name(), it.signature) }
 
         topLevelDatatypes.addAll(ctx.topDecl().mapNotNull { it.datatypeDecl() })
+        topLevelClasses.addAll(ctx.topDecl().mapNotNull { it.classDecl() })
+        topLevelTraits.addAll(ctx.topDecl().mapNotNull { it.traitDecl() })
 
         val globalStateCtx = ctx.topDecl().first {
             it.classDecl() != null && visitUpperIdentifierName(it.classDecl().upperIdentifier(0)) == GLOBAL_STATE
@@ -190,6 +194,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitClassDecl(ctx: ClassDeclContext): ClassAST {
         val name = visitUpperIdentifierName(ctx.upperIdentifier(0))
 
+        if (classesTable.hasEntry(name)) return classesTable.getEntry(name)
+
         val extends = ctx.upperIdentifier().subList(1, ctx.upperIdentifier().size)
             .map { identifierCtx -> visitUpperIdentifierName(identifierCtx) }
             .map { identifierStr -> traitsTable.getEntry(identifierStr) }.toSet()
@@ -233,6 +239,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitTraitDecl(ctx: TraitDeclContext): TraitAST {
         val name = visitUpperIdentifierName(ctx.upperIdentifier(0))
+        if (traitsTable.hasEntry(name)) return traitsTable.getEntry(name)
 
         val extends = ctx.upperIdentifier().subList(1, ctx.upperIdentifier().size)
             .map { identifierCtx -> visitUpperIdentifierName(identifierCtx) }
@@ -961,19 +968,29 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             visitDatatypeDecl(decl)
         }
 
+    private fun visitTopLevelName(name: String) {
+        val classMatch = topLevelClasses.firstOrNull { visitUpperIdentifierName(it.upperIdentifier(0)) == name }
+        val traitMatch = topLevelTraits.firstOrNull { visitUpperIdentifierName(it.upperIdentifier(0)) == name }
+        val datatypeMatch = topLevelDatatypes.firstOrNull { visitUpperIdentifierName(it.upperIdentifier()) == name }
+
+        when {
+            classMatch != null -> visitClassDecl(classMatch)
+            traitMatch != null -> visitTraitDecl(traitMatch)
+            datatypeMatch != null -> visitDatatypeDecl(datatypeMatch)
+            else -> throw UnsupportedOperationException()
+        }
+    }
+
     fun visitUpperIdentifierType(ctx: UpperIdentifierContext): Type {
         val name = visitUpperIdentifierName(ctx)
-        return if (classesTable.hasEntry(name)) {
-            ClassType(classesTable.getEntry(name))
-        } else if (traitsTable.hasEntry(name)) {
-            TraitType(traitsTable.getEntry(name))
-        } else {
-            if (!datatypesTable.hasEntry(name)) {
-                val datatype = topLevelDatatypes.first { visitUpperIdentifierName(it.upperIdentifier()) == name }
-                visitDatatypeDecl(datatype)
+        return when {
+            classesTable.hasEntry(name) -> ClassType(classesTable.getEntry(name))
+            traitsTable.hasEntry(name) -> TraitType(traitsTable.getEntry(name))
+            datatypesTable.hasEntry(name) -> TopLevelDatatypeType(datatypesTable.getEntry(name))
+            else -> {
+                visitTopLevelName(name)
+                visitUpperIdentifierType(ctx)
             }
-
-            TopLevelDatatypeType(datatypesTable.getEntry(name))
         }
     }
 

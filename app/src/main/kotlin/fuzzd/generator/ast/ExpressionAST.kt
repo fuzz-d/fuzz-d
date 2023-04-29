@@ -106,10 +106,10 @@ sealed class ExpressionAST : ASTElement {
 
     class NonVoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) :
         ExpressionAST() {
-        init {
-            val methodParams = method.params
-            checkParams(methodParams, params, "method call to ${method.name}")
-        }
+//        init {
+//            val methodParams = method.params
+//            checkParams(methodParams, params, "method call to ${method.name}")
+//        }
 
         override fun type(): Type = MethodReturnType(method.returns.map { it.type() })
 
@@ -121,10 +121,10 @@ sealed class ExpressionAST : ASTElement {
         val params: List<ExpressionAST>,
     ) :
         ExpressionAST() {
-        init {
-            val functionParams = function.params
-            checkParams(functionParams, params, "function method call to ${function.name}")
-        }
+//        init {
+//            val functionParams = function.params
+//            checkParams(functionParams, params, "function method call to ${function.name}")
+//        }
 
         override fun type(): Type = function.returnType
 
@@ -320,6 +320,11 @@ sealed class ExpressionAST : ASTElement {
         mutable: Boolean = true,
         initialised: Boolean = false,
     ) : IdentifierAST(name, datatype, mutable, initialised)
+
+    class DatatypeInstanceFieldAST(
+        val datatypeInstance: IdentifierAST,
+        val datatypeField: IdentifierAST,
+    ) : IdentifierAST("$datatypeInstance.$datatypeField", datatypeField.type(), mutable = true, initialised = true)
 
     class ClassInstanceFieldAST(
         val classInstance: IdentifierAST,

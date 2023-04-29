@@ -54,7 +54,6 @@ import fuzzd.generator.selection.StatementType.WHILE
 import fuzzd.generator.selection.probability_manager.BaseProbabilityManager
 import fuzzd.generator.selection.probability_manager.ProbabilityManager
 import fuzzd.utils.unionAll
-import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
 
@@ -71,8 +70,8 @@ class SelectionManager(
             this::selectClassType to classTypeProb,
             this::selectTraitType to traitTypeProb,
             this::selectDatatypeType to datatypeProb,
-            this::selectArrayType to if (literalOnly || !context.onDemandIdentifiers) 0.0 else probabilityManager.arrayType() / context.expressionDepth,
-            this::selectDataStructureType to probabilityManager.datatstructureType() / context.expressionDepth,
+            this::selectArrayType to if (!literalOnly && context.onDemandIdentifiers) probabilityManager.arrayType() / context.expressionDepth else 0.0,
+            this::selectDataStructureType to probabilityManager.datatstructureType(),
             this::selectLiteralType to probabilityManager.literalType(),
         )
 
@@ -261,7 +260,11 @@ class SelectionManager(
                 0.0
             }
         val ternaryProbability = probabilityManager.ternary() / context.expressionDepth
-        val matchProbability = if (context.expressionDepth == 1) probabilityManager.matchExpression() else 0.0
+        val matchProbability = if (context.expressionDepth == 1 && context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) {
+            probabilityManager.matchExpression()
+        } else {
+            0.0
+        }
         val assignProbability = if (isAssignType(targetType) && context.symbolTable.hasType(targetType)) {
             probabilityManager.assignExpression() / context.expressionDepth
         } else {

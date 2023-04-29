@@ -467,9 +467,9 @@ class Generator(
         val body = generateSequence(context, maxStatements = 10)
 
         val returnAssigns = method.returns().map { r ->
-            val (expr, _) = generateExpression(context.disableOnDemand(), r.type())
-            AssignmentAST(r, expr)
-        }
+            val (expr, deps) = generateExpression(context, r.type())
+            deps + AssignmentAST(r, expr)
+        }.reduceLists()
 
         return body.addStatements(returnAssigns)
     }
@@ -726,8 +726,8 @@ class Generator(
     override fun generateExpression(
         context: GenerationContext,
         targetType: Type,
-    ): Pair<ExpressionAST, List<StatementAST>> =
-        try {
+    ): Pair<ExpressionAST, List<StatementAST>> {
+        val result = try {
             val expressionType = selectionManager.selectExpressionType(targetType, context)
             generateExpressionFromType(
                 expressionType,
@@ -741,6 +741,9 @@ class Generator(
                 targetType,
             )
         }
+
+        return result
+    }
 
     override fun generateDatatypeInstantiation(
         context: GenerationContext,
@@ -825,7 +828,7 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): List<FunctionMethodSignatureAST> = functionMethodsWithType(context, targetType).filter { fm ->
-        !fm.params.map { p -> p.type() }.any { t -> t is ConstructorType && !context.symbolTable.hasType(t) }
+        !fm.params.map { p -> p.type() }.any { t -> t.hasHeapType() && !context.symbolTable.hasType(t) }
     }
 
     private fun functionMethodsWithType(

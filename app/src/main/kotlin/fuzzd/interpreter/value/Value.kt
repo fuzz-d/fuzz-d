@@ -1,6 +1,7 @@
 package fuzzd.interpreter.value
 
 import fuzzd.generator.ast.DatatypeAST
+import fuzzd.generator.ast.DatatypeConstructorAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
@@ -52,15 +53,13 @@ fun divideEuclidean(a: BigInteger, b: BigInteger): BigInteger =
 sealed class Value {
     open fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
 
-    data class DatatypeValue(
+    open class TopLevelDatatypeValue(
         val datatype: DatatypeAST,
         val values: ValueTable<IdentifierAST, Value?>,
     ) : Value() {
         override fun toExpressionAST(): ExpressionAST {
             val fields = fields()
             val constructor = datatype.constructors.first { it.fields == fields }
-            println(constructor.name)
-            println(constructor.fields.joinToString(", ") { "${it.name}: ${it.type()} --> ${values.values[it]}" })
             return DatatypeInstantiationAST(
                 datatype,
                 constructor,
@@ -68,22 +67,28 @@ sealed class Value {
             )
         }
 
-        fun assign(assigns: List<Pair<IdentifierAST, Value>>): DatatypeValue {
+        fun assign(assigns: List<Pair<IdentifierAST, Value>>): TopLevelDatatypeValue {
             val valueTable = values.clone()
             assigns.forEach { (identifier, value) -> valueTable.assign(identifier, value) }
-            return DatatypeValue(datatype, valueTable)
+            return TopLevelDatatypeValue(datatype, valueTable)
         }
 
         fun fields(): List<IdentifierAST> = values.values.filter { (_, v) -> v != null }.keys.toList()
 
         override fun equals(other: Any?): Boolean =
-            other is DatatypeValue && other.datatype == datatype && other.values == values
+            other is TopLevelDatatypeValue && other.datatype == datatype && other.values == values
 
         override fun hashCode(): Int {
             var result = datatype.hashCode()
             result = 31 * result + values.hashCode()
             return result
         }
+    }
+
+    class DatatypeValue(datatype: DatatypeAST, val constructor: DatatypeConstructorAST, values: ValueTable<IdentifierAST, Value?>) :
+        TopLevelDatatypeValue(datatype, values) {
+        override fun toExpressionAST(): ExpressionAST =
+            DatatypeInstantiationAST(datatype, constructor, constructor.fields.map { values.get(it)!!.toExpressionAST() })
     }
 
     data class MultiValue(val values: List<Value>) : Value()
