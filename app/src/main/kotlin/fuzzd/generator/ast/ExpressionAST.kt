@@ -309,14 +309,24 @@ sealed class ExpressionAST : ASTElement {
 
     open class TopLevelDatatypeInstanceAST(
         name: String,
-        val datatype: TopLevelDatatypeType,
+        open val datatype: TopLevelDatatypeType,
         mutable: Boolean = true,
         initialised: Boolean = false,
-    ) : IdentifierAST(name, datatype, mutable, initialised)
+    ) : IdentifierAST(name, datatype, mutable, initialised) {
+        override fun equals(other: Any?): Boolean =
+            other is TopLevelDatatypeInstanceAST && other.name == name && other.datatype == datatype
+
+        override fun hashCode(): Int {
+            var result = super.hashCode()
+            result = 31 * result + name.hashCode()
+            result = 31 * result + datatype.hashCode()
+            return result
+        }
+    }
 
     class DatatypeInstanceAST(
         name: String,
-        datatype: DatatypeType,
+        override val datatype: DatatypeType,
         mutable: Boolean = true,
         initialised: Boolean = false,
     ) : TopLevelDatatypeInstanceAST(name, datatype, mutable, initialised)
