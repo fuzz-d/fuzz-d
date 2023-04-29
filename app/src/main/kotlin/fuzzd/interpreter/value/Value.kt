@@ -67,7 +67,7 @@ sealed class Value {
             )
         }
 
-        fun assign(assigns: List<Pair<IdentifierAST, Value>>): TopLevelDatatypeValue {
+        open fun assign(assigns: List<Pair<IdentifierAST, Value>>): TopLevelDatatypeValue {
             val valueTable = values.clone()
             assigns.forEach { (identifier, value) -> valueTable.assign(identifier, value) }
             return TopLevelDatatypeValue(datatype, valueTable)
@@ -89,6 +89,12 @@ sealed class Value {
         TopLevelDatatypeValue(datatype, values) {
         override fun toExpressionAST(): ExpressionAST =
             DatatypeInstantiationAST(datatype, constructor, constructor.fields.map { values.get(it)!!.toExpressionAST() })
+
+        override fun assign(assigns: List<Pair<IdentifierAST, Value>>): DatatypeValue {
+            val valueTable = values.clone()
+            assigns.forEach { (identifier, value) -> valueTable.assign(identifier, value) }
+            return DatatypeValue(datatype, constructor, valueTable)
+        }
     }
 
     data class MultiValue(val values: List<Value>) : Value()
