@@ -35,7 +35,7 @@ fun <T> multisetDifference(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
 fun <T> multisetIntersect(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
     val intersect = mutableMapOf<T, Int>()
     m1.entries.forEach { (k, v) ->
-        if (k in m2) {
+        if (k in m2 && m2[k] != 0) {
             intersect[k] = min(v, m2[k]!!)
         }
     }
@@ -201,7 +201,11 @@ sealed class Value {
             throw UnsupportedOperationException("Multiset didn't contain key $key")
         }
 
-        fun assign(key: Value, value: Int): MultisetValue = MultisetValue(map + mapOf(key to value))
+        fun assign(key: Value, value: Int): MultisetValue = if (value == 0) {
+            MultisetValue(map - setOf(key))
+        } else {
+            MultisetValue(map + mapOf(key to value))
+        }
 
         override fun equals(other: Any?): Boolean = other is MultisetValue && map == other.map
         override fun hashCode(): Int = map.hashCode()
