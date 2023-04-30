@@ -656,16 +656,16 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-            context.functionSymbolTable.methods().map { it.signature } +
-                context.symbolTable.classInstances().map { it.methods }.unionAll() +
-                context.symbolTable.traitInstances().map { it.methods }.unionAll()
-            )
+                context.functionSymbolTable.methods().map { it.signature } +
+                        context.symbolTable.classInstances().map { it.methods }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.methods }.unionAll()
+                )
             .filter { method ->
                 context.methodContext == null ||
-                    method is ClassInstanceMethodSignatureAST &&
-                    methodCallTable.canUseDependency(context.methodContext, method.signature) ||
-                    method !is ClassInstanceMethodSignatureAST &&
-                    methodCallTable.canUseDependency(context.methodContext, method)
+                        method is ClassInstanceMethodSignatureAST &&
+                        methodCallTable.canUseDependency(context.methodContext, method.signature) ||
+                        method !is ClassInstanceMethodSignatureAST &&
+                        methodCallTable.canUseDependency(context.methodContext, method)
             }
 
         // no support for on demand method generation within methods
@@ -726,23 +726,19 @@ class Generator(
     override fun generateExpression(
         context: GenerationContext,
         targetType: Type,
-    ): Pair<ExpressionAST, List<StatementAST>> {
-        val result = try {
-            val expressionType = selectionManager.selectExpressionType(targetType, context)
-            generateExpressionFromType(
-                expressionType,
-                context,
-                targetType,
-            )
-        } catch (e: IdentifierOnDemandException) {
-            generateExpressionFromType(
-                selectionManager.selectExpressionType(targetType, context, identifier = false),
-                context,
-                targetType,
-            )
-        }
-
-        return result
+    ): Pair<ExpressionAST, List<StatementAST>> = try {
+        val expressionType = selectionManager.selectExpressionType(targetType, context)
+        generateExpressionFromType(
+            expressionType,
+            context,
+            targetType,
+        )
+    } catch (e: IdentifierOnDemandException) {
+        generateExpressionFromType(
+            selectionManager.selectExpressionType(targetType, context, identifier = false),
+            context,
+            targetType,
+        )
     }
 
     override fun generateDatatypeInstantiation(
@@ -836,10 +832,10 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (
-            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
-                context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
-            )
+                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                        context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
+                )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)

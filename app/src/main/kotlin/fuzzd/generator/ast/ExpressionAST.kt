@@ -22,6 +22,7 @@ import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.utils.escape
 import fuzzd.utils.indent
+import jdk.incubator.vector.VectorOperators.Binary
 
 fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, context: String) {
     if (expected.size != actual.size) {
@@ -82,8 +83,11 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): Type = datatypeInstance.type()
 
-        override fun toString(): String =
-            "$datatypeInstance.(${updates.joinToString(", ") { (ident, expr) -> "$ident := $expr" }})"
+        override fun toString(): String {
+            val instanceStr = if (datatypeInstance is TernaryExpressionAST || datatypeInstance is BinaryExpressionAST)
+                "($datatypeInstance)" else "$datatypeInstance"
+            return "$instanceStr.(${updates.joinToString(", ") { (ident, expr) -> "$ident := $expr" }})"
+        }
     }
 
     class MatchExpressionAST(
@@ -262,7 +266,7 @@ sealed class ExpressionAST : ASTElement {
         val methods = trait.methods().map { ClassInstanceMethodSignatureAST(this, it) }
 
         override fun equals(other: Any?): Boolean = other is TraitInstanceAST &&
-            trait == other.trait && name == other.name && initialised() == other.initialised() && mutable == other.mutable
+                trait == other.trait && name == other.name && initialised() == other.initialised() && mutable == other.mutable
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -293,9 +297,9 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
-                clazz == other.clazz &&
-                name == other.name && initialised() == other.initialised() &&
-                mutable == other.mutable
+                    clazz == other.clazz &&
+                    name == other.name && initialised() == other.initialised() &&
+                    mutable == other.mutable
 
         override fun hashCode(): Int {
             var result = super.hashCode()
