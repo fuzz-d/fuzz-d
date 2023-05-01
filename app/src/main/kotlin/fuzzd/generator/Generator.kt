@@ -35,6 +35,7 @@ import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.TopLevelDatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.TraitInstanceAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
@@ -60,7 +61,6 @@ import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
-import fuzzd.generator.ast.Type.ConstructorType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
@@ -70,6 +70,7 @@ import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.StringType
+import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
 import fuzzd.generator.ast.error.MethodOnDemandException
@@ -319,7 +320,15 @@ class Generator(
         val fieldNameGenerator = DatatypeConstructorFieldGenerator()
         val constructors =
             (1..numberOfConstructors).map { generateDatatypeConstructor(context, fieldNameGenerator) }
-        val datatype = DatatypeAST(datatypeName, constructors)
+        val datatype = DatatypeAST(datatypeName, constructors.toMutableList())
+
+        if (numberOfConstructors > 0 && selectionManager.selectMakeDatatypeInductive()) {
+            val constructor = DatatypeConstructorAST(
+                datatypeConstructorGenerator.newValue(),
+                listOf(TopLevelDatatypeInstanceAST(fieldNameGenerator.newValue(), TopLevelDatatypeType(datatype))),
+            )
+            datatype.constructors.add(constructor)
+        }
 
         context.functionSymbolTable.addDatatype(datatype)
         return datatype
@@ -387,7 +396,15 @@ class Generator(
         val otherConstructors = (1..numberOfConstructors).map {
             generateDatatypeConstructor(context, fieldNameGenerator)
         }
-        val datatype = DatatypeAST(datatypeName, otherConstructors + compulsoryConstructor)
+        val datatype = DatatypeAST(datatypeName, (otherConstructors + compulsoryConstructor).toMutableList())
+
+        if (numberOfConstructors > 0 && selectionManager.selectMakeDatatypeInductive()) {
+            val constructor = DatatypeConstructorAST(
+                datatypeConstructorGenerator.newValue(),
+                listOf(TopLevelDatatypeInstanceAST(fieldNameGenerator.newValue(), TopLevelDatatypeType(datatype))),
+            )
+            datatype.constructors.add(constructor)
+        }
 
         context.functionSymbolTable.addDatatype(datatype)
         return datatype
@@ -403,7 +420,7 @@ class Generator(
             val type = generateType(context)
             paramIdentifierFromType(type, fieldNameGenerator, mutable = true, initialised = true)
         }
-        return DatatypeConstructorAST(constructorName, fields)
+        return DatatypeConstructorAST(constructorName, fields.toMutableList())
     }
 
     override fun generateMethod(context: GenerationContext): MethodAST {
@@ -656,16 +673,16 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-                context.functionSymbolTable.methods().map { it.signature } +
-                        context.symbolTable.classInstances().map { it.methods }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.methods }.unionAll()
-                )
+            context.functionSymbolTable.methods().map { it.signature } +
+                context.symbolTable.classInstances().map { it.methods }.unionAll() +
+                context.symbolTable.traitInstances().map { it.methods }.unionAll()
+            )
             .filter { method ->
                 context.methodContext == null ||
-                        method is ClassInstanceMethodSignatureAST &&
-                        methodCallTable.canUseDependency(context.methodContext, method.signature) ||
-                        method !is ClassInstanceMethodSignatureAST &&
-                        methodCallTable.canUseDependency(context.methodContext, method)
+                    method is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method.signature) ||
+                    method !is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method)
             }
 
         // no support for on demand method generation within methods
@@ -739,6 +756,17 @@ class Generator(
             context,
             targetType,
         )
+    }
+
+    fun generateTopLevelDatatypeInstantiation(
+        context: GenerationContext,
+        targetType: TopLevelDatatypeType,
+    ): Pair<DatatypeInstantiationAST, List<StatementAST>> {
+        val datatype = targetType.datatype
+        val availableDatatypes = context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers)
+        val type = selectionManager.randomSelection(datatype.datatypes().filter { it in availableDatatypes })
+
+        return generateDatatypeInstantiation(context, type)
     }
 
     override fun generateDatatypeInstantiation(
@@ -832,10 +860,10 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (
-                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                        context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
-                )
+            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
+                context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
+            )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
@@ -1155,6 +1183,7 @@ class Generator(
         is ClassType -> generateClassConstructor(context, targetType)
         is TraitType -> generateTraitConstructor(context, targetType)
         is DatatypeType -> generateDatatypeInstantiation(context, targetType)
+        is TopLevelDatatypeType -> generateTopLevelDatatypeInstantiation(context, targetType)
         is MapType -> generateMapConstructor(context, targetType)
         is SetType, is MultisetType -> generateSetDisplay(context, targetType)
         is StringType -> generateStringLiteral(context)
@@ -1170,6 +1199,7 @@ class Generator(
         is ClassType -> generateClassConstructor(context, targetType)
         is TraitType -> generateTraitConstructor(context, targetType)
         is DatatypeType -> generateDatatypeInstantiation(context, targetType)
+        is TopLevelDatatypeType -> generateTopLevelDatatypeInstantiation(context, targetType)
         is ArrayType -> generateArrayInitialisation(context, targetType)
         is MapType -> generateMapConstructor(context, targetType)
         is SetType, is MultisetType -> generateSetDisplay(context, targetType)

@@ -146,6 +146,10 @@ sealed class ExpressionAST : ASTElement {
             }
 
             if (ifBranch.type() != elseBranch.type()) {
+                if (ifBranch.type() is DatatypeType) {
+                    println("${(ifBranch.type() as DatatypeType).constructor}")
+                    println("${(elseBranch.type() as DatatypeType).constructor}")
+                }
                 throw InvalidInputException("Ternary expression branches have different types. If branch: ${ifBranch.type()}. Else branch: ${elseBranch.type()}")
             }
         }

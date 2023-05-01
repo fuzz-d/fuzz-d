@@ -161,11 +161,12 @@ class AdvancedReconditioner {
         return trait
     }
 
-    fun reconditionDatatype(datatypeAST: DatatypeAST): DatatypeAST = DatatypeAST(datatypeAST.name, datatypeAST.constructors.map(this::reconditionDatatypeConstructor))
+    fun reconditionDatatype(datatypeAST: DatatypeAST): DatatypeAST =
+        DatatypeAST(datatypeAST.name, datatypeAST.constructors.map(this::reconditionDatatypeConstructor).toMutableList())
 
     fun reconditionDatatypeConstructor(datatypeConstructorAST: DatatypeConstructorAST): DatatypeConstructorAST = DatatypeConstructorAST(
         datatypeConstructorAST.name,
-        datatypeConstructorAST.fields.map { reconditionIdentifier(it).first },
+        datatypeConstructorAST.fields.map { reconditionIdentifier(it).first }.toMutableList(),
     )
 
     fun reconditionMethod(methodAST: MethodAST): MethodAST {

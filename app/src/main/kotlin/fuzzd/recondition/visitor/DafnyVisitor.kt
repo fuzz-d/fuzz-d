@@ -179,7 +179,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitDatatypeDecl(ctx: DatatypeDeclContext): DatatypeAST {
         val name = visitUpperIdentifierName(ctx.upperIdentifier())
         val constructors = ctx.datatypeConstructor().map(this::visitDatatypeConstructor)
-        val datatype = DatatypeAST(name, constructors)
+        val datatype = DatatypeAST(name, constructors.toMutableList())
         datatypesTable.addEntry(name, datatype)
         return datatype
     }
@@ -188,7 +188,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val name = visitUpperIdentifierName(ctx.upperIdentifier())
         val fields = if (ctx.parameters() != null) visitParametersList(ctx.parameters()) else emptyList()
 
-        return DatatypeConstructorAST(name, fields)
+        return DatatypeConstructorAST(name, fields.toMutableList())
     }
 
     override fun visitClassDecl(ctx: ClassDeclContext): ClassAST {

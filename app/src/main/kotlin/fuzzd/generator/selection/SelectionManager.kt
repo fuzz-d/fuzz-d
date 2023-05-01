@@ -13,6 +13,7 @@ import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.SequenceType
 import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.StringType
+import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
@@ -241,7 +242,7 @@ class SelectionManager(
 
     private fun isBinaryType(targetType: Type): Boolean =
         targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType &&
-            targetType !is DatatypeType && targetType != CharType
+            targetType !is TopLevelDatatypeType && targetType != CharType
 
     private fun isAssignType(targetType: Type): Boolean =
         targetType is MapType || targetType is MultisetType || targetType is SequenceType ||
@@ -368,6 +369,8 @@ class SelectionManager(
                 ),
             ),
         )
+
+    fun selectMakeDatatypeInductive() = withProbability(0.4)
 
     fun selectNumberOfDatatypeConstructors() =
         randomWeightedSelection(normaliseWeights(listOf(1 to 0.25, 2 to 0.4, 3 to 0.25, 4 to 0.1)))
