@@ -6,6 +6,7 @@ import os
 from distutils.dir_util import copy_tree
 
 def getErrorDirectories():
+    resolution_dirs = []
     java_crash_dirs = []
     compiler_crash_dirs = []
     execute_crash_dirs = []
