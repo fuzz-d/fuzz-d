@@ -21,4 +21,6 @@ class InterpreterContext(
 
     fun classField(classFields: ValueTable<IdentifierAST, Value>) =
         InterpreterContext(classFields.withParent(fields), functions, methods)
+
+    fun withClassContext(classContext: InterpreterContext?) = InterpreterContext(fields, functions, methods, classContext)
 }

@@ -188,7 +188,13 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                     is ClassInstanceAST -> key.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }.reduceLists()
                     is TraitInstanceAST -> key.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }.reduceLists()
                     is DatatypeDestructorAST -> {
-                        value.classContext.fields.keys().map {
+                        val fields = if (key.field is ClassInstanceAST) {
+                            key.field.clazz.constructorFields
+                        } else {
+                            (key.field as TraitInstanceAST).trait.fields()
+                        }
+
+                        fields.map {
                             val classInstanceField = ClassInstanceFieldAST(key, it)
                             generateChecksumPrint(classInstanceField, interpretIdentifier(classInstanceField, context), context)
                         }.reduceLists()
@@ -330,12 +336,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         when (identifier) {
             is ClassInstanceFieldAST -> {
                 val classValue = interpretIdentifier(identifier.classInstance, context) as ClassValue
-                setIdentifierValue(
-                    identifier.classField,
-                    value,
-                    InterpreterContext(context.fields, context.functions, context.methods, classValue.classContext),
-                    isDeclaration,
-                )
+                setIdentifierValue(identifier.classField, value, context.withClassContext(classValue.classContext), isDeclaration)
             }
 
             is ArrayIndexAST -> {
