@@ -675,16 +675,16 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-            context.functionSymbolTable.methods().map { it.signature } +
-                context.symbolTable.classInstances().map { it.methods }.unionAll() +
-                context.symbolTable.traitInstances().map { it.methods }.unionAll()
-            )
+                context.functionSymbolTable.methods().map { it.signature } +
+                        context.symbolTable.classInstances().map { it.methods }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.methods }.unionAll()
+                )
             .filter { method ->
                 context.methodContext == null ||
-                    method is ClassInstanceMethodSignatureAST &&
-                    methodCallTable.canUseDependency(context.methodContext, method.signature) ||
-                    method !is ClassInstanceMethodSignatureAST &&
-                    methodCallTable.canUseDependency(context.methodContext, method)
+                        method is ClassInstanceMethodSignatureAST &&
+                        methodCallTable.canUseDependency(context.methodContext, method.signature) ||
+                        method !is ClassInstanceMethodSignatureAST &&
+                        methodCallTable.canUseDependency(context.methodContext, method)
             }
 
         // no support for on demand method generation within methods
@@ -813,22 +813,19 @@ class Generator(
         exprType: ExpressionType,
         context: GenerationContext,
         targetType: Type,
-    ): Pair<ExpressionAST, List<StatementAST>> {
-        val result = when (exprType) {
-            CONSTRUCTOR -> generateConstructorForType(context, targetType)
-            UNARY -> generateUnaryExpression(context, targetType)
-            MODULUS -> generateModulus(context, targetType)
-            MULTISET_CONVERSION -> generateMultisetConversion(context, targetType)
-            BINARY -> generateBinaryExpression(context, targetType)
-            TERNARY -> generateTernaryExpression(context, targetType)
-            MATCH -> generateMatchExpression(context, targetType)
-            FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
-            IDENTIFIER -> generateIdentifier(context, targetType, initialisedConstraint = true)
-            LITERAL -> generateLiteralForType(context, targetType as LiteralType)
-            INDEX_ASSIGN -> generateIndexAssign(context, targetType)
-            INDEX -> generateIndex(context, targetType)
-        }
-        return result
+    ): Pair<ExpressionAST, List<StatementAST>> = when (exprType) {
+        CONSTRUCTOR -> generateConstructorForType(context, targetType)
+        UNARY -> generateUnaryExpression(context, targetType)
+        MODULUS -> generateModulus(context, targetType)
+        MULTISET_CONVERSION -> generateMultisetConversion(context, targetType)
+        BINARY -> generateBinaryExpression(context, targetType)
+        TERNARY -> generateTernaryExpression(context, targetType)
+        MATCH -> generateMatchExpression(context, targetType)
+        FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
+        IDENTIFIER -> generateIdentifier(context, targetType, initialisedConstraint = true)
+        LITERAL -> generateLiteralForType(context, targetType as LiteralType)
+        INDEX_ASSIGN -> generateIndexAssign(context, targetType)
+        INDEX -> generateIndex(context, targetType)
     }
 
     override fun generateFunctionMethodCall(
@@ -865,10 +862,10 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (
-            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
-                context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
-            )
+                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                        context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
+                )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
