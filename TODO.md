@@ -1,5 +1,5 @@
 ## TODO
-
+- parsing inductive datatypes in visitor
 - instrumenting Dafny
 - swarm testing
 - further type system expansion, sequence slicing
