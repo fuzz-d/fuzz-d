@@ -464,6 +464,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
     /* ============================== EXPRESSIONS ============================ */
     override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value {
+//        println(expression)
         return when (expression) {
             is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
             is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)

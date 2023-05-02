@@ -501,11 +501,9 @@ class Generator(
 
     override fun generateStatement(context: GenerationContext): List<StatementAST> = try {
         val type = selectionManager.selectStatementType(context)
-        println(type)
         generateStatementFromType(type, context)
     } catch (e: MethodOnDemandException) {
         val type = selectionManager.selectStatementType(context, methodCalls = false)
-        println(type)
         generateStatementFromType(type, context)
     }
 
@@ -626,9 +624,7 @@ class Generator(
 
         context.symbolTable.add(identifier)
 
-        return exprDeps + if (targetType is TraitType || targetType is ArrayType || targetType is MapType ||
-            targetType is SetType || targetType is MultisetType || targetType is SequenceType
-        ) {
+        return exprDeps + if (targetType.requiresTypeAnnotation()) {
             TypedDeclarationAST(identifier, expr)
         } else {
             DeclarationAST(identifier, expr)
@@ -832,7 +828,6 @@ class Generator(
             INDEX_ASSIGN -> generateIndexAssign(context, targetType)
             INDEX -> generateIndex(context, targetType)
         }
-//        println(result.first)
         return result
     }
 
@@ -1063,7 +1058,7 @@ class Generator(
 
     private fun datatypesWithType(context: GenerationContext, type: Type): List<DatatypeType> =
         context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers)
-            .filter { it.constructor.fields.any { f -> type == f.type() } }
+            .filter { it.constructor.fields.any { f -> f.type() == type } }
 
     private fun generateDatatypeDestructor(
         context: GenerationContext,

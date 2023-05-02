@@ -8,6 +8,8 @@ sealed class Type : ASTElement {
 
     open fun strictEquals(other: Any?): Boolean = this == other
 
+    open fun requiresTypeAnnotation(): Boolean = false
+
     open class TopLevelDatatypeType(val datatype: DatatypeAST) : Type() {
         override fun toString(): String = datatype.name
 
@@ -33,6 +35,8 @@ sealed class Type : ASTElement {
     }
 
     class ClassType(val clazz: ClassAST) : Type() {
+        override fun requiresTypeAnnotation(): Boolean = true
+
         override fun hasHeapType(): Boolean = true
 
         override fun equals(other: Any?): Boolean = other is ClassType && other.clazz == this.clazz
@@ -43,6 +47,8 @@ sealed class Type : ASTElement {
     }
 
     class TraitType(val trait: TraitAST) : Type() {
+        override fun requiresTypeAnnotation(): Boolean = true
+
         override fun hasHeapType(): Boolean = true
 
         override fun equals(other: Any?): Boolean = other is TraitType && other.trait == this.trait
@@ -54,6 +60,8 @@ sealed class Type : ASTElement {
 
     sealed class ConstructorType : Type() {
         class ArrayType(val internalType: Type) : ConstructorType() {
+            override fun requiresTypeAnnotation(): Boolean = true
+
             override fun hasHeapType() = true
 
             override fun equals(other: Any?): Boolean {
@@ -70,6 +78,8 @@ sealed class Type : ASTElement {
     }
 
     class MapType(val keyType: Type, val valueType: Type) : Type() {
+        override fun requiresTypeAnnotation(): Boolean = true
+
         override fun hasHeapType(): Boolean = keyType.hasHeapType() || valueType.hasHeapType()
 
         override fun toString() = "map<$keyType, $valueType>"
@@ -85,6 +95,8 @@ sealed class Type : ASTElement {
     }
 
     class SetType(val innerType: Type) : Type() {
+        override fun requiresTypeAnnotation(): Boolean = true
+
         override fun hasHeapType(): Boolean = innerType.hasHeapType()
 
         override fun toString(): String = "set<$innerType>"
@@ -95,6 +107,8 @@ sealed class Type : ASTElement {
     }
 
     class MultisetType(val innerType: Type) : Type() {
+        override fun requiresTypeAnnotation(): Boolean = true
+
         override fun hasHeapType(): Boolean = innerType.hasHeapType()
 
         override fun toString(): String = "multiset<$innerType>"
@@ -105,6 +119,8 @@ sealed class Type : ASTElement {
     }
 
     open class SequenceType(val innerType: Type) : Type() {
+        override fun requiresTypeAnnotation(): Boolean = true
+
         override fun hasHeapType(): Boolean = innerType.hasHeapType()
 
         override fun toString(): String = "seq<$innerType>"
@@ -115,6 +131,8 @@ sealed class Type : ASTElement {
     }
 
     object StringType : SequenceType(CharType) {
+        override fun requiresTypeAnnotation(): Boolean = false
+
         override fun toString(): String = "string"
     }
 

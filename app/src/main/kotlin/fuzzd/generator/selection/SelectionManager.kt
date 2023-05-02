@@ -64,16 +64,16 @@ class SelectionManager(
     private val probabilityManager: ProbabilityManager = BaseProbabilityManager(),
 ) {
     fun selectType(context: GenerationContext, depth: Int = 1): Type {
-        val classTypeProb = if (context.onDemandIdentifiers && context.functionSymbolTable.hasClasses()) probabilityManager.classType() else 0.0
-        val traitTypeProb = if (context.onDemandIdentifiers && context.functionSymbolTable.hasTraits()) probabilityManager.traitType() else 0.0
-        val datatypeProb = if (context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) probabilityManager.datatype() else 0.0
+        val classTypeProb = if (context.onDemandIdentifiers && context.functionSymbolTable.hasClasses()) probabilityManager.classType() / context.expressionDepth else 0.0
+        val traitTypeProb = if (context.onDemandIdentifiers && context.functionSymbolTable.hasTraits()) probabilityManager.traitType() / context.expressionDepth else 0.0
+        val datatypeProb = if (context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) probabilityManager.datatype() / context.expressionDepth else 0.0
 
         val selection = listOf<Pair<(GenerationContext, Int) -> Type, Double>>(
             this::selectClassType to classTypeProb,
             this::selectTraitType to traitTypeProb,
             this::selectDatatypeType to datatypeProb,
             this::selectArrayType to if (context.onDemandIdentifiers) probabilityManager.arrayType() / max(context.expressionDepth, depth) else 0.0,
-            this::selectDataStructureType to probabilityManager.datatstructureType() / depth,
+            this::selectDataStructureType to probabilityManager.datatstructureType() / max(context.expressionDepth, depth),
             this::selectLiteralType to probabilityManager.literalType(),
         )
 
@@ -245,11 +245,11 @@ class SelectionManager(
 
     private fun isBinaryType(targetType: Type): Boolean =
         targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType &&
-            targetType !is TopLevelDatatypeType && targetType != CharType
+                targetType !is TopLevelDatatypeType && targetType != CharType
 
     private fun isAssignType(targetType: Type): Boolean =
         targetType is MapType || targetType is MultisetType || targetType is SequenceType ||
-            (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
+                (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability =
@@ -275,7 +275,8 @@ class SelectionManager(
         } else {
             0.0
         }
-        val indexProbability = if (identifier) probabilityManager.indexExpression() / context.expressionDepth else 0.0
+        val indexProbability =
+            if (identifier && (targetType !is DatatypeType || !targetType.isInductive())) probabilityManager.indexExpression() / context.expressionDepth else 0.0
 
         val identifierProbability = if (identifier) probabilityManager.identifier() else 0.0
         val literalProbability =
@@ -401,17 +402,17 @@ class SelectionManager(
     fun selectInt(min: Int, max: Int): Int = if (min == max) min else random.nextInt(min, max)
 
     companion object {
-        private const val MAX_EXPRESSION_DEPTH = 4
-        private const val MAX_STATEMENT_DEPTH = 5
+        private const val MAX_EXPRESSION_DEPTH = 3
+        private const val MAX_STATEMENT_DEPTH = 3
         private const val MIN_ARRAY_LENGTH = 1
         private const val MAX_ARRAY_LENGTH = 30
         private const val MAX_INT_VALUE = 1000
         private const val MAX_STRING_LENGTH = 10
-        private const val MAX_PARAMETERS = 15
-        private const val MAX_RETURNS = 15
-        private const val MAX_FIELDS = 5
-        private const val MAX_GLOBAL_FIELDS = 15
-        private const val MAX_FUNCTION_METHODS = 10
+        private const val MAX_PARAMETERS = 5
+        private const val MAX_RETURNS = 5
+        private const val MAX_FIELDS = 3
+        private const val MAX_GLOBAL_FIELDS = 20
+        private const val MAX_FUNCTION_METHODS = 3
         private const val MAX_METHODS = 3
         private const val MAX_TRAITS = 3
         private const val MAX_TRAIT_INHERITS = 2
