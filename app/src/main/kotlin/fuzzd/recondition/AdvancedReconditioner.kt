@@ -2,8 +2,11 @@ package fuzzd.recondition
 
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
+import fuzzd.generator.ast.ClassInstanceFunctionMethodSignatureAST
+import fuzzd.generator.ast.ClassInstanceMethodSignatureAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.DatatypeAST
+import fuzzd.generator.ast.DatatypeConstructorAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
@@ -13,6 +16,7 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
@@ -55,13 +59,18 @@ import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TraitAST
+import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.ClassType
+import fuzzd.generator.ast.Type.ConstructorType.ArrayType
+import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.MapType
 import fuzzd.generator.ast.Type.MultisetType
 import fuzzd.generator.ast.Type.SequenceType
+import fuzzd.generator.ast.Type.SetType
 import fuzzd.generator.ast.Type.StringType
+import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
@@ -76,6 +85,7 @@ import fuzzd.utils.foldPair
 class AdvancedReconditioner {
     private val classes = mutableMapOf<String, ClassAST>()
     private val traits = mutableMapOf<String, TraitAST>()
+
     private val methodSignatures = mutableMapOf<String, MethodSignatureAST>()
     private val tempGenerator = TemporaryNameGenerator()
 
@@ -85,8 +95,6 @@ class AdvancedReconditioner {
 
     fun recondition(dafnyAST: DafnyAST): DafnyAST {
         // get top level view of program
-        val reconditionedDatatypes = dafnyAST.topLevelElements.filterIsInstance<DatatypeAST>()
-        val reconditionedTraits = dafnyAST.topLevelElements.filterIsInstance<TraitAST>().map(this::reconditionTrait)
         val methods = dafnyAST.topLevelElements.filterIsInstance<MethodAST>()
         val functionMethods = dafnyAST.topLevelElements.filterIsInstance<FunctionMethodAST>()
 
@@ -94,6 +102,9 @@ class AdvancedReconditioner {
         functionMethods.forEach { reconditionFunctionMethodSignature(it.signature) }
 
         val reconditionedClasses = dafnyAST.topLevelElements.filterIsInstance<ClassAST>().map(this::reconditionClass)
+        val reconditionedTraits = dafnyAST.topLevelElements.filterIsInstance<TraitAST>().map(this::reconditionTrait)
+        val reconditionedDatatypes = dafnyAST.topLevelElements.filterIsInstance<DatatypeAST>()
+
         val reconditionedMethods =
             methods.map(this::reconditionMethod) + functionMethods.map(this::reconditionFunctionMethod)
 
@@ -110,6 +121,8 @@ class AdvancedReconditioner {
     }
 
     fun reconditionClass(classAST: ClassAST): ClassAST {
+        if (classAST.name in classes) return classes.getValue(classAST.name)
+
         classAST.methods.forEach { reconditionMethodSignature(it.signature) }
         classAST.functionMethods.forEach { reconditionFunctionMethodSignature(it.signature) }
 
@@ -118,11 +131,11 @@ class AdvancedReconditioner {
 
         val clazz = ClassAST(
             classAST.name,
-            classAST.extends.map { traits.getValue(it.name) }.toSet(),
+            classAST.extends.map { reconditionTrait(it) }.toSet(),
             emptySet(),
             reconditionedMethods union reconditionedFunctionMethods,
-            classAST.fields,
-            classAST.inheritedFields,
+            classAST.fields.map { reconditionIdentifier(it).first }.toSet(),
+            classAST.inheritedFields.map { reconditionIdentifier(it).first }.toSet(),
         )
 
         classes[classAST.name] = clazz
@@ -130,21 +143,31 @@ class AdvancedReconditioner {
     }
 
     fun reconditionTrait(traitAST: TraitAST): TraitAST {
+        if (traitAST.name in traits) return traits.getValue(traitAST.name)
+
         val reconditionedMethodSignatures = traitAST.methods().map(this::reconditionMethodSignature).toSet()
         val reconditionedFunctionMethodSignatures =
             traitAST.functionMethods().map(this::reconditionFunctionMethodSignature).toSet()
 
         val trait = TraitAST(
             traitAST.name,
-            traitAST.extends().map { traits.getValue(it.name) }.toSet(),
+            traitAST.extends().map { reconditionTrait(it) }.toSet(),
             emptySet(),
             reconditionedMethodSignatures union reconditionedFunctionMethodSignatures,
-            traitAST.fields,
+            traitAST.fields.map { reconditionIdentifier(it).first }.toSet(),
         )
 
         traits[traitAST.name] = trait
         return trait
     }
+
+    fun reconditionDatatype(datatypeAST: DatatypeAST): DatatypeAST =
+        DatatypeAST(datatypeAST.name, datatypeAST.constructors.map(this::reconditionDatatypeConstructor).toMutableList())
+
+    fun reconditionDatatypeConstructor(datatypeConstructorAST: DatatypeConstructorAST): DatatypeConstructorAST = DatatypeConstructorAST(
+        datatypeConstructorAST.name,
+        datatypeConstructorAST.fields.map { reconditionIdentifier(it).first }.toMutableList(),
+    )
 
     fun reconditionMethod(methodAST: MethodAST): MethodAST {
         val reconditionedSignature = reconditionMethodSignature(methodAST.signature)
@@ -200,11 +223,12 @@ class AdvancedReconditioner {
 
     private fun getReconditionedMethodSignature(signature: MethodSignatureAST): MethodSignatureAST {
         if (!methodSignatures.containsKey(signature.name)) {
-            methodSignatures[signature.name] = MethodSignatureAST(
-                signature.name,
-                signature.params + additionalParams,
-                signature.returns,
-            )
+            methodSignatures[signature.name] =
+                MethodSignatureAST(
+                    signature.name,
+                    (signature.params + additionalParams).map { reconditionIdentifier(it).first },
+                    signature.returns.map { reconditionIdentifier(it).first },
+                )
         }
 
         return methodSignatures.getValue(signature.name)
@@ -214,7 +238,7 @@ class AdvancedReconditioner {
         if (!methodSignatures.containsKey(signature.name)) {
             methodSignatures[signature.name] = MethodSignatureAST(
                 signature.name,
-                signature.params + additionalParams,
+                (signature.params + additionalParams).map { reconditionIdentifier(it).first },
                 listOf(IdentifierAST(FM_RETURNS, signature.returnType)),
             )
         }
@@ -315,12 +339,17 @@ class AdvancedReconditioner {
         return exprDependents + PrintAST(reconditionedExprs)
     }
 
-    fun reconditionVoidMethodCall(voidMethodCallAST: VoidMethodCallAST): List<StatementAST> {
-        val method = getReconditionedMethodSignature(voidMethodCallAST.method)
-        val (params, dependents) = reconditionExpressionList(voidMethodCallAST.params)
-
-        return dependents + VoidMethodCallAST(method, params + listOf(state))
-    }
+    fun reconditionVoidMethodCall(voidMethodCallAST: VoidMethodCallAST): List<StatementAST> =
+        if (voidMethodCallAST.method is ClassInstanceMethodSignatureAST) {
+            val (instance, instanceDeps) = reconditionIdentifier(voidMethodCallAST.method.classInstance)
+            val method = getMethodFromClassInstance(instance, voidMethodCallAST.method.name)
+            val (params, dependents) = reconditionExpressionList(voidMethodCallAST.params)
+            instanceDeps + dependents + VoidMethodCallAST(method, params + state)
+        } else {
+            val method = getReconditionedMethodSignature(voidMethodCallAST.method)
+            val (params, dependents) = reconditionExpressionList(voidMethodCallAST.params)
+            dependents + VoidMethodCallAST(method, params + listOf(state))
+        }
 
     private fun reconditionExpressionList(exprs: List<ExpressionAST>): Pair<List<ExpressionAST>, List<StatementAST>> =
         exprs.map(this::reconditionExpression).fold(Pair(emptyList(), emptyList())) { acc, r ->
@@ -439,7 +468,7 @@ class AdvancedReconditioner {
     }
 
     fun reconditionClassInstantiation(classInstantiationAST: ClassInstantiationAST): Pair<ClassInstantiationAST, List<StatementAST>> {
-        val reconditionedClass = classes.getValue(classInstantiationAST.clazz.name)
+        val reconditionedClass = reconditionClass(classInstantiationAST.clazz)
         val (params, dependents) = reconditionExpressionList(classInstantiationAST.params)
 
         return Pair(ClassInstantiationAST(reconditionedClass, params), dependents)
@@ -470,12 +499,22 @@ class AdvancedReconditioner {
             }
 
             is ClassInstanceAST -> Pair(
-                ClassInstanceAST(classes.getValue(identifierAST.clazz.name), identifierAST.name),
+                ClassInstanceAST(reconditionClass(identifierAST.clazz), identifierAST.name),
                 emptyList(),
             )
 
             is TraitInstanceAST -> Pair(
-                TraitInstanceAST(traits.getValue(identifierAST.trait.name), identifierAST.name),
+                TraitInstanceAST(reconditionTrait(identifierAST.trait), identifierAST.name),
+                emptyList(),
+            )
+
+            is DatatypeInstanceAST -> Pair(
+                DatatypeInstanceAST(
+                    identifierAST.name,
+                    DatatypeType(reconditionDatatype(identifierAST.datatype.datatype), reconditionDatatypeConstructor(identifierAST.datatype.constructor)),
+                    identifierAST.mutable,
+                    identifierAST.initialised(),
+                ),
                 emptyList(),
             )
 
@@ -488,7 +527,7 @@ class AdvancedReconditioner {
 
             is DatatypeDestructorAST -> reconditionDatatypeDestructor(identifierAST)
 
-            else -> Pair(identifierAST, emptyList())
+            else -> Pair(IdentifierAST(identifierAST.name, reconditionType(identifierAST.type()), identifierAST.mutable, identifierAST.initialised()), emptyList())
         }
 
     fun reconditionIndex(indexAST: IndexAST): Pair<IndexAST, List<StatementAST>> = when (indexAST) {
@@ -560,23 +599,48 @@ class AdvancedReconditioner {
         }
     }
 
-    fun reconditionNonVoidMethodCall(nonVoidMethodCallAST: NonVoidMethodCallAST): Pair<NonVoidMethodCallAST, List<StatementAST>> {
-        val reconditionedMethod = getReconditionedMethodSignature(nonVoidMethodCallAST.method)
-        val (params, dependents) = reconditionExpressionList(nonVoidMethodCallAST.params)
-
-        return Pair(NonVoidMethodCallAST(reconditionedMethod, params + state), dependents)
+    private fun getMethodFromClassInstance(instance: IdentifierAST, methodName: String): MethodSignatureAST {
+        val methodCandidates = if (instance is ClassInstanceAST) instance.methods else (instance as TraitInstanceAST).methods
+        return methodCandidates.first { it.name == methodName }
     }
 
-    fun reconditionFunctionMethodCall(functionMethodCallAST: FunctionMethodCallAST): Pair<ExpressionAST, List<StatementAST>> {
-        val temp = IdentifierAST(tempGenerator.newValue(), functionMethodCallAST.type())
-        val reconditionedMethod = getReconditionedFunctionMethodSignature(functionMethodCallAST.function)
+    fun reconditionNonVoidMethodCall(nonVoidMethodCallAST: NonVoidMethodCallAST): Pair<NonVoidMethodCallAST, List<StatementAST>> =
+        if (nonVoidMethodCallAST.method is ClassInstanceMethodSignatureAST) {
+            val (instance, instanceDeps) = reconditionIdentifier(nonVoidMethodCallAST.method.classInstance)
+            val method = getMethodFromClassInstance(instance, nonVoidMethodCallAST.method.name)
+            val (params, dependents) = reconditionExpressionList(nonVoidMethodCallAST.params)
+            Pair(NonVoidMethodCallAST(method, params + state), instanceDeps + dependents)
+        } else {
+            val reconditionedMethod = getReconditionedMethodSignature(nonVoidMethodCallAST.method)
+            val (params, dependents) = reconditionExpressionList(nonVoidMethodCallAST.params)
+            Pair(NonVoidMethodCallAST(reconditionedMethod, params + state), dependents)
+        }
+
+    fun reconditionFunctionMethodCall(functionMethodCallAST: FunctionMethodCallAST): Pair<ExpressionAST, List<StatementAST>> =
+        if (functionMethodCallAST.function is ClassInstanceFunctionMethodSignatureAST) {
+            reconditionClassInstanceFunctionMethodCall(functionMethodCallAST)
+        } else {
+            val temp = IdentifierAST(tempGenerator.newValue(), functionMethodCallAST.type())
+            val reconditionedMethod = getReconditionedFunctionMethodSignature(functionMethodCallAST.function)
+            val (params, dependents) = reconditionExpressionList(functionMethodCallAST.params)
+
+            val allDependents = dependents + listOf(
+                DeclarationAST(temp, NonVoidMethodCallAST(reconditionedMethod, params + state)),
+            )
+
+            Pair(temp, allDependents)
+        }
+
+    fun reconditionClassInstanceFunctionMethodCall(functionMethodCallAST: FunctionMethodCallAST): Pair<ExpressionAST, List<StatementAST>> {
+        val signature = functionMethodCallAST.function as ClassInstanceFunctionMethodSignatureAST
+        val (instance, instanceDeps) = reconditionIdentifier(signature.classInstance)
+        val methodCandidates = if (instance is ClassInstanceAST) instance.methods else (instance as TraitInstanceAST).methods
+        val reconditionedMethod = methodCandidates.first { signature.name == it.name }
+
         val (params, dependents) = reconditionExpressionList(functionMethodCallAST.params)
+        val temp = IdentifierAST(tempGenerator.newValue(), functionMethodCallAST.type())
 
-        val allDependents = dependents + listOf(
-            DeclarationAST(temp, NonVoidMethodCallAST(reconditionedMethod, params + state)),
-        )
-
-        return Pair(temp, allDependents)
+        return Pair(temp, instanceDeps + dependents + DeclarationAST(temp, NonVoidMethodCallAST(reconditionedMethod, params + state)))
     }
 
     fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): Pair<ExpressionAST, List<StatementAST>> {
@@ -589,11 +653,10 @@ class AdvancedReconditioner {
             val (rk, kdeps) = reconditionExpression(k)
             val (rv, vdeps) = reconditionExpression(v)
             Pair(Pair(rk, rv), kdeps + vdeps)
-        }.fold(Pair(emptyList<Pair<ExpressionAST, ExpressionAST>>(), emptyList<StatementAST>())) { acc, l ->
-            Pair(acc.first + l.first, acc.second + l.second)
-        }
+        }.foldPair()
+
         return Pair(
-            MapConstructorAST(mapConstructorAST.keyType, mapConstructorAST.valueType, assigns),
+            MapConstructorAST(reconditionType(mapConstructorAST.keyType), reconditionType(mapConstructorAST.valueType), assigns),
             assignDependents,
         )
     }
@@ -601,6 +664,23 @@ class AdvancedReconditioner {
     fun reconditionSequenceDisplay(sequenceDisplayAST: SequenceDisplayAST): Pair<SequenceDisplayAST, List<StatementAST>> {
         val (exprs, exprDependents) = reconditionExpressionList(sequenceDisplayAST.exprs)
         return Pair(SequenceDisplayAST(exprs), exprDependents)
+    }
+
+    fun reconditionType(type: Type): Type = when (type) {
+        is ClassType -> ClassType(reconditionClass(type.clazz))
+        is TraitType -> TraitType(reconditionTrait(type.trait))
+        is DatatypeType -> {
+            val datatype = reconditionDatatype(type.datatype)
+            DatatypeType(datatype, type.constructor)
+        }
+
+        is ArrayType -> ArrayType(reconditionType(type.internalType))
+        is MapType -> MapType(reconditionType(type.keyType), reconditionType(type.valueType))
+        is MultisetType -> MultisetType(reconditionType(type.innerType))
+        is SequenceType -> SequenceType(reconditionType(type.innerType))
+        is SetType -> SetType(reconditionType(type.innerType))
+
+        else -> type
     }
 
     companion object {

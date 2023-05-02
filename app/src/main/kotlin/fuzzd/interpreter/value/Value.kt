@@ -1,6 +1,7 @@
 package fuzzd.interpreter.value
 
 import fuzzd.generator.ast.DatatypeAST
+import fuzzd.generator.ast.DatatypeConstructorAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
@@ -34,7 +35,7 @@ fun <T> multisetDifference(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
 fun <T> multisetIntersect(m1: Map<T, Int>, m2: Map<T, Int>): Map<T, Int> {
     val intersect = mutableMapOf<T, Int>()
     m1.entries.forEach { (k, v) ->
-        if (k in m2) {
+        if (k in m2 && m2[k] != 0) {
             intersect[k] = min(v, m2[k]!!)
         }
     }
@@ -52,35 +53,47 @@ fun divideEuclidean(a: BigInteger, b: BigInteger): BigInteger =
 sealed class Value {
     open fun toExpressionAST(): ExpressionAST = throw UnsupportedOperationException()
 
-    data class DatatypeValue(
+    open class TopLevelDatatypeValue(
         val datatype: DatatypeAST,
         val values: ValueTable<IdentifierAST, Value?>,
     ) : Value() {
         override fun toExpressionAST(): ExpressionAST {
             val fields = fields()
-            val constructor = datatype.constructors.first { it.fields.containsAll(fields) }
+            val constructor = datatype.constructors.first { it.fields == fields }
             return DatatypeInstantiationAST(
                 datatype,
                 constructor,
-                values.values.mapNotNull { (_, v) -> v?.toExpressionAST() },
+                constructor.fields.map { values.get(it)!!.toExpressionAST() },
             )
         }
 
-        fun assign(assigns: List<Pair<IdentifierAST, Value>>): DatatypeValue {
+        open fun assign(assigns: List<Pair<IdentifierAST, Value>>): TopLevelDatatypeValue {
             val valueTable = values.clone()
             assigns.forEach { (identifier, value) -> valueTable.assign(identifier, value) }
-            return DatatypeValue(datatype, valueTable)
+            return TopLevelDatatypeValue(datatype, valueTable)
         }
 
-        fun fields(): Set<IdentifierAST> = values.values.filter { (_, v) -> v != null }.keys
+        fun fields(): List<IdentifierAST> = values.values.filter { (_, v) -> v != null }.keys.toList()
 
         override fun equals(other: Any?): Boolean =
-            other is DatatypeValue && other.datatype == datatype && other.values == values
+            other is TopLevelDatatypeValue && other.datatype == datatype && other.values == values
 
         override fun hashCode(): Int {
             var result = datatype.hashCode()
             result = 31 * result + values.hashCode()
             return result
+        }
+    }
+
+    class DatatypeValue(datatype: DatatypeAST, val constructor: DatatypeConstructorAST, values: ValueTable<IdentifierAST, Value?>) :
+        TopLevelDatatypeValue(datatype, values) {
+        override fun toExpressionAST(): ExpressionAST =
+            DatatypeInstantiationAST(datatype, constructor, constructor.fields.map { values.get(it)!!.toExpressionAST() })
+
+        override fun assign(assigns: List<Pair<IdentifierAST, Value>>): DatatypeValue {
+            val valueTable = values.clone()
+            assigns.forEach { (identifier, value) -> valueTable.assign(identifier, value) }
+            return DatatypeValue(datatype, constructor, valueTable)
         }
     }
 
@@ -188,7 +201,11 @@ sealed class Value {
             throw UnsupportedOperationException("Multiset didn't contain key $key")
         }
 
-        fun assign(key: Value, value: Int): MultisetValue = MultisetValue(map + mapOf(key to value))
+        fun assign(key: Value, value: Int): MultisetValue = if (value == 0) {
+            MultisetValue(map - setOf(key))
+        } else {
+            MultisetValue(map + mapOf(key to value))
+        }
 
         override fun equals(other: Any?): Boolean = other is MultisetValue && map == other.map
         override fun hashCode(): Int = map.hashCode()

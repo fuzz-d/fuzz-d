@@ -40,6 +40,19 @@ data class GenerationContext(
             functionCalls,
         ).setGlobalState(globalState)
 
+    fun increaseExpressionDepthWithSymbolTable(): GenerationContext =
+        GenerationContext(
+            functionSymbolTable,
+            statementDepth,
+            expressionDepth + 1,
+            SymbolTable(symbolTable),
+            identifierNameGenerator,
+            loopCounterGenerator,
+            methodContext,
+            onDemandIdentifiers,
+            functionCalls,
+        ).setGlobalState(globalState)
+
     fun increaseStatementDepth(): GenerationContext =
         GenerationContext(
             functionSymbolTable,

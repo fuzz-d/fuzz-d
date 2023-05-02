@@ -22,6 +22,7 @@ import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.utils.escape
 import fuzzd.utils.indent
+import jdk.incubator.vector.VectorOperators.Binary
 
 fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, context: String) {
     if (expected.size != actual.size) {
@@ -82,8 +83,11 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): Type = datatypeInstance.type()
 
-        override fun toString(): String =
-            "$datatypeInstance.(${updates.joinToString(", ") { (ident, expr) -> "$ident := $expr" }})"
+        override fun toString(): String {
+            val instanceStr = if (datatypeInstance is TernaryExpressionAST || datatypeInstance is BinaryExpressionAST)
+                "($datatypeInstance)" else "$datatypeInstance"
+            return "$instanceStr.(${updates.joinToString(", ") { (ident, expr) -> "$ident := $expr" }})"
+        }
     }
 
     class MatchExpressionAST(
@@ -106,10 +110,10 @@ sealed class ExpressionAST : ASTElement {
 
     class NonVoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) :
         ExpressionAST() {
-        init {
-            val methodParams = method.params
-            checkParams(methodParams, params, "method call to ${method.name}")
-        }
+//        init {
+//            val methodParams = method.params
+//            checkParams(methodParams, params, "method call to ${method.name}")
+//        }
 
         override fun type(): Type = MethodReturnType(method.returns.map { it.type() })
 
@@ -121,10 +125,10 @@ sealed class ExpressionAST : ASTElement {
         val params: List<ExpressionAST>,
     ) :
         ExpressionAST() {
-        init {
-            val functionParams = function.params
-            checkParams(functionParams, params, "function method call to ${function.name}")
-        }
+//        init {
+//            val functionParams = function.params
+//            checkParams(functionParams, params, "function method call to ${function.name}")
+//        }
 
         override fun type(): Type = function.returnType
 
@@ -139,10 +143,6 @@ sealed class ExpressionAST : ASTElement {
         init {
             if (condition.type() != BoolType) {
                 throw InvalidInputException("Invalid input type for ternary expression condition. Got ${condition.type()}")
-            }
-
-            if (ifBranch.type() != elseBranch.type()) {
-                throw InvalidInputException("Ternary expression branches have different types. If branch: ${ifBranch.type()}. Else branch: ${elseBranch.type()}")
             }
         }
 
@@ -262,7 +262,7 @@ sealed class ExpressionAST : ASTElement {
         val methods = trait.methods().map { ClassInstanceMethodSignatureAST(this, it) }
 
         override fun equals(other: Any?): Boolean = other is TraitInstanceAST &&
-            trait == other.trait && name == other.name && initialised() == other.initialised() && mutable == other.mutable
+                trait == other.trait && name == other.name && initialised() == other.initialised() && mutable == other.mutable
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -293,9 +293,9 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
-                clazz == other.clazz &&
-                name == other.name && initialised() == other.initialised() &&
-                mutable == other.mutable
+                    clazz == other.clazz &&
+                    name == other.name && initialised() == other.initialised() &&
+                    mutable == other.mutable
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -309,17 +309,27 @@ sealed class ExpressionAST : ASTElement {
 
     open class TopLevelDatatypeInstanceAST(
         name: String,
-        datatype: TopLevelDatatypeType,
+        open val datatype: TopLevelDatatypeType,
         mutable: Boolean = true,
         initialised: Boolean = false,
-    ) : IdentifierAST(name, datatype, mutable, initialised)
+    ) : IdentifierAST(name, datatype, mutable, initialised) {
+        override fun equals(other: Any?): Boolean =
+            other is TopLevelDatatypeInstanceAST && other.name == name && other.datatype == datatype
+
+        override fun hashCode(): Int {
+            var result = super.hashCode()
+            result = 31 * result + name.hashCode()
+            result = 31 * result + datatype.hashCode()
+            return result
+        }
+    }
 
     class DatatypeInstanceAST(
         name: String,
-        datatype: DatatypeType,
+        override val datatype: DatatypeType,
         mutable: Boolean = true,
         initialised: Boolean = false,
-    ) : IdentifierAST(name, datatype, mutable, initialised)
+    ) : TopLevelDatatypeInstanceAST(name, datatype, mutable, initialised)
 
     class ClassInstanceFieldAST(
         val classInstance: IdentifierAST,

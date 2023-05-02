@@ -6,6 +6,7 @@ import os
 from distutils.dir_util import copy_tree
 
 def getErrorDirectories():
+    resolution_dirs = []
     java_crash_dirs = []
     compiler_crash_dirs = []
     execute_crash_dirs = []
@@ -25,7 +26,10 @@ def getErrorDirectories():
         with open(f) as open_file:
             flag = False
             file_contents = open_file.read()
-            if 'Java Compiler crash: true' in file_contents:
+            if 'resolution/type errors detected' in file_contents:
+                flag = True
+                resolution_dirs += [str(dir_name)]
+            if 'Java crash: true' in file_contents:
                 flag = True
                 java_crash_dirs += [str(dir_name)]
             if 'Compiler crash: true' in file_contents:
@@ -42,7 +46,7 @@ def getErrorDirectories():
                 timeout_dirs += [str(dir_name)]
             if not flag:
                 success_dirs += [str(dir_name)]
-    return java_crash_dirs, compiler_crash_dirs, execute_crash_dirs, different_output_dirs, timeout_dirs, success_dirs
+    return resolution_dirs, java_crash_dirs, compiler_crash_dirs, execute_crash_dirs, different_output_dirs, timeout_dirs, success_dirs
 
 def copyDirectories(directories, directory):
     for dir_name in directories:
@@ -58,7 +62,8 @@ if __name__ == '__main__':
             print(time.time())
             os.system("timeout 60 java -jar /home/alex/fuzz-d/app/build/libs/app.jar fuzz")
         
-        java_crash_dirs, compiler_crash_dirs, execute_crash_dirs, different_output_dirs, timeout_dirs, success_dirs = getErrorDirectories()
+        resolution_dirs, java_crash_dirs, compiler_crash_dirs, execute_crash_dirs, different_output_dirs, timeout_dirs, success_dirs = getErrorDirectories()
+        copyDirectories(resolution_dirs, os.path.join('result', 'resolver'))
         copyDirectories(java_crash_dirs, os.path.join('result', 'java_crash'))
         copyDirectories(compiler_crash_dirs, os.path.join('result', 'compiler_crash'))
         copyDirectories(execute_crash_dirs, os.path.join('result', 'execute_crash'))

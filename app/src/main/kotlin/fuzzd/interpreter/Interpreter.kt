@@ -96,6 +96,7 @@ import fuzzd.interpreter.value.Value.MultisetValue
 import fuzzd.interpreter.value.Value.SequenceValue
 import fuzzd.interpreter.value.Value.SetValue
 import fuzzd.interpreter.value.Value.StringValue
+import fuzzd.interpreter.value.Value.TopLevelDatatypeValue
 import fuzzd.interpreter.value.ValueTable
 import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.ADVANCED_ABSOLUTE
@@ -105,6 +106,7 @@ import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.SAFE_ARRAY_INDEX
 import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
+import fuzzd.utils.mapFirst
 import fuzzd.utils.reduceLists
 import fuzzd.utils.toMultiset
 import java.math.BigInteger
@@ -182,17 +184,27 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             }
 
             is ClassValue -> {
-                if (key is ClassInstanceAST) {
-                    key.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }
-                        .reduceLists()
-                } else {
-                    val traitInstance = key as TraitInstanceAST
-                    traitInstance.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }
-                        .reduceLists()
+                when (key) {
+                    is ClassInstanceAST -> key.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }.reduceLists()
+                    is TraitInstanceAST -> key.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }.reduceLists()
+                    is DatatypeDestructorAST -> {
+                        val fields = if (key.field is ClassInstanceAST) {
+                            key.field.clazz.constructorFields
+                        } else {
+                            (key.field as TraitInstanceAST).trait.fields()
+                        }
+
+                        fields.map {
+                            val classInstanceField = ClassInstanceFieldAST(key, it)
+                            generateChecksumPrint(classInstanceField, interpretIdentifier(classInstanceField, context), context)
+                        }.reduceLists()
+                    }
+
+                    else -> throw UnsupportedOperationException()
                 }
             }
 
-            is DatatypeValue -> {
+            is TopLevelDatatypeValue -> {
                 value.fields().map { field ->
                     val destructor = DatatypeDestructorAST(key, field)
                     generateChecksumPrint(destructor, interpretIdentifier(destructor, context), context)
@@ -232,11 +244,17 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         val (_, seq) = matchStatement.cases.map { (case, seq) ->
             val datatypeType = case.type() as DatatypeType
             Pair(datatypeType, seq)
-        }.first { (type, _) ->
-            datatypeValue.fields() == type.constructor.fields.toSet()
-        }
+        }.first { (type, _) -> datatypeValue.constructor == type.constructor }
 
-        interpretSequence(seq, context.increaseDepth())
+        val caseContext = context.increaseDepth()
+        datatypeValue.constructor.fields.forEach {
+            if (datatypeValue.values.has(it)) {
+                caseContext.fields.declare(it, datatypeValue.values.get(it)!!)
+            } else {
+                caseContext.fields.create(it)
+            }
+        }
+        interpretSequence(seq, caseContext)
     }
 
     override fun interpretIfStatement(ifStatement: IfStatementAST, context: InterpreterContext) {
@@ -326,12 +344,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         when (identifier) {
             is ClassInstanceFieldAST -> {
                 val classValue = interpretIdentifier(identifier.classInstance, context) as ClassValue
-                setIdentifierValue(
-                    identifier.classField,
-                    value,
-                    InterpreterContext(context.fields, context.functions, context.methods, classValue.classContext),
-                    isDeclaration,
-                )
+                setIdentifierValue(identifier.classField, value, context.withClassContext(classValue.classContext), isDeclaration)
             }
 
             is ArrayIndexAST -> {
@@ -365,7 +378,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
     private fun emitOutput(value: Value) {
         when (value) {
-            is DatatypeValue -> emitDatatypeValue(value)
+            is TopLevelDatatypeValue -> emitDatatypeValue(value)
             is ClassValue -> emitClassValue(value)
             is ArrayValue -> emitArrayValue(value)
             is SetValue -> emitSetValue(value)
@@ -380,7 +393,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         }
     }
 
-    private fun emitDatatypeValue(datatypeValue: DatatypeValue) {
+    private fun emitDatatypeValue(datatypeValue: TopLevelDatatypeValue) {
         throw UnsupportedOperationException()
     }
 
@@ -450,8 +463,9 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     /* ============================== EXPRESSIONS ============================ */
-    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value =
-        when (expression) {
+    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value {
+//        println(expression)
+        return when (expression) {
             is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
             is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
             is ClassInstantiationAST -> interpretClassInstantiation(expression, context)
@@ -477,6 +491,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is MatchExpressionAST -> interpretMatchExpression(expression, context)
             else -> throw UnsupportedOperationException()
         }
+    }
 
     override fun interpretDatatypeInstantiation(
         instantiation: DatatypeInstantiationAST,
@@ -491,17 +506,18 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         instantiation.datatype.constructors.forEach { c -> c.fields.forEach { datatypeValueTable.create(it) } }
         identifiers.zip(values).forEach { (identifier, value) -> datatypeValueTable.declare(identifier, value) }
 
-        return DatatypeValue(instantiation.datatype, datatypeValueTable)
+        return DatatypeValue(instantiation.datatype, constructor, datatypeValueTable)
     }
 
     override fun interpretDatatypeUpdate(update: DatatypeUpdateAST, context: InterpreterContext): Value {
-        val datatypeValue = interpretExpression(update.datatypeInstance, context) as DatatypeValue
+        val datatypeValue = interpretExpression(update.datatypeInstance, context) as TopLevelDatatypeValue
+        val constructor = datatypeValue.datatype.constructors.first { it.fields.containsAll(update.updates.mapFirst()) }
         val assigns = update.updates.map { (identifier, expr) -> Pair(identifier, interpretExpression(expr, context)) }
-        return datatypeValue.assign(assigns)
+        return DatatypeValue(datatypeValue.datatype, constructor, datatypeValue.values).assign(assigns)
     }
 
     override fun interpretDatatypeDestructor(destructor: DatatypeDestructorAST, context: InterpreterContext): Value {
-        val datatypeValue = interpretExpression(destructor.datatypeInstance, context) as DatatypeValue
+        val datatypeValue = interpretExpression(destructor.datatypeInstance, context) as TopLevelDatatypeValue
         return datatypeValue.values.get(destructor.field)!! // might need to swap to interpretIdentifier
     }
 
@@ -510,8 +526,15 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         val (_, expr) = matchExpression.cases.map { (case, seq) ->
             val datatypeType = case.type() as DatatypeType
             Pair(datatypeType, seq)
-        }.first { (type, _) ->
-            datatypeValue.fields() == type.constructor.fields.toSet()
+        }.first { (type, _) -> datatypeValue.constructor == type.constructor }
+
+        val caseContext = context.increaseDepth()
+        datatypeValue.constructor.fields.forEach {
+            if (datatypeValue.values.has(it)) {
+                caseContext.fields.declare(it, datatypeValue.values.get(it)!!)
+            } else {
+                caseContext.fields.create(it)
+            }
         }
 
         return interpretExpression(expr, context)

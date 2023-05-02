@@ -13,3 +13,5 @@ fun <T> Iterable<Iterable<T>>.reduceLists() = this.reduceOrNull { x, y -> x + y 
 
 fun <T> Iterable<T>.toMultiset(): Map<T, Int> =
     this.fold(mutableMapOf()) { acc, k -> if (k in acc) acc[k] = acc[k]!! + 1 else acc[k] = 1; acc }
+
+fun <T, U> Iterable<Pair<T, U>>.mapFirst(): List<T> = this.map { (k, _) -> k}

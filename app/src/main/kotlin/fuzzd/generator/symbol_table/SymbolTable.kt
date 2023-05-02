@@ -38,10 +38,10 @@ class SymbolTable(private val parent: SymbolTable? = null) {
     }
 
     fun withType(type: Type): List<IdentifierAST> =
-        (parent?.withType(type) ?: listOf()) +
+        (parent?.withType(type) ?: listOf()).filter { it.name !in symbolTable.keys.map { k -> k.name } } +
             (typeTable[type] ?: listOf()) +
-            classInstances().map { it.fields }.unionAll().filter { it.type() == type } +
-            traitInstances().map { it.fields }.unionAll().filter { it.type() == type }
+            classInstances().map { it.fields }.unionAll().filter { type.strictEquals(it.type()) } +
+            traitInstances().map { it.fields }.unionAll().filter { type.strictEquals(it.type()) }
 
     fun classInstances(): List<ClassInstanceAST> =
         (parent?.classInstances() ?: listOf()) + symbolTable.keys.filterIsInstance<ClassInstanceAST>()
@@ -51,8 +51,6 @@ class SymbolTable(private val parent: SymbolTable? = null) {
 
     fun datatypeInstances(): List<DatatypeInstanceAST> =
         (parent?.datatypeInstances() ?: listOf()) + symbolTable.keys.filterIsInstance<DatatypeInstanceAST>()
-
-    fun types(): List<Type> = typeTable.keys.toList()
 
     fun hasType(type: Type): Boolean = typeTable[type]?.isNotEmpty() == true || parent?.hasType(type) == true
 }

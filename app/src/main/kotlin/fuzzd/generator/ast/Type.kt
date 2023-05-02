@@ -1,25 +1,31 @@
 package fuzzd.generator.ast
 
+import kotlin.reflect.full.isSubclassOf
+
 sealed class Type : ASTElement {
 
     open fun hasHeapType(): Boolean = false
 
+    open fun strictEquals(other: Any?): Boolean = this == other
+
     open class TopLevelDatatypeType(val datatype: DatatypeAST) : Type() {
         override fun toString(): String = datatype.name
 
+        override fun hasHeapType(): Boolean = datatype.constructors.any { it.fields.any { f -> f.type() != this && f.type().hasHeapType() } }
+
         override fun equals(other: Any?): Boolean = other is TopLevelDatatypeType && datatype == other.datatype
 
-        override fun hashCode(): Int = datatype.hashCode()
+        override fun strictEquals(other: Any?): Boolean = (other is TopLevelDatatypeType && !other::class.isSubclassOf(this::class)) && datatype == other.datatype
     }
 
     class DatatypeType(datatype: DatatypeAST, val constructor: DatatypeConstructorAST) :
         TopLevelDatatypeType(datatype) {
-        override fun hasHeapType(): Boolean = constructor.fields.any { it.type().hasHeapType() }
+        override fun hasHeapType(): Boolean = constructor.fields.any { it.type() != this && it.type().hasHeapType() }
 
-        override fun equals(other: Any?): Boolean =
-            other is DatatypeType && other.datatype == datatype && other.constructor == constructor
+        override fun equals(other: Any?): Boolean = (other is DatatypeType && other.datatype == datatype && other.constructor == constructor) ||
+            (other is TopLevelDatatypeType && other !is DatatypeType && other.datatype == datatype)
 
-        override fun hashCode(): Int = constructor.hashCode()
+        override fun strictEquals(other: Any?): Boolean = other is DatatypeType && other.datatype == datatype && other.constructor == constructor
 
         override fun toString(): String = datatype.name
     }
