@@ -144,14 +144,6 @@ sealed class ExpressionAST : ASTElement {
             if (condition.type() != BoolType) {
                 throw InvalidInputException("Invalid input type for ternary expression condition. Got ${condition.type()}")
             }
-
-            if (ifBranch.type() != elseBranch.type()) {
-                if (ifBranch.type() is DatatypeType) {
-                    println("${(ifBranch.type() as DatatypeType).constructor}")
-                    println("${(elseBranch.type() as DatatypeType).constructor}")
-                }
-                throw InvalidInputException("Ternary expression branches have different types. If branch: ${ifBranch.type()}. Else branch: ${elseBranch.type()}")
-            }
         }
 
         override fun type(): Type = ifBranch.type()

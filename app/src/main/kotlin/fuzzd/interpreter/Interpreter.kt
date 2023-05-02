@@ -246,7 +246,15 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             Pair(datatypeType, seq)
         }.first { (type, _) -> datatypeValue.constructor == type.constructor }
 
-        interpretSequence(seq, context.increaseDepth())
+        val caseContext = context.increaseDepth()
+        datatypeValue.constructor.fields.forEach {
+            if (datatypeValue.values.has(it)) {
+                caseContext.fields.declare(it, datatypeValue.values.get(it)!!)
+            } else {
+                caseContext.fields.create(it)
+            }
+        }
+        interpretSequence(seq, caseContext)
     }
 
     override fun interpretIfStatement(ifStatement: IfStatementAST, context: InterpreterContext) {
@@ -455,8 +463,9 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     /* ============================== EXPRESSIONS ============================ */
-    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value =
-        when (expression) {
+    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value {
+//        println(expression)
+        return when (expression) {
             is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
             is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
             is ClassInstantiationAST -> interpretClassInstantiation(expression, context)
@@ -482,6 +491,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is MatchExpressionAST -> interpretMatchExpression(expression, context)
             else -> throw UnsupportedOperationException()
         }
+    }
 
     override fun interpretDatatypeInstantiation(
         instantiation: DatatypeInstantiationAST,
@@ -517,6 +527,15 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             val datatypeType = case.type() as DatatypeType
             Pair(datatypeType, seq)
         }.first { (type, _) -> datatypeValue.constructor == type.constructor }
+
+        val caseContext = context.increaseDepth()
+        datatypeValue.constructor.fields.forEach {
+            if (datatypeValue.values.has(it)) {
+                caseContext.fields.declare(it, datatypeValue.values.get(it)!!)
+            } else {
+                caseContext.fields.create(it)
+            }
+        }
 
         return interpretExpression(expr, context)
     }

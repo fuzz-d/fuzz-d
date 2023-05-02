@@ -532,7 +532,9 @@ class Generator(
 
         val cases = datatype.datatype.datatypes().map { dtype ->
             val case = generateCaseMatchForDatatype(dtype)
-            val seq = generateSequence(context.increaseStatementDepth(), maxStatements = 4)
+            val caseContext = context.increaseStatementDepth()
+            dtype.constructor.fields.forEach { caseContext.symbolTable.add(it) }
+            val seq = generateSequence(caseContext, maxStatements = 4)
             Pair(case, seq)
         }
 
@@ -617,6 +619,7 @@ class Generator(
             is ClassType -> ClassInstanceAST(targetType.clazz, identifierName, mutable = true, initialised = true)
             is TraitType -> TraitInstanceAST(targetType.trait, identifierName, mutable = true, initialised = true)
             is DatatypeType -> DatatypeInstanceAST(identifierName, targetType, mutable = true, initialised = true)
+            is TopLevelDatatypeType -> TopLevelDatatypeInstanceAST(identifierName, targetType, mutable = true, initialised = true)
             else -> IdentifierAST(identifierName, targetType, initialised = true)
         }
 
@@ -794,12 +797,12 @@ class Generator(
             generateDatatype(context)
         }
 
-        val datatype = selectionManager.selectDatatypeType(context, literalOnly = false)
+        val datatype = selectionManager.selectDatatypeType(context.disableOnDemand(), literalOnly = false)
         val (match, matchDeps) = generateExpression(context.increaseExpressionDepth(), datatype)
         val (cases, caseDeps) = datatype.datatype.datatypes().map { dtype ->
             val caseMatch = generateCaseMatchForDatatype(dtype)
-            val exprContext = context.increaseExpressionDepth()
-//            dtype.constructor.fields.forEach { exprContext.symbolTable.add(it) }
+            val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
+            dtype.constructor.fields.forEach { exprContext.symbolTable.add(it) }
             val (expr, exprDeps) = generateExpression(exprContext, targetType)
             Pair(Pair(caseMatch, expr), exprDeps)
         }.foldPair()
@@ -1054,7 +1057,7 @@ class Generator(
     private fun datatypesWithType(context: GenerationContext, type: Type): List<DatatypeType> =
         context.functionSymbolTable.datatypes()
             .map { datatype -> datatype.constructors.map { DatatypeType(datatype, it) } }.reduceLists()
-            .filter { datatype -> datatype.constructor.fields.any { it.type() == type } }
+            .filter { datatype -> datatype.constructor.fields.any { type == it.type() } }
 
     private fun generateDatatypeDestructor(
         context: GenerationContext,

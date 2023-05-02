@@ -17,8 +17,6 @@ class DatatypeAST(val name: String, val constructors: MutableList<DatatypeConstr
 
     override fun equals(other: Any?): Boolean =
         other is DatatypeAST && other.name == name && other.constructors == constructors
-
-
 }
 
 class DatatypeConstructorAST(val name: String, val fields: List<IdentifierAST>) : ASTElement {

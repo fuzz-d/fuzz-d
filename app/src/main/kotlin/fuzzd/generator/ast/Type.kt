@@ -1,8 +1,12 @@
 package fuzzd.generator.ast
 
+import kotlin.reflect.full.isSubclassOf
+
 sealed class Type : ASTElement {
 
     open fun hasHeapType(): Boolean = false
+
+    open fun strictEquals(other: Any?): Boolean = this == other
 
     open class TopLevelDatatypeType(val datatype: DatatypeAST) : Type() {
         override fun toString(): String = datatype.name
@@ -11,7 +15,7 @@ sealed class Type : ASTElement {
 
         override fun equals(other: Any?): Boolean = other is TopLevelDatatypeType && datatype == other.datatype
 
-        override fun hashCode(): Int = datatype.name.hashCode()
+        override fun strictEquals(other: Any?): Boolean = (other is TopLevelDatatypeType && !other::class.isSubclassOf(this::class)) && datatype == other.datatype
     }
 
     class DatatypeType(datatype: DatatypeAST, val constructor: DatatypeConstructorAST) :
@@ -21,7 +25,7 @@ sealed class Type : ASTElement {
         override fun equals(other: Any?): Boolean = (other is DatatypeType && other.datatype == datatype && other.constructor == constructor) ||
             (other is TopLevelDatatypeType && other !is DatatypeType && other.datatype == datatype)
 
-        override fun hashCode(): Int = datatype.name.hashCode()
+        override fun strictEquals(other: Any?): Boolean = other is DatatypeType && other.datatype == datatype && other.constructor == constructor
 
         override fun toString(): String = datatype.name
     }

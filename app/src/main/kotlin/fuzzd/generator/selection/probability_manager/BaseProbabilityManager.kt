@@ -23,7 +23,7 @@ class BaseProbabilityManager : ProbabilityManager {
 
     // statements
     override fun ifStatement() = 0.13
-    override fun matchStatement() = 0.05
+    override fun matchStatement() = 0.00
     override fun whileStatement() = 0.12
     override fun methodCall() = 0.1
     override fun mapAssign() = 0.05
