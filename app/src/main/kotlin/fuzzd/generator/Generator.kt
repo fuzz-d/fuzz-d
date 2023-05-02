@@ -500,12 +500,13 @@ class Generator(
     /* ==================================== STATEMENTS ==================================== */
 
     override fun generateStatement(context: GenerationContext): List<StatementAST> = try {
-        generateStatementFromType(selectionManager.selectStatementType(context), context)
+        val type = selectionManager.selectStatementType(context)
+        println(type)
+        generateStatementFromType(type, context)
     } catch (e: MethodOnDemandException) {
-        generateStatementFromType(
-            selectionManager.selectStatementType(context, methodCalls = false),
-            context,
-        )
+        val type = selectionManager.selectStatementType(context, methodCalls = false)
+        println(type)
+        generateStatementFromType(type, context)
     }
 
     private fun generateStatementFromType(
@@ -527,14 +528,14 @@ class Generator(
         if (!context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) {
             generateDatatype(context)
         }
-        val datatype = selectionManager.selectDatatypeType(context, literalOnly = false)
+        val datatype = selectionManager.selectDatatypeType(context, 1)
         val (match, matchDeps) = generateExpression(context, datatype)
 
         val cases = datatype.datatype.datatypes().map { dtype ->
             val case = generateCaseMatchForDatatype(dtype)
             val caseContext = context.increaseStatementDepth()
             dtype.constructor.fields.forEach { caseContext.symbolTable.add(it) }
-            val seq = generateSequence(caseContext, maxStatements = 4)
+            val seq = generateSequence(caseContext, maxStatements = 5)
             Pair(case, seq)
         }
 
@@ -625,7 +626,9 @@ class Generator(
 
         context.symbolTable.add(identifier)
 
-        return exprDeps + if (targetType is TraitType || targetType is MapType || targetType is SetType || targetType is MultisetType || targetType is SequenceType) {
+        return exprDeps + if (targetType is TraitType || targetType is ArrayType || targetType is MapType ||
+            targetType is SetType || targetType is MultisetType || targetType is SequenceType
+        ) {
             TypedDeclarationAST(identifier, expr)
         } else {
             DeclarationAST(identifier, expr)
@@ -633,7 +636,7 @@ class Generator(
     }
 
     override fun generateAssignmentStatement(context: GenerationContext): List<StatementAST> {
-        val targetType = generateType(context, literalOnly = true)
+        val targetType = generateType(context)
         val (identifier, identDeps) = when (selectionManager.selectAssignType(context)) {
             AssignType.IDENTIFIER -> generateIdentifier(
                 context,
@@ -793,11 +796,11 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): Pair<MatchExpressionAST, List<StatementAST>> {
-        if (!context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) {
+        if (!context.functionSymbolTable.hasAvailableDatatypes(onDemand = false)) {
             generateDatatype(context)
         }
 
-        val datatype = selectionManager.selectDatatypeType(context.disableOnDemand(), literalOnly = false)
+        val datatype = selectionManager.selectDatatypeType(context.disableOnDemand(), 1)
         val (match, matchDeps) = generateExpression(context.increaseExpressionDepth(), datatype)
         val (cases, caseDeps) = datatype.datatype.datatypes().map { dtype ->
             val caseMatch = generateCaseMatchForDatatype(dtype)
@@ -814,19 +817,23 @@ class Generator(
         exprType: ExpressionType,
         context: GenerationContext,
         targetType: Type,
-    ): Pair<ExpressionAST, List<StatementAST>> = when (exprType) {
-        CONSTRUCTOR -> generateConstructorForType(context, targetType)
-        UNARY -> generateUnaryExpression(context, targetType)
-        MODULUS -> generateModulus(context, targetType)
-        MULTISET_CONVERSION -> generateMultisetConversion(context, targetType)
-        BINARY -> generateBinaryExpression(context, targetType)
-        TERNARY -> generateTernaryExpression(context, targetType)
-        MATCH -> generateMatchExpression(context, targetType)
-        FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
-        IDENTIFIER -> generateIdentifier(context, targetType, initialisedConstraint = true)
-        LITERAL -> generateLiteralForType(context, targetType as LiteralType)
-        INDEX_ASSIGN -> generateIndexAssign(context, targetType)
-        INDEX -> generateIndex(context, targetType)
+    ): Pair<ExpressionAST, List<StatementAST>> {
+        val result = when (exprType) {
+            CONSTRUCTOR -> generateConstructorForType(context, targetType)
+            UNARY -> generateUnaryExpression(context, targetType)
+            MODULUS -> generateModulus(context, targetType)
+            MULTISET_CONVERSION -> generateMultisetConversion(context, targetType)
+            BINARY -> generateBinaryExpression(context, targetType)
+            TERNARY -> generateTernaryExpression(context, targetType)
+            MATCH -> generateMatchExpression(context, targetType)
+            FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
+            IDENTIFIER -> generateIdentifier(context, targetType, initialisedConstraint = true)
+            LITERAL -> generateLiteralForType(context, targetType as LiteralType)
+            INDEX_ASSIGN -> generateIndexAssign(context, targetType)
+            INDEX -> generateIndex(context, targetType)
+        }
+//        println(result.first)
+        return result
     }
 
     override fun generateFunctionMethodCall(
@@ -1038,12 +1045,12 @@ class Generator(
         when (selectionManager.selectIndexType(context, targetType)) {
             ARRAY -> generateIdentifier(context, targetType)
             MAP -> {
-                val keyType = generateType(context, false)
+                val keyType = generateType(context)
                 generateMapIndex(context, keyType, targetType)
             }
 
             MULTISET -> {
-                val keyType = generateType(context, false)
+                val keyType = generateType(context)
                 generateMultisetIndex(context, keyType)
             }
 
@@ -1055,9 +1062,8 @@ class Generator(
         }
 
     private fun datatypesWithType(context: GenerationContext, type: Type): List<DatatypeType> =
-        context.functionSymbolTable.datatypes()
-            .map { datatype -> datatype.constructors.map { DatatypeType(datatype, it) } }.reduceLists()
-            .filter { datatype -> datatype.constructor.fields.any { type == it.type() } }
+        context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers)
+            .filter { it.constructor.fields.any { f -> type == f.type() } }
 
     private fun generateDatatypeDestructor(
         context: GenerationContext,
@@ -1138,7 +1144,7 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): Pair<ModulusExpressionAST, List<StatementAST>> {
-        val innerType = selectionManager.selectDataStructureType(context, literalOnly = false)
+        val innerType = selectionManager.selectDataStructureType(context, 1)
         val (expr, exprDeps) = generateExpression(context, innerType)
         return Pair(ModulusExpressionAST(expr), exprDeps)
     }
@@ -1276,8 +1282,8 @@ class Generator(
         return Pair(CharacterLiteralAST(c), emptyList())
     }
 
-    override fun generateType(context: GenerationContext, literalOnly: Boolean): Type =
-        selectionManager.selectType(context, literalOnly = literalOnly)
+    override fun generateType(context: GenerationContext): Type =
+        selectionManager.selectType(context)
 
     private fun generateDecimalLiteralValue(negative: Boolean = true): String {
         var value = selectionManager.selectDecimalLiteral()

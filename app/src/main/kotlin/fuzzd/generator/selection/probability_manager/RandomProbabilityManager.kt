@@ -14,8 +14,6 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
         }
 
         excludedFeatures.forEach { probabilities[it] = 0.0 }
-
-        println(probabilities)
     }
 
     private fun getProbability(function: KFunction<*>): Double = probabilities[function] ?: 0.0

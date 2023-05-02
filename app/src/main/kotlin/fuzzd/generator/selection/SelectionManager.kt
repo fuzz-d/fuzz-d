@@ -55,6 +55,7 @@ import fuzzd.generator.selection.StatementType.WHILE
 import fuzzd.generator.selection.probability_manager.BaseProbabilityManager
 import fuzzd.generator.selection.probability_manager.ProbabilityManager
 import fuzzd.utils.unionAll
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
 
@@ -62,36 +63,46 @@ class SelectionManager(
     private val random: Random,
     private val probabilityManager: ProbabilityManager = BaseProbabilityManager(),
 ) {
-    fun selectType(context: GenerationContext, literalOnly: Boolean = false): Type {
-        val classTypeProb = if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.hasClasses()) probabilityManager.classType() else 0.0
-        val traitTypeProb = if (!literalOnly && context.onDemandIdentifiers && context.functionSymbolTable.hasTraits()) probabilityManager.traitType() else 0.0
+    fun selectType(context: GenerationContext, depth: Int = 1): Type {
+        val classTypeProb = if (context.onDemandIdentifiers && context.functionSymbolTable.hasClasses()) probabilityManager.classType() else 0.0
+        val traitTypeProb = if (context.onDemandIdentifiers && context.functionSymbolTable.hasTraits()) probabilityManager.traitType() else 0.0
         val datatypeProb = if (context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) probabilityManager.datatype() else 0.0
 
-        val selection = listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
+        val selection = listOf<Pair<(GenerationContext, Int) -> Type, Double>>(
             this::selectClassType to classTypeProb,
             this::selectTraitType to traitTypeProb,
             this::selectDatatypeType to datatypeProb,
-            this::selectArrayType to if (!literalOnly && context.onDemandIdentifiers) probabilityManager.arrayType() / context.expressionDepth else 0.0,
-            this::selectDataStructureType to probabilityManager.datatstructureType(),
+            this::selectArrayType to if (context.onDemandIdentifiers) probabilityManager.arrayType() / max(context.expressionDepth, depth) else 0.0,
+            this::selectDataStructureType to probabilityManager.datatstructureType() / depth,
             this::selectLiteralType to probabilityManager.literalType(),
         )
 
-        return randomWeightedSelection(normaliseWeights(selection)).invoke(context, literalOnly)
+        return randomWeightedSelection(normaliseWeights(selection)).invoke(context, depth)
     }
 
-    private fun selectClassType(context: GenerationContext, literalOnly: Boolean): ClassType =
+    @Suppress("UNUSED_PARAMETER")
+    private fun selectClassType(context: GenerationContext, depth: Int): ClassType =
         ClassType(randomSelection(context.functionSymbolTable.classes().toList()))
 
-    private fun selectTraitType(context: GenerationContext, literalOnly: Boolean): TraitType =
+    @Suppress("UNUSED_PARAMETER")
+    private fun selectTraitType(context: GenerationContext, depth: Int): TraitType =
         TraitType(randomSelection(context.functionSymbolTable.traits().toList()))
 
-    fun selectDatatypeType(context: GenerationContext, literalOnly: Boolean): DatatypeType =
-        randomSelection(context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers))
+    @Suppress("UNUSED_PARAMETER")
+    fun selectDatatypeType(context: GenerationContext, depth: Int): DatatypeType {
+        val datatypes = context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers)
+        val inductive = datatypes.filter { it.isInductive() }
+        return if (withProbability(0.2) && inductive.isNotEmpty()) {
+            randomSelection(inductive)
+        } else {
+            randomSelection(datatypes)
+        }
+    }
 
-    fun selectDataStructureType(context: GenerationContext, literalOnly: Boolean): Type =
+    fun selectDataStructureType(context: GenerationContext, depth: Int): Type =
         randomWeightedSelection(
             normaliseWeights(
-                listOf<Pair<(GenerationContext, Boolean) -> Type, Double>>(
+                listOf<Pair<(GenerationContext, Int) -> Type, Double>>(
                     this::selectSetType to probabilityManager.setType(),
                     this::selectMultisetType to probabilityManager.multisetType(),
                     this::selectMapType to probabilityManager.mapType(),
@@ -99,38 +110,28 @@ class SelectionManager(
                     this::selectStringType to probabilityManager.stringType(),
                 ),
             ),
-        ).invoke(context, literalOnly)
-
-    private fun selectStringType(context: GenerationContext, literalOnly: Boolean): StringType = StringType
-
-    private fun selectSetType(context: GenerationContext, literalOnly: Boolean): SetType =
-        SetType(selectType(context, literalOnly))
-
-    private fun selectMultisetType(context: GenerationContext, literalOnly: Boolean): MultisetType =
-        MultisetType(selectType(context, literalOnly))
-
-    private fun selectMapType(context: GenerationContext, literalOnly: Boolean): MapType =
-        MapType(selectType(context, literalOnly), selectType(context, literalOnly))
-
-    private fun selectSequenceType(context: GenerationContext, literalOnly: Boolean): SequenceType =
-        SequenceType(selectType(context, literalOnly))
-
-    private fun selectArrayType(context: GenerationContext, literalOnly: Boolean): ArrayType =
-        selectArrayTypeWithDepth(context, 1)
-
-    private fun selectArrayTypeWithDepth(context: GenerationContext, depth: Int): ArrayType {
-        // TODO: Multi dimensional arrays
-        val innerType =
-            if (withProbability(0.0 / depth)) {
-                selectArrayTypeWithDepth(context, depth + 1)
-            } else {
-                selectType(context, false)
-            }
-        return ArrayType(innerType)
-    }
+        ).invoke(context, depth)
 
     @Suppress("UNUSED_PARAMETER")
-    private fun selectLiteralType(context: GenerationContext, literalOnly: Boolean): LiteralType =
+    private fun selectStringType(context: GenerationContext, depth: Int): StringType = StringType
+
+    private fun selectSetType(context: GenerationContext, depth: Int): SetType =
+        SetType(selectType(context, depth + 1))
+
+    private fun selectMultisetType(context: GenerationContext, depth: Int): MultisetType =
+        MultisetType(selectType(context, depth + 1))
+
+    private fun selectMapType(context: GenerationContext, depth: Int): MapType =
+        MapType(selectType(context, depth + 1), selectType(context, depth + 1))
+
+    private fun selectSequenceType(context: GenerationContext, depth: Int): SequenceType =
+        SequenceType(selectType(context, depth + 1))
+
+    private fun selectArrayType(context: GenerationContext, depth: Int): ArrayType =
+        ArrayType(selectType(context, depth + 1))
+
+    @Suppress("UNUSED_PARAMETER")
+    private fun selectLiteralType(context: GenerationContext, depth: Int): LiteralType =
         randomWeightedSelection(
             normaliseWeights(
                 listOf(
@@ -143,7 +144,7 @@ class SelectionManager(
 
     fun selectMethodReturnType(context: GenerationContext): List<Type> {
         val numberOfReturns = random.nextInt(MAX_RETURNS)
-        return (1..numberOfReturns).map { selectType(context, literalOnly = true) }
+        return (1..numberOfReturns).map { selectType(context) }
     }
 
     // selects operator, returning the operator and a selected input type for inner expressions
@@ -160,7 +161,7 @@ class SelectionManager(
                     is BooleanBinaryOperator -> Pair(selectedSubclass, Pair(BoolType, BoolType))
                     is ComparisonBinaryOperator -> Pair(selectedSubclass, Pair(IntType, IntType))
                     is DataStructureMembershipOperator -> {
-                        val dataStructureType = selectDataStructureType(context, false)
+                        val dataStructureType = selectDataStructureType(context, 1)
                         val keyType = when (dataStructureType) {
                             is SetType -> dataStructureType.innerType
                             is MultisetType -> dataStructureType.innerType
@@ -173,7 +174,7 @@ class SelectionManager(
                     }
 
                     is DataStructureBinaryOperator -> {
-                        val dataStructureType = selectDataStructureType(context, false)
+                        val dataStructureType = selectDataStructureType(context, 1)
                         Pair(selectedSubclass, Pair(dataStructureType, dataStructureType))
                     }
 
@@ -214,7 +215,8 @@ class SelectionManager(
         val whileStatementProbability = if (context.statementDepth == 1) probabilityManager.whileStatement() else 0.0
 
         val methodCallProbability = if (methodCalls) {
-            if (context.methodContext == null) probabilityManager.methodCall() else 0.05
+            val methodCallProbability = min(probabilityManager.methodCall(), 0.3)
+            if (context.methodContext == null) methodCallProbability else methodCallProbability / 5
         } else {
             0.0 // TODO() is there a better heuristic?
         }
@@ -226,12 +228,13 @@ class SelectionManager(
             StatementType.MATCH to matchProbability,
             MAP_ASSIGN to probabilityManager.mapAssign(),
             ASSIGN to probabilityManager.assignStatement(),
-            CLASS_INSTANTIATION to probabilityManager.classInstantiation(),
+            CLASS_INSTANTIATION to min(probabilityManager.classInstantiation(), 0.1),
         )
 
         return randomWeightedSelection(normaliseWeights(selection))
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun selectAssignType(context: GenerationContext): AssignType =
         randomWeightedSelection(
             listOf(
@@ -250,7 +253,7 @@ class SelectionManager(
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability =
-            if (isBinaryType(targetType)) probabilityManager.binaryExpression() / context.expressionDepth else 0.0
+            if (isBinaryType(targetType) && context.expressionDepth < MAX_EXPRESSION_DEPTH) probabilityManager.binaryExpression() / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) probabilityManager.unaryExpression() / context.expressionDepth else 0.0
         val modulusProbability = if (targetType == IntType) probabilityManager.modulusExpression() else 0.0
         val multisetConversionProbability = if (targetType is MultisetType) probabilityManager.multisetConversion() else 0.0
@@ -260,12 +263,13 @@ class SelectionManager(
             } else {
                 0.0
             }
-        val ternaryProbability = probabilityManager.ternary() / context.expressionDepth
-        val matchProbability = if (context.expressionDepth == 1 && context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) {
-            probabilityManager.matchExpression()
-        } else {
-            0.0
-        }
+        val ternaryProbability = if (context.expressionDepth < MAX_EXPRESSION_DEPTH) probabilityManager.ternary() / context.expressionDepth else 0.0
+        val matchProbability =
+            if (context.expressionDepth == 1 && context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers) && !targetType.hasHeapType()) {
+                probabilityManager.matchExpression()
+            } else {
+                0.0
+            }
         val assignProbability = if (isAssignType(targetType) && context.symbolTable.hasType(targetType)) {
             probabilityManager.assignExpression() / context.expressionDepth
         } else {
@@ -397,6 +401,7 @@ class SelectionManager(
     fun selectInt(min: Int, max: Int): Int = if (min == max) min else random.nextInt(min, max)
 
     companion object {
+        private const val MAX_EXPRESSION_DEPTH = 4
         private const val MAX_STATEMENT_DEPTH = 5
         private const val MIN_ARRAY_LENGTH = 1
         private const val MAX_ARRAY_LENGTH = 30

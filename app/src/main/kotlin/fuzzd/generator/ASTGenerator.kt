@@ -60,7 +60,7 @@ interface ASTGenerator {
 
     fun generateMethodSignature(context: GenerationContext): MethodSignatureAST
 
-    fun generateSequence(context: GenerationContext, maxStatements: Int = 10): SequenceAST
+    fun generateSequence(context: GenerationContext, maxStatements: Int = 15): SequenceAST
 
     /* ========================================== STATEMENTS ========================================== */
 
@@ -173,5 +173,5 @@ interface ASTGenerator {
 
     /* ========================================== TYPE ========================================== */
 
-    fun generateType(context: GenerationContext, literalOnly: Boolean = true): Type
+    fun generateType(context: GenerationContext): Type
 }

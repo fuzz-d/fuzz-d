@@ -20,7 +20,9 @@ sealed class Type : ASTElement {
 
     class DatatypeType(datatype: DatatypeAST, val constructor: DatatypeConstructorAST) :
         TopLevelDatatypeType(datatype) {
-        override fun hasHeapType(): Boolean = constructor.fields.any { it.type() != this && it.type().hasHeapType() }
+        fun isInductive(): Boolean = datatype.constructors.any { it == constructor }
+
+        override fun hasHeapType(): Boolean = constructor.fields.any { it.type().hasHeapType() }
 
         override fun equals(other: Any?): Boolean = (other is DatatypeType && other.datatype == datatype && other.constructor == constructor) ||
             (other is TopLevelDatatypeType && other !is DatatypeType && other.datatype == datatype)
