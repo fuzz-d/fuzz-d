@@ -3,20 +3,32 @@ package fuzzd.generator.selection.probability_manager
 import kotlin.random.Random
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.declaredFunctions
+import kotlin.reflect.typeOf
 
 class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> = setOf()) : ProbabilityManager {
     private val random = Random(seed)
     private val probabilities = mutableMapOf<KFunction<*>, Double>()
+    private val statementCounts = mutableMapOf<KFunction<*>, Int>()
 
     init {
-        ProbabilityManager::class.declaredFunctions.forEach {
-            probabilities[it] = random.nextDouble()
-        }
+        ProbabilityManager::class.declaredFunctions
+            .filter { it.returnType == typeOf<Double>() }
+            .forEach {
+                probabilities[it] = random.nextDouble()
+            }
 
         excludedFeatures.forEach { probabilities[it] = 0.0 }
+
+        ProbabilityManager::class.declaredFunctions
+            .filter { it.returnType == typeOf<Int>() }
+            .forEach {
+                statementCounts[it] = random.nextInt(1, 6)
+            }
     }
 
     private fun getProbability(function: KFunction<*>): Double = probabilities[function] ?: 0.0
+
+    private fun getStatementCount(function: KFunction<*>): Int = statementCounts[function] ?: 0
 
     override fun classType(): Double = getProbability(ProbabilityManager::classType)
     override fun traitType(): Double = getProbability(ProbabilityManager::traitType)
@@ -59,4 +71,9 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun sequenceIndexType(): Double = getProbability(ProbabilityManager::sequenceIndexType)
     override fun stringIndexType(): Double = getProbability(ProbabilityManager::stringIndexType)
     override fun datatypeIndexType(): Double = getProbability(ProbabilityManager::datatypeIndexType)
+    override fun methodStatements(): Int = getStatementCount(ProbabilityManager::methodStatements)
+    override fun ifBranchStatements(): Int = getStatementCount(ProbabilityManager::ifBranchStatements)
+    override fun whileBodyStatements(): Int = getStatementCount(ProbabilityManager::whileBodyStatements)
+    override fun mainFunctionStatements(): Int = getStatementCount(ProbabilityManager::mainFunctionStatements) + 5 // adjust for smaller random #
+    override fun matchStatements(): Int = getStatementCount(ProbabilityManager::matchStatements)
 }

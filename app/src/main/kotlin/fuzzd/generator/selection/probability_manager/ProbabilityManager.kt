@@ -54,4 +54,11 @@ interface ProbabilityManager {
     fun sequenceIndexType(): Double
     fun stringIndexType(): Double
     fun datatypeIndexType(): Double
+
+    // additional data
+    fun methodStatements(): Int
+    fun ifBranchStatements(): Int
+    fun whileBodyStatements(): Int
+    fun mainFunctionStatements(): Int
+    fun matchStatements(): Int
 }

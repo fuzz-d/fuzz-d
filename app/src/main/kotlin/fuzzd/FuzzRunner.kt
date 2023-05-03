@@ -22,7 +22,10 @@ class FuzzRunner(private val dir: File, private val logger: Logger) {
 
     fun run(seed: Long, advanced: Boolean, instrument: Boolean, run: Boolean, swarm: Boolean) {
         val generator = Generator(
-            SelectionManager(Random(seed), if (swarm) RandomProbabilityManager(seed, setOf(ProbabilityManager::charType)) else BaseProbabilityManager()),
+            SelectionManager(
+                Random(seed),
+                if (swarm) RandomProbabilityManager(seed, setOf(ProbabilityManager::charType, ProbabilityManager::multisetConversion)) else BaseProbabilityManager()
+            ),
             instrument,
         )
 

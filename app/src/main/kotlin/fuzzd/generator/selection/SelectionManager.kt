@@ -209,7 +209,7 @@ class SelectionManager(
         val whileStatementProbability = if (context.statementDepth == 1) probabilityManager.whileStatement() else 0.0
 
         val methodCallProbability = if (methodCalls) {
-            val methodCallProbability = min(probabilityManager.methodCall(), 0.3)
+            val methodCallProbability = min(probabilityManager.methodCall(), 0.1)
             if (context.methodContext == null) methodCallProbability else methodCallProbability / 5
         } else {
             0.0 // TODO() is there a better heuristic?
@@ -220,7 +220,7 @@ class SelectionManager(
             WHILE to whileStatementProbability,
             METHOD_CALL to methodCallProbability,
             StatementType.MATCH to matchProbability,
-            MAP_ASSIGN to probabilityManager.mapAssign(),
+            MAP_ASSIGN to min(probabilityManager.mapAssign(), 0.2),
             ASSIGN to probabilityManager.assignStatement(),
             CLASS_INSTANTIATION to min(probabilityManager.classInstantiation(), 0.1),
         )
@@ -347,8 +347,6 @@ class SelectionManager(
 
     fun selectArrayLength(): Int = random.nextInt(MIN_ARRAY_LENGTH, MAX_ARRAY_LENGTH)
 
-    fun selectSequenceLength(maxLength: Int) = random.nextInt(1, maxLength)
-
     fun selectNumberOfFields() = random.nextInt(0, MAX_FIELDS)
 
     fun selectNumberOfGlobalFields() = random.nextInt(0, MAX_GLOBAL_FIELDS)
@@ -391,6 +389,12 @@ class SelectionManager(
     fun selectBoolean(): Boolean = random.nextBoolean()
 
     fun selectInt(min: Int, max: Int): Int = if (min == max) min else random.nextInt(min, max)
+
+    fun methodStatements(): Int = probabilityManager.methodStatements()
+    fun ifBranchStatements(): Int = probabilityManager.ifBranchStatements()
+    fun whileBodyStatements(): Int = probabilityManager.whileBodyStatements()
+    fun mainFunctionStatements(): Int = probabilityManager.mainFunctionStatements()
+    fun matchStatements(): Int = probabilityManager.matchStatements()
 
     companion object {
         private const val MAX_EXPRESSION_DEPTH = 3

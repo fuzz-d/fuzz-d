@@ -23,12 +23,12 @@ class BaseProbabilityManager : ProbabilityManager {
 
     // statements
     override fun ifStatement() = 0.13
-    override fun matchStatement() = 0.00
+    override fun matchStatement() = 0.05
     override fun whileStatement() = 0.12
-    override fun methodCall() = 0.1
+    override fun methodCall() = 0.05
     override fun mapAssign() = 0.05
     override fun assignStatement() = 0.6
-    override fun classInstantiation() = 0.1
+    override fun classInstantiation() = 0.05
 
     // assign type
     override fun assignIdentifier() = 0.8
@@ -38,7 +38,7 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun binaryExpression() = 0.4
     override fun unaryExpression() = 0.15
     override fun modulusExpression() = 0.15
-    override fun multisetConversion() = 0.03
+    override fun multisetConversion() = 0.00 // due to resolver bug
     override fun functionCall() = 0.1
     override fun ternary() = 0.05
     override fun matchExpression() = 0.05
@@ -55,4 +55,11 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun sequenceIndexType() = 0.2
     override fun stringIndexType() = 0.2
     override fun datatypeIndexType() = 0.2
+
+    // other data
+    override fun methodStatements(): Int = 7
+    override fun ifBranchStatements(): Int = 6
+    override fun whileBodyStatements(): Int = 5
+    override fun mainFunctionStatements(): Int = 18
+    override fun matchStatements(): Int = 5
 }

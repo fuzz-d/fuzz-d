@@ -204,7 +204,7 @@ class Generator(
 
         context.symbolTable.add(globalStateIdentifier)
 
-        val body = generateSequence(context)
+        val body = generateSequence(context, selectionManager.mainFunctionStatements())
         return MainFunctionAST(SequenceAST(globalStateDeps + globalStateDecl + body.statements /*+ prints*/))
     }
 
@@ -477,7 +477,7 @@ class Generator(
         method.params().forEach { param -> context.symbolTable.add(param) }
         method.returns().forEach { r -> context.symbolTable.add(r) }
 
-        val body = generateSequence(context, maxStatements = 10)
+        val body = generateSequence(context, selectionManager.methodStatements())
 
         val returnAssigns = method.returns().map { r ->
             val (expr, deps) = generateExpression(context, r.type())
@@ -487,9 +487,8 @@ class Generator(
         return body.addStatements(returnAssigns)
     }
 
-    override fun generateSequence(context: GenerationContext, maxStatements: Int): SequenceAST {
-        val n = selectionManager.selectSequenceLength(maxStatements)
-        val statements = (1..n).map { generateStatement(context) }.reduceLists()
+    override fun generateSequence(context: GenerationContext, noStatements: Int): SequenceAST {
+        val statements = (1..noStatements).map { generateStatement(context) }.reduceLists()
         return SequenceAST(statements)
     }
 
@@ -529,7 +528,7 @@ class Generator(
             val case = generateCaseMatchForDatatype(dtype)
             val caseContext = context.increaseStatementDepth()
             dtype.constructor.fields.forEach { caseContext.symbolTable.add(it) }
-            val seq = generateSequence(caseContext, maxStatements = 5)
+            val seq = generateSequence(caseContext, selectionManager.matchStatements())
             Pair(case, seq)
         }
 
@@ -542,8 +541,8 @@ class Generator(
         val ifPrint = PrintAST(StringLiteralAST(controlFlowGenerator.newValue()))
         val elsePrint = PrintAST(StringLiteralAST(controlFlowGenerator.newValue()))
 
-        val ifBranch = generateSequence(context.increaseStatementDepth())
-        val elseBranch = generateSequence(context.increaseStatementDepth())
+        val ifBranch = generateSequence(context.increaseStatementDepth(), selectionManager.ifBranchStatements())
+        val elseBranch = generateSequence(context.increaseStatementDepth(), selectionManager.ifBranchStatements())
 
         val ifStatement = IfStatementAST(
             condition,
@@ -578,7 +577,7 @@ class Generator(
             BinaryExpressionAST(counterIdentifier, AdditionOperator, IntegerLiteralAST(1)),
         )
 
-        val whileBody = generateSequence(context.increaseStatementDepth())
+        val whileBody = generateSequence(context.increaseStatementDepth(), selectionManager.whileBodyStatements())
         val whileLoop = CounterLimitedWhileLoopAST(
             counterInitialisation,
             counterTerminationCheck,
@@ -789,7 +788,7 @@ class Generator(
         targetType: Type,
     ): Pair<MatchExpressionAST, List<StatementAST>> {
         if (!context.functionSymbolTable.hasAvailableDatatypes(onDemand = false)) {
-            generateDatatype(context)
+            generateDatatype(context.disableOnDemand())
         }
 
         val datatype = selectionManager.selectDatatypeType(context.disableOnDemand(), 1)
