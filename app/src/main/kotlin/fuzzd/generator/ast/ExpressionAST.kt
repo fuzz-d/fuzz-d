@@ -261,8 +261,7 @@ sealed class ExpressionAST : ASTElement {
         val functionMethods = trait.functionMethods().map { ClassInstanceFunctionMethodSignatureAST(this, it) }
         val methods = trait.methods().map { ClassInstanceMethodSignatureAST(this, it) }
 
-        override fun equals(other: Any?): Boolean = other is TraitInstanceAST &&
-                trait == other.trait && name == other.name && initialised() == other.initialised() && mutable == other.mutable
+        override fun equals(other: Any?): Boolean = other is TraitInstanceAST && trait == other.trait && name == other.name
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -284,18 +283,13 @@ sealed class ExpressionAST : ASTElement {
             if (initialised()) this else ClassInstanceAST(clazz, name, mutable, true)
 
         val fields = clazz.fields.map { ClassInstanceFieldAST(this, it) }
-
-        val functionMethods =
-            clazz.functionMethods.map { ClassInstanceFunctionMethodSignatureAST(this, it.signature) }
-
-        val methods =
-            clazz.methods.map { ClassInstanceMethodSignatureAST(this, it.signature) }
+        val functionMethods = clazz.functionMethods.map { ClassInstanceFunctionMethodSignatureAST(this, it.signature) }
+        val methods = clazz.methods.map { ClassInstanceMethodSignatureAST(this, it.signature) }
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
                     clazz == other.clazz &&
-                    name == other.name && initialised() == other.initialised() &&
-                    mutable == other.mutable
+                    name == other.name
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -313,8 +307,7 @@ sealed class ExpressionAST : ASTElement {
         mutable: Boolean = true,
         initialised: Boolean = false,
     ) : IdentifierAST(name, datatype, mutable, initialised) {
-        override fun equals(other: Any?): Boolean =
-            other is TopLevelDatatypeInstanceAST && other.name == name && other.datatype == datatype
+        override fun equals(other: Any?): Boolean = other is TopLevelDatatypeInstanceAST && other.name == name && other.datatype == datatype
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -371,8 +364,7 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
-        override fun initialise(): ArrayIndexAST =
-            if (initialised()) this else ArrayIndexAST(array, index, initialised = true)
+        override fun initialise(): ArrayIndexAST = if (initialised()) this else ArrayIndexAST(array, index, initialised = true)
 
         override fun toString(): String = "$array[$index]"
     }

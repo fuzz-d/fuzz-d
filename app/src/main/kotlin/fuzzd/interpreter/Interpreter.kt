@@ -52,7 +52,9 @@ import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
+import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.DatatypeType
+import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
@@ -187,11 +189,12 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                 when (key) {
                     is ClassInstanceAST -> key.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }.reduceLists()
                     is TraitInstanceAST -> key.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }.reduceLists()
-                    is DatatypeDestructorAST -> {
-                        val fields = if (key.field is ClassInstanceAST) {
-                            key.field.clazz.constructorFields
+                    is DatatypeDestructorAST, is ArrayIndexAST -> {
+                        val keyType = key.type()
+                        val fields = if (keyType is ClassType) {
+                            keyType.clazz.constructorFields
                         } else {
-                            (key.field as TraitInstanceAST).trait.fields()
+                            (keyType as TraitType).trait.fields()
                         }
 
                         fields.map {
@@ -463,31 +466,33 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     /* ============================== EXPRESSIONS ============================ */
-    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value = when (expression) {
-        is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
-        is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
-        is ClassInstantiationAST -> interpretClassInstantiation(expression, context)
-        is BinaryExpressionAST -> interpretBinaryExpression(expression, context)
-        is TernaryExpressionAST -> interpretTernaryExpression(expression, context)
-        is UnaryExpressionAST -> interpretUnaryExpression(expression, context)
-        is ModulusExpressionAST -> interpretModulus(expression, context)
-        is MultisetConversionAST -> interpretMultisetConversion(expression, context)
-        is IdentifierAST -> interpretIdentifier(expression, context)
-        is IndexAST -> interpretIndex(expression, context)
-        is IndexAssignAST -> interpretIndexAssign(expression, context)
-        is SetDisplayAST -> interpretSetDisplay(expression, context)
-        is SequenceDisplayAST -> interpretSequenceDisplay(expression, context)
-        is MapConstructorAST -> interpretMapConstructor(expression, context)
-        is ArrayLengthAST -> interpretArrayLength(expression, context)
-        is ArrayInitAST -> interpretArrayInit(expression, context)
-        is CharacterLiteralAST -> interpretCharacterLiteral(expression, context)
-        is StringLiteralAST -> interpretStringLiteral(expression, context)
-        is IntegerLiteralAST -> interpretIntegerLiteral(expression, context)
-        is BooleanLiteralAST -> interpretBooleanLiteral(expression, context)
-        is DatatypeInstantiationAST -> interpretDatatypeInstantiation(expression, context)
-        is DatatypeUpdateAST -> interpretDatatypeUpdate(expression, context)
-        is MatchExpressionAST -> interpretMatchExpression(expression, context)
-        else -> throw UnsupportedOperationException()
+    override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value {
+        return when (expression) {
+            is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
+            is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
+            is ClassInstantiationAST -> interpretClassInstantiation(expression, context)
+            is BinaryExpressionAST -> interpretBinaryExpression(expression, context)
+            is TernaryExpressionAST -> interpretTernaryExpression(expression, context)
+            is UnaryExpressionAST -> interpretUnaryExpression(expression, context)
+            is ModulusExpressionAST -> interpretModulus(expression, context)
+            is MultisetConversionAST -> interpretMultisetConversion(expression, context)
+            is IdentifierAST -> interpretIdentifier(expression, context)
+            is IndexAST -> interpretIndex(expression, context)
+            is IndexAssignAST -> interpretIndexAssign(expression, context)
+            is SetDisplayAST -> interpretSetDisplay(expression, context)
+            is SequenceDisplayAST -> interpretSequenceDisplay(expression, context)
+            is MapConstructorAST -> interpretMapConstructor(expression, context)
+            is ArrayLengthAST -> interpretArrayLength(expression, context)
+            is ArrayInitAST -> interpretArrayInit(expression, context)
+            is CharacterLiteralAST -> interpretCharacterLiteral(expression, context)
+            is StringLiteralAST -> interpretStringLiteral(expression, context)
+            is IntegerLiteralAST -> interpretIntegerLiteral(expression, context)
+            is BooleanLiteralAST -> interpretBooleanLiteral(expression, context)
+            is DatatypeInstantiationAST -> interpretDatatypeInstantiation(expression, context)
+            is DatatypeUpdateAST -> interpretDatatypeUpdate(expression, context)
+            is MatchExpressionAST -> interpretMatchExpression(expression, context)
+            else -> throw UnsupportedOperationException()
+        }
     }
 
     override fun interpretDatatypeInstantiation(
@@ -831,10 +836,12 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
             is DatatypeDestructorAST -> interpretDatatypeDestructor(identifier, context)
 
-            else -> if (context.fields.has(identifier)) {
-                context.fields.get(identifier)
-            } else {
-                context.classContext!!.fields.get(identifier)
+            else -> {
+                if (context.fields.has(identifier)) {
+                    context.fields.get(identifier)
+                } else {
+                    context.classContext!!.fields.get(identifier)
+                }
             }
         }
 
