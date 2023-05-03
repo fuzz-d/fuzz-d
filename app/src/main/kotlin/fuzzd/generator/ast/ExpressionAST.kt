@@ -343,6 +343,15 @@ sealed class ExpressionAST : ASTElement {
                 "$datatypeInstance.$field"
             }
         }
+
+        override fun equals(other: Any?): Boolean = other is DatatypeDestructorAST && other.datatypeInstance == datatypeInstance && other.field == field
+
+        override fun hashCode(): Int {
+            var result = super.hashCode()
+            result = 31 * result + datatypeInstance.hashCode()
+            result = 31 * result + field.hashCode()
+            return result
+        }
     }
 
     class ArrayIndexAST(

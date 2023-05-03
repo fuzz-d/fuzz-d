@@ -18,6 +18,7 @@ sealed class Type : ASTElement {
         override fun equals(other: Any?): Boolean = other is TopLevelDatatypeType && datatype == other.datatype
 
         override fun strictEquals(other: Any?): Boolean = (other is TopLevelDatatypeType && !other::class.isSubclassOf(this::class)) && datatype == other.datatype
+        override fun hashCode(): Int = datatype.hashCode()
     }
 
     class DatatypeType(datatype: DatatypeAST, val constructor: DatatypeConstructorAST) :
@@ -32,6 +33,12 @@ sealed class Type : ASTElement {
         override fun strictEquals(other: Any?): Boolean = other is DatatypeType && other.datatype == datatype && other.constructor == constructor
 
         override fun toString(): String = datatype.name
+
+        override fun hashCode(): Int {
+            var result = super.hashCode()
+            result = 31 * result + constructor.hashCode()
+            return result
+        }
     }
 
     class ClassType(val clazz: ClassAST) : Type() {

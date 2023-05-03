@@ -1,6 +1,7 @@
 package fuzzd.generator.ast
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.ExpressionAST.TopLevelDatatypeInstanceAST
 import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.error.InvalidInputException
 
@@ -17,6 +18,12 @@ class DatatypeAST(val name: String, val constructors: MutableList<DatatypeConstr
 
     override fun equals(other: Any?): Boolean =
         other is DatatypeAST && other.name == name && other.constructors == constructors
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + constructors.filter { it.fields.none { f -> f is TopLevelDatatypeInstanceAST && f.datatype.datatype == this } }.hashCode()
+        return result
+    }
 }
 
 class DatatypeConstructorAST(val name: String, val fields: List<IdentifierAST>) : ASTElement {

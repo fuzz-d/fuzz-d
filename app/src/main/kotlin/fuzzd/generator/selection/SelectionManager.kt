@@ -90,13 +90,7 @@ class SelectionManager(
 
     @Suppress("UNUSED_PARAMETER")
     fun selectDatatypeType(context: GenerationContext, depth: Int): DatatypeType {
-        val datatypes = context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers)
-        val inductive = datatypes.filter { it.isInductive() }
-        return if (withProbability(0.2) && inductive.isNotEmpty()) {
-            randomSelection(inductive)
-        } else {
-            randomSelection(datatypes)
-        }
+        return randomSelection(context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers))
     }
 
     fun selectDataStructureType(context: GenerationContext, depth: Int): Type =
@@ -332,10 +326,7 @@ class SelectionManager(
         return items.mapNotNull { item -> if (item.second == 0.0) null else Pair(item.first, item.second / weightSum) }
     }
 
-    fun <T> randomSelection(items: List<T>): T {
-        val randomIndex = random.nextInt(items.size)
-        return items[randomIndex]
-    }
+    fun <T> randomSelection(items: List<T>): T = if(items.size == 1) items[0] else items[random.nextInt(items.size)]
 
     fun <T> randomWeightedSelection(items: List<Pair<T, Double>>): T {
         val probability = random.nextFloat()

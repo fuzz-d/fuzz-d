@@ -14,6 +14,7 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
@@ -467,6 +468,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
     /* ============================== EXPRESSIONS ============================ */
     override fun interpretExpression(expression: ExpressionAST, context: InterpreterContext): Value {
+        println(expression)
         return when (expression) {
             is FunctionMethodCallAST -> interpretFunctionMethodCall(expression, context)
             is NonVoidMethodCallAST -> interpretNonVoidMethodCall(expression, context)
@@ -836,13 +838,11 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
             is DatatypeDestructorAST -> interpretDatatypeDestructor(identifier, context)
 
-            else -> {
-                if (context.fields.has(identifier)) {
+            else -> if (context.fields.has(identifier)) {
                     context.fields.get(identifier)
                 } else {
                     context.classContext!!.fields.get(identifier)
                 }
-            }
         }
 
     override fun interpretIndex(index: IndexAST, context: InterpreterContext): Value = when (index) {
