@@ -31,6 +31,7 @@ import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.ObjectOrientedInstanceAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -342,7 +343,7 @@ class AdvancedReconditioner {
     fun reconditionVoidMethodCall(voidMethodCallAST: VoidMethodCallAST): List<StatementAST> =
         if (voidMethodCallAST.method is ClassInstanceMethodSignatureAST) {
             val (instance, instanceDeps) = reconditionIdentifier(voidMethodCallAST.method.classInstance)
-            val method = getMethodFromClassInstance(instance, voidMethodCallAST.method.name)
+            val method = getMethodFromClassInstance(instance as ObjectOrientedInstanceAST, voidMethodCallAST.method.name)
             val (params, dependents) = reconditionExpressionList(voidMethodCallAST.params)
             instanceDeps + dependents + VoidMethodCallAST(method, params + state)
         } else {
@@ -599,15 +600,15 @@ class AdvancedReconditioner {
         }
     }
 
-    private fun getMethodFromClassInstance(instance: IdentifierAST, methodName: String): MethodSignatureAST {
-        val methodCandidates = if (instance is ClassInstanceAST) instance.methods else (instance as TraitInstanceAST).methods
+    private fun getMethodFromClassInstance(instance: ObjectOrientedInstanceAST, methodName: String): MethodSignatureAST {
+        val methodCandidates = instance.methods()
         return methodCandidates.first { it.name == methodName }
     }
 
     fun reconditionNonVoidMethodCall(nonVoidMethodCallAST: NonVoidMethodCallAST): Pair<NonVoidMethodCallAST, List<StatementAST>> =
         if (nonVoidMethodCallAST.method is ClassInstanceMethodSignatureAST) {
             val (instance, instanceDeps) = reconditionIdentifier(nonVoidMethodCallAST.method.classInstance)
-            val method = getMethodFromClassInstance(instance, nonVoidMethodCallAST.method.name)
+            val method = getMethodFromClassInstance(instance as ObjectOrientedInstanceAST, nonVoidMethodCallAST.method.name)
             val (params, dependents) = reconditionExpressionList(nonVoidMethodCallAST.params)
             Pair(NonVoidMethodCallAST(method, params + state), instanceDeps + dependents)
         } else {
@@ -634,7 +635,7 @@ class AdvancedReconditioner {
     fun reconditionClassInstanceFunctionMethodCall(functionMethodCallAST: FunctionMethodCallAST): Pair<ExpressionAST, List<StatementAST>> {
         val signature = functionMethodCallAST.function as ClassInstanceFunctionMethodSignatureAST
         val (instance, instanceDeps) = reconditionIdentifier(signature.classInstance)
-        val methodCandidates = if (instance is ClassInstanceAST) instance.methods else (instance as TraitInstanceAST).methods
+        val methodCandidates = (instance as ObjectOrientedInstanceAST).methods()
         val reconditionedMethod = methodCandidates.first { signature.name == it.name }
 
         val (params, dependents) = reconditionExpressionList(functionMethodCallAST.params)

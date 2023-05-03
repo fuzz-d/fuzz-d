@@ -21,6 +21,7 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
+import fuzzd.generator.ast.ExpressionAST.DatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
@@ -35,6 +36,7 @@ import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.ObjectOrientedInstanceAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -66,6 +68,7 @@ import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
+import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.MapType
@@ -114,6 +117,7 @@ import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
+import java.lang.reflect.Constructor
 
 class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     private val topLevelDatatypes = mutableListOf<DatatypeDeclContext>()
@@ -127,6 +131,36 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     private var functionMethodsTable = VisitorSymbolTable<FunctionMethodSignatureAST>()
     private var methodsTable = VisitorSymbolTable<MethodSignatureAST>()
     private var identifiersTable = VisitorSymbolTable<IdentifierAST>()
+
+    private fun addToTables(identifier: IdentifierAST, table: VisitorSymbolTable<IdentifierAST>) {
+        table.addEntry(identifier.name, identifier)
+        if (identifier is ObjectOrientedInstanceAST) {
+            identifier.fields().forEach { f -> addToTables(f, table) }
+            identifier.functionMethods().forEach { f -> functionMethodsTable.addEntry(f.name, f) }
+            identifier.methods().forEach { m -> methodsTable.addEntry(m.name, m) }
+        } else if (identifier is TopLevelDatatypeInstanceAST) {
+            identifier.datatype.datatype.constructors.forEach {
+                it.fields.forEach { f ->
+                    if (f == identifier) table.addEntry(
+                        identifier.name,
+                        identifier
+                    ) else addToTables(f, table)
+                }
+            }
+        }
+    }
+
+    private fun increaseTablesDepth() {
+        identifiersTable = identifiersTable.increaseDepth()
+        functionMethodsTable = functionMethodsTable.increaseDepth()
+        methodsTable = methodsTable.increaseDepth()
+    }
+
+    private fun decreaseTablesDepth() {
+        methodsTable = methodsTable.decreaseDepth()
+        functionMethodsTable = functionMethodsTable.decreaseDepth()
+        identifiersTable = identifiersTable.decreaseDepth()
+    }
 
     /* ============================================ TOP LEVEL ============================================ */
     override fun visitProgram(ctx: ProgramContext): DafnyAST {
@@ -176,10 +210,32 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitTopDecl(ctx: TopDeclContext): TopLevelAST = super.visitTopDecl(ctx) as TopLevelAST
 
+    private fun isInductiveConstructor(datatypeName: String, constructor: DatatypeConstructorContext): Boolean =
+        constructor.parameters()?.identifierType()?.any { p ->
+            p.type().upperIdentifier() != null && visitUpperIdentifierName(p.type().upperIdentifier()) == datatypeName
+        } == true
+
     override fun visitDatatypeDecl(ctx: DatatypeDeclContext): DatatypeAST {
         val name = visitUpperIdentifierName(ctx.upperIdentifier())
-        val constructors = ctx.datatypeConstructor().map(this::visitDatatypeConstructor)
+        val isInductive = ctx.datatypeConstructor().any { isInductiveConstructor(name, it) }
+        val constructors = ctx.datatypeConstructor()
+            .filter { !isInductive || !isInductiveConstructor(name, it) }
+            .map(this::visitDatatypeConstructor)
         val datatype = DatatypeAST(name, constructors.toMutableList())
+
+        if (isInductive) {
+            val inductiveConstructor = ctx.datatypeConstructor().first { isInductiveConstructor(name, it) }
+            val inductiveConstructorName = visitUpperIdentifierName(inductiveConstructor.upperIdentifier())
+            val inductiveConstructorFieldName = visitIdentifierName(inductiveConstructor.parameters().identifierType(0).identifier())
+
+            datatype.constructors.add(
+                DatatypeConstructorAST(
+                    inductiveConstructorName,
+                    listOf(TopLevelDatatypeInstanceAST(inductiveConstructorFieldName, TopLevelDatatypeType(datatype)))
+                )
+            )
+        }
+
         datatypesTable.addEntry(name, datatype)
         return datatype
     }
@@ -198,11 +254,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         val extends = ctx.upperIdentifier().subList(1, ctx.upperIdentifier().size)
             .map { identifierCtx -> visitUpperIdentifierName(identifierCtx) }
-            .map { identifierStr -> traitsTable.getEntry(identifierStr) }.toSet()
+            .map { identifierStr -> visitTopLevelName(identifierStr) as TraitAST }.toSet()
 
-        functionMethodsTable = functionMethodsTable.increaseDepth()
-        methodsTable = methodsTable.increaseDepth()
-        identifiersTable = identifiersTable.increaseDepth()
+        increaseTablesDepth()
 
         val fields = mutableSetOf<IdentifierAST>()
         val functionMethods = mutableSetOf<FunctionMethodAST>()
@@ -218,7 +272,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         ctx.classMemberDecl().forEach { classMemberDeclCtx ->
             when (val astNode = super.visitClassMemberDecl(classMemberDeclCtx)) {
                 is IdentifierAST -> {
-                    fields.add(astNode); classFieldsTable.addEntry(astNode.name, astNode)
+                    fields.add(astNode)
+                    addToTables(astNode, classFieldsTable)
                 }
 
                 is FunctionMethodAST -> functionMethods.add(astNode)
@@ -228,9 +283,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         val inheritedFields = extends.map { it.fields() }.unionAll()
 
-        functionMethodsTable = functionMethodsTable.decreaseDepth()
-        methodsTable = methodsTable.decreaseDepth()
-        identifiersTable = identifiersTable.decreaseDepth()
+        decreaseTablesDepth()
 
         val clazz = ClassAST(name, extends, functionMethods, methods, fields, inheritedFields)
         classesTable.addEntry(name, clazz)
@@ -243,20 +296,19 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         val extends = ctx.upperIdentifier().subList(1, ctx.upperIdentifier().size)
             .map { identifierCtx -> visitUpperIdentifierName(identifierCtx) }
-            .map { identifierStr -> traitsTable.getEntry(identifierStr) }.toSet()
+            .map { identifierStr -> visitTopLevelName(identifierStr) as TraitAST }.toSet()
 
         val fields = mutableSetOf<IdentifierAST>()
         val functionMethods = mutableSetOf<FunctionMethodSignatureAST>()
         val methods = mutableSetOf<MethodSignatureAST>()
 
-        functionMethodsTable = functionMethodsTable.increaseDepth()
-        methodsTable = methodsTable.increaseDepth()
-        identifiersTable = identifiersTable.increaseDepth()
+        increaseTablesDepth()
 
         ctx.traitMemberDecl().forEach { traitMemberDeclCtx ->
             when (val astNode = super.visitTraitMemberDecl(traitMemberDeclCtx)) {
                 is IdentifierAST -> {
-                    fields.add(astNode); classFieldsTable.addEntry(astNode.name, astNode)
+                    fields.add(astNode)
+                    addToTables(astNode, classFieldsTable)
                 }
 
                 is FunctionMethodSignatureAST -> functionMethods.add(astNode)
@@ -264,9 +316,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             }
         }
 
-        functionMethodsTable = functionMethodsTable.decreaseDepth()
-        methodsTable = methodsTable.decreaseDepth()
-        identifiersTable = identifiersTable.decreaseDepth()
+        decreaseTablesDepth()
 
         val trait = TraitAST(name, extends, functionMethods, methods, fields)
         traitsTable.addEntry(name, trait)
@@ -361,13 +411,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             when (val type = identifier.type()) {
                 is ClassType -> ClassInstanceAST(type.clazz, identifier.name, mutable = false, initialised = true)
                 is TraitType -> TraitInstanceAST(type.trait, identifier.name, mutable = false, initialised = true)
-                is TopLevelDatatypeType -> TopLevelDatatypeInstanceAST(
-                    identifier.name,
-                    type,
-                    mutable = false,
-                    initialised = true,
-                )
-
+                is TopLevelDatatypeType -> TopLevelDatatypeInstanceAST(identifier.name, type, mutable = false, initialised = true)
                 else -> IdentifierAST(identifier.name, identifier.type(), mutable = false, initialised = true)
             }
         }
@@ -407,53 +451,13 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val identifiers = lhs.indices.map { i ->
             val type = rhsTypes[i]
             val identifier = when (type) {
-                is ClassType -> {
-                    val identifier = ClassInstanceAST(type.clazz, lhs[i].name)
-
-                    type.clazz.fields.map { ident -> ClassInstanceFieldAST(identifier, ident) }
-                        .forEach { identifiersTable.addEntry(it.name, it) }
-
-                    type.clazz.functionMethods.map { fm ->
-                        ClassInstanceFunctionMethodSignatureAST(identifier, fm.signature)
-                    }.forEach { functionMethodsTable.addEntry(it.name, it) }
-
-                    type.clazz.methods.map { m -> ClassInstanceMethodSignatureAST(identifier, m.signature) }
-                        .forEach { methodsTable.addEntry(it.name, it) }
-
-                    identifier
-                }
-
-                is TraitType -> {
-                    val identifier = TraitInstanceAST(type.trait, lhs[i].name)
-
-                    type.trait.fields().map { ident -> ClassInstanceFieldAST(identifier, ident) }
-                        .forEach { identifiersTable.addEntry(it.name, it) }
-
-                    type.trait.functionMethods().map { fm -> ClassInstanceFunctionMethodSignatureAST(identifier, fm) }
-                        .forEach { functionMethodsTable.addEntry(it.name, it) }
-
-                    type.trait.methods().map { m -> ClassInstanceMethodSignatureAST(identifier, m) }
-                        .forEach { methodsTable.addEntry(it.name, it) }
-
-                    identifier
-                }
-
-                is TopLevelDatatypeType -> {
-                    val instance = TopLevelDatatypeInstanceAST(lhs[i].name, type, mutable = true, initialised = true)
-
-                    type.datatype.constructors.forEach { c ->
-                        c.fields
-                            .map { f -> DatatypeDestructorAST(instance, f) }
-                            .forEach { identifiersTable.addEntry(it.name, it) }
-                    }
-
-                    instance
-                }
-
+                is ClassType -> ClassInstanceAST(type.clazz, lhs[i].name)
+                is TraitType -> TraitInstanceAST(type.trait, lhs[i].name)
+                is TopLevelDatatypeType -> TopLevelDatatypeInstanceAST(lhs[i].name, type, mutable = true, initialised = true)
                 else -> IdentifierAST(lhs[i].name, type, mutable = true, initialised = true)
             }
 
-            identifiersTable.addEntry(identifier.name, identifier)
+            addToTables(identifier, identifiersTable)
 
             identifier
         }
@@ -529,10 +533,13 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     private fun visitMatchStatementCase(ctx: CaseStatementContext): Pair<ExpressionAST, SequenceAST> {
         val expr = visitExpression(ctx.expression())
+        val exprType = expr.type() as DatatypeType
 
-        identifiersTable = identifiersTable.increaseDepth()
+        increaseTablesDepth()
+        exprType.constructor.fields.forEach { addToTables(it, identifiersTable) }
         val seq = visitSequence(ctx.sequence())
-        identifiersTable = identifiersTable.decreaseDepth()
+        decreaseTablesDepth()
+
         return Pair(expr, seq)
     }
 
@@ -554,9 +561,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val whileCondition = visitExpression(ctx.expression())
 
         identifiersTable = identifiersTable.increaseDepth()
-
         val sequence = visitSequence(ctx.sequence())
-
         identifiersTable = identifiersTable.decreaseDepth()
 
         return WhileLoopAST(whileCondition, sequence)
@@ -572,180 +577,181 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     /* ============================================= EXPRESSION ======================================== */
 
-    override fun visitExpression(ctx: ExpressionContext): ExpressionAST = when {
-        ctx.literal() != null -> visitLiteral(ctx.literal())
-        ctx.functionCall() != null -> visitFunctionCall(ctx.functionCall())
-        ctx.unaryOperator() != null -> UnaryExpressionAST(
-            visitExpression(ctx.expression(0)),
-            visitUnaryOperator(ctx.unaryOperator()),
-        )
-
-        ctx.modulus() != null -> visitModulus(ctx.modulus())
-        ctx.multisetConversion() != null -> visitMultisetConversion(ctx.multisetConversion())
-        ctx.classInstantiation() != null -> visitClassInstantiation(ctx.classInstantiation())
-        ctx.datatypeInstantiation() != null -> visitDatatypeInstantiation(ctx.datatypeInstantiation())
-        ctx.ternaryExpression() != null -> visitTernaryExpression(ctx.ternaryExpression())
-        ctx.matchExpression() != null -> visitMatchExpression(ctx.matchExpression())
-        ctx.arrayLength() != null -> visitArrayLength(ctx.arrayLength())
-        ctx.setDisplay() != null -> visitSetDisplay(ctx.setDisplay())
-        ctx.sequenceDisplay() != null -> visitSequenceDisplay(ctx.sequenceDisplay())
-        ctx.mapConstructor() != null -> visitMapConstructor(ctx.mapConstructor())
-        ctx.identifier() != null -> visitIdentifier(ctx.identifier())
-        ctx.index() != null -> visitIndexExpression(ctx)
-        ctx.indexElem() != null -> visitIndexAssign(ctx)
-        ctx.datatypeFieldUpdate().isNotEmpty() -> visitDatatypeUpdate(ctx)
-        ctx.DOT() != null -> visitDotExpression(ctx)
-
-        ctx.ADD() != null -> {
-            val expr1 = visitExpression(ctx.expression(0))
-            val expr2 = visitExpression(ctx.expression(1))
-            BinaryExpressionAST(expr1, if (expr1.type() is LiteralType) AdditionOperator else UnionOperator, expr2)
-        }
-
-        ctx.AND() != null -> BinaryExpressionAST(
-            visitExpression(ctx.expression(0)),
-            ConjunctionOperator,
-            visitExpression(ctx.expression(1)),
-        )
-
-        ctx.disj() != null -> BinaryExpressionAST(
-            visitExpression(ctx.expression(0)),
-            DisjointOperator,
-            visitExpression(ctx.expression(1)),
-        )
-
-        ctx.DIV() != null -> BinaryExpressionAST(
-            visitExpression(ctx.expression(0)),
-            DivisionOperator,
-            visitExpression(ctx.expression(1)),
-        )
-
-        ctx.EQ() != null -> {
-            val expr1 = visitExpression(ctx.expression(0))
-            val expr2 = visitExpression(ctx.expression(1))
-            BinaryExpressionAST(
-                expr1,
-                if (expr1.type() is LiteralType) EqualsOperator else DataStructureEqualityOperator,
-                expr2,
+    override fun visitExpression(ctx: ExpressionContext): ExpressionAST =
+        when {
+            ctx.literal() != null -> visitLiteral(ctx.literal())
+            ctx.functionCall() != null -> visitFunctionCall(ctx.functionCall())
+            ctx.unaryOperator() != null -> UnaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                visitUnaryOperator(ctx.unaryOperator()),
             )
-        }
 
-        ctx.GEQ() != null -> {
-            val expr1 = visitExpression(ctx.expression(0))
-            val expr2 = visitExpression(ctx.expression(1))
-            BinaryExpressionAST(
-                expr1,
-                if (expr1.type() is LiteralType) GreaterThanEqualOperator else SupersetOperator,
-                expr2,
+            ctx.modulus() != null -> visitModulus(ctx.modulus())
+            ctx.multisetConversion() != null -> visitMultisetConversion(ctx.multisetConversion())
+            ctx.classInstantiation() != null -> visitClassInstantiation(ctx.classInstantiation())
+            ctx.datatypeInstantiation() != null -> visitDatatypeInstantiation(ctx.datatypeInstantiation())
+            ctx.ternaryExpression() != null -> visitTernaryExpression(ctx.ternaryExpression())
+            ctx.matchExpression() != null -> visitMatchExpression(ctx.matchExpression())
+            ctx.arrayLength() != null -> visitArrayLength(ctx.arrayLength())
+            ctx.setDisplay() != null -> visitSetDisplay(ctx.setDisplay())
+            ctx.sequenceDisplay() != null -> visitSequenceDisplay(ctx.sequenceDisplay())
+            ctx.mapConstructor() != null -> visitMapConstructor(ctx.mapConstructor())
+            ctx.identifier() != null -> visitIdentifier(ctx.identifier())
+            ctx.index() != null -> visitIndexExpression(ctx)
+            ctx.indexElem() != null -> visitIndexAssign(ctx)
+            ctx.datatypeFieldUpdate().isNotEmpty() -> visitDatatypeUpdate(ctx)
+            ctx.DOT() != null -> visitDotExpression(ctx)
+
+            ctx.ADD() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(expr1, if (expr1.type() is LiteralType) AdditionOperator else UnionOperator, expr2)
+            }
+
+            ctx.AND() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                ConjunctionOperator,
+                visitExpression(ctx.expression(1)),
             )
-        }
 
-        ctx.GT() != null -> {
-            val expr1 = visitExpression(ctx.expression(0))
-            val expr2 = visitExpression(ctx.expression(1))
-            BinaryExpressionAST(
-                expr1,
-                if (expr1.type() is LiteralType) GreaterThanOperator else ProperSupersetOperator,
-                expr2,
+            ctx.disj() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                DisjointOperator,
+                visitExpression(ctx.expression(1)),
             )
-        }
 
-        ctx.IFF() != null -> BinaryExpressionAST(
-            visitExpression(ctx.expression(0)),
-            IffOperator,
-            visitExpression(ctx.expression(1)),
-        )
-
-        ctx.IMP() != null -> BinaryExpressionAST(
-            visitExpression(ctx.expression(0)),
-            ImplicationOperator,
-            visitExpression(ctx.expression(1)),
-        )
-
-        ctx.IN() != null -> BinaryExpressionAST(
-            visitExpression(ctx.expression(0)),
-            MembershipOperator,
-            visitExpression(ctx.expression(1)),
-        )
-
-        ctx.LEQ() != null -> {
-            val expr1 = visitExpression(ctx.expression(0))
-            val expr2 = visitExpression(ctx.expression(1))
-            BinaryExpressionAST(
-                expr1,
-                if (expr1.type() is LiteralType) LessThanEqualOperator else SubsetOperator,
-                expr2,
+            ctx.DIV() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                DivisionOperator,
+                visitExpression(ctx.expression(1)),
             )
-        }
 
-        ctx.LT() != null -> {
-            val expr1 = visitExpression(ctx.expression(0))
-            val expr2 = visitExpression(ctx.expression(1))
-            BinaryExpressionAST(
-                expr1,
-                if (expr1.type() is LiteralType) LessThanOperator else ProperSubsetOperator,
-                expr2,
+            ctx.EQ() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) EqualsOperator else DataStructureEqualityOperator,
+                    expr2,
+                )
+            }
+
+            ctx.GEQ() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) GreaterThanEqualOperator else SupersetOperator,
+                    expr2,
+                )
+            }
+
+            ctx.GT() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) GreaterThanOperator else ProperSupersetOperator,
+                    expr2,
+                )
+            }
+
+            ctx.IFF() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                IffOperator,
+                visitExpression(ctx.expression(1)),
             )
-        }
 
-        ctx.MOD() != null -> BinaryExpressionAST(
-            visitExpression(ctx.expression(0)),
-            ModuloOperator,
-            visitExpression(ctx.expression(1)),
-        )
-
-        ctx.MUL() != null -> {
-            val expr1 = visitExpression(ctx.expression(0))
-            val expr2 = visitExpression(ctx.expression(1))
-            BinaryExpressionAST(
-                expr1,
-                if (expr1.type() is LiteralType) MultiplicationOperator else IntersectionOperator,
-                expr2,
+            ctx.IMP() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                ImplicationOperator,
+                visitExpression(ctx.expression(1)),
             )
-        }
 
-        ctx.NEG() != null -> {
-            val expr1 = visitExpression(ctx.expression(0))
-            val expr2 = visitExpression(ctx.expression(1))
-            BinaryExpressionAST(
-                expr1,
-                if (expr1.type() is LiteralType) SubtractionOperator else DifferenceOperator,
-                expr2,
+            ctx.IN() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                MembershipOperator,
+                visitExpression(ctx.expression(1)),
             )
-        }
 
-        ctx.NEQ() != null -> {
-            val expr1 = visitExpression(ctx.expression(0))
-            val expr2 = visitExpression(ctx.expression(1))
-            BinaryExpressionAST(
-                expr1,
-                if (expr1.type() is LiteralType) NotEqualsOperator else DataStructureInequalityOperator,
-                expr2,
+            ctx.LEQ() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) LessThanEqualOperator else SubsetOperator,
+                    expr2,
+                )
+            }
+
+            ctx.LT() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) LessThanOperator else ProperSubsetOperator,
+                    expr2,
+                )
+            }
+
+            ctx.MOD() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                ModuloOperator,
+                visitExpression(ctx.expression(1)),
             )
+
+            ctx.MUL() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) MultiplicationOperator else IntersectionOperator,
+                    expr2,
+                )
+            }
+
+            ctx.NEG() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) SubtractionOperator else DifferenceOperator,
+                    expr2,
+                )
+            }
+
+            ctx.NEQ() != null -> {
+                val expr1 = visitExpression(ctx.expression(0))
+                val expr2 = visitExpression(ctx.expression(1))
+                BinaryExpressionAST(
+                    expr1,
+                    if (expr1.type() is LiteralType) NotEqualsOperator else DataStructureInequalityOperator,
+                    expr2,
+                )
+            }
+
+            ctx.NOT_IN() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                AntiMembershipOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.OR() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                DisjunctionOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.RIMP() != null -> BinaryExpressionAST(
+                visitExpression(ctx.expression(0)),
+                ReverseImplicationOperator,
+                visitExpression(ctx.expression(1)),
+            )
+
+            ctx.expression() != null -> visitExpression(ctx.expression(0))
+
+            else -> throw UnsupportedOperationException("No valid expression types found")
         }
-
-        ctx.NOT_IN() != null -> BinaryExpressionAST(
-            visitExpression(ctx.expression(0)),
-            AntiMembershipOperator,
-            visitExpression(ctx.expression(1)),
-        )
-
-        ctx.OR() != null -> BinaryExpressionAST(
-            visitExpression(ctx.expression(0)),
-            DisjunctionOperator,
-            visitExpression(ctx.expression(1)),
-        )
-
-        ctx.RIMP() != null -> BinaryExpressionAST(
-            visitExpression(ctx.expression(0)),
-            ReverseImplicationOperator,
-            visitExpression(ctx.expression(1)),
-        )
-
-        ctx.expression() != null -> visitExpression(ctx.expression(0))
-
-        else -> throw UnsupportedOperationException("No valid expression types found")
-    }
 
     override fun visitClassInstantiation(ctx: ClassInstantiationContext): ClassInstantiationAST {
         val className = visitUpperIdentifierName(ctx.upperIdentifier())
@@ -797,8 +803,17 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return MatchExpressionAST(match, type, cases)
     }
 
-    private fun visitMatchExpressionCase(ctx: CaseExpressionContext): Pair<ExpressionAST, ExpressionAST> =
-        Pair(visitExpression(ctx.expression(0)), visitExpression(ctx.expression(1)))
+    private fun visitMatchExpressionCase(ctx: CaseExpressionContext): Pair<ExpressionAST, ExpressionAST> {
+        val case = visitExpression(ctx.expression(0))
+        val caseType = case.type() as DatatypeType
+
+        increaseTablesDepth()
+        caseType.constructor.fields.forEach { addToTables(it, identifiersTable) }
+        val expression = visitExpression(ctx.expression(1))
+        decreaseTablesDepth()
+
+        return Pair(case, expression)
+    }
 
     override fun visitArrayConstructor(ctx: ArrayConstructorContext): ArrayInitAST {
         val innerType = visitType(ctx.type())
@@ -811,23 +826,33 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val beforeDot = visitExpression(ctx.expression(0))
 
         return when (val type = beforeDot.type()) {
-            is ClassType -> ClassInstanceFieldAST(
-                beforeDot as IdentifierAST,
-                visitExpression(ctx.expression(1)) as IdentifierAST,
-            )
+            is ClassType -> {
+                increaseTablesDepth()
+                type.clazz.fields.forEach { addToTables(it, identifiersTable) }
+                type.clazz.functionMethods.forEach { functionMethodsTable.addEntry(it.name(), it.signature) }
+                type.clazz.methods.forEach { methodsTable.addEntry(it.name(), it.signature) }
+                val afterDot = visitExpression(ctx.expression(1)) as IdentifierAST
+                decreaseTablesDepth()
+                ClassInstanceFieldAST(beforeDot as IdentifierAST, afterDot)
+            }
 
-            is TraitType -> ClassInstanceFieldAST(
-                beforeDot as IdentifierAST,
-                visitExpression(ctx.expression(1)) as IdentifierAST,
-            )
+            is TraitType -> {
+                increaseTablesDepth()
+                type.trait.fields().forEach { addToTables(it, identifiersTable) }
+                type.trait.functionMethods().forEach { functionMethodsTable.addEntry(it.name, it) }
+                type.trait.methods().forEach { methodsTable.addEntry(it.name, it) }
+                val afterDot = visitExpression(ctx.expression(1)) as IdentifierAST
+                decreaseTablesDepth()
+                ClassInstanceFieldAST(beforeDot as IdentifierAST, afterDot)
+            }
 
             is TopLevelDatatypeType -> {
-                identifiersTable = identifiersTable.increaseDepth()
+                increaseTablesDepth()
                 type.datatype.constructors.forEach { c ->
-                    c.fields.forEach { identifiersTable.addEntry(it.name, it) }
+                    c.fields.forEach { addToTables(it, identifiersTable) }
                 }
                 val afterDot = visitExpression(ctx.expression(1)) as IdentifierAST
-                identifiersTable = identifiersTable.decreaseDepth()
+                decreaseTablesDepth()
                 DatatypeDestructorAST(beforeDot, afterDot)
             }
 
@@ -910,6 +935,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             IdentifierAST(name, PlaceholderType)
         }
 
+
     override fun visitLiteral(ctx: LiteralContext) = super.visitLiteral(ctx) as LiteralAST
 
     override fun visitBoolLiteral(ctx: BoolLiteralContext): BooleanLiteralAST =
@@ -968,12 +994,12 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             visitDatatypeDecl(decl)
         }
 
-    private fun visitTopLevelName(name: String) {
+    private fun visitTopLevelName(name: String): TopLevelAST {
         val classMatch = topLevelClasses.firstOrNull { visitUpperIdentifierName(it.upperIdentifier(0)) == name }
         val traitMatch = topLevelTraits.firstOrNull { visitUpperIdentifierName(it.upperIdentifier(0)) == name }
         val datatypeMatch = topLevelDatatypes.firstOrNull { visitUpperIdentifierName(it.upperIdentifier()) == name }
 
-        when {
+        return when {
             classMatch != null -> visitClassDecl(classMatch)
             traitMatch != null -> visitTraitDecl(traitMatch)
             datatypeMatch != null -> visitDatatypeDecl(datatypeMatch)

@@ -29,6 +29,7 @@ import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.ObjectOrientedInstanceAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -188,8 +189,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
             is ClassValue -> {
                 when (key) {
-                    is ClassInstanceAST -> key.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }.reduceLists()
-                    is TraitInstanceAST -> key.fields.map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }.reduceLists()
+                    is ObjectOrientedInstanceAST -> key.fields().map { generateChecksumPrint(it, interpretIdentifier(it, context), context) }.reduceLists()
                     is DatatypeDestructorAST, is ArrayIndexAST -> {
                         val keyType = key.type()
                         val fields = if (keyType is ClassType) {

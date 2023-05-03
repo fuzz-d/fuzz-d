@@ -110,10 +110,10 @@ sealed class ExpressionAST : ASTElement {
 
     class NonVoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) :
         ExpressionAST() {
-//        init {
-//            val methodParams = method.params
-//            checkParams(methodParams, params, "method call to ${method.name}")
-//        }
+        init {
+            val methodParams = method.params
+            checkParams(methodParams, params, "method call to ${method.name}")
+        }
 
         override fun type(): Type = MethodReturnType(method.returns.map { it.type() })
 
@@ -125,10 +125,10 @@ sealed class ExpressionAST : ASTElement {
         val params: List<ExpressionAST>,
     ) :
         ExpressionAST() {
-//        init {
-//            val functionParams = function.params
-//            checkParams(functionParams, params, "function method call to ${function.name}")
-//        }
+        init {
+            val functionParams = function.params
+            checkParams(functionParams, params, "function method call to ${function.name}")
+        }
 
         override fun type(): Type = function.returnType
 
@@ -172,7 +172,7 @@ sealed class ExpressionAST : ASTElement {
     class ModulusExpressionAST(val expr: ExpressionAST) : ExpressionAST() {
         init {
             val type = expr.type()
-            if (type !is MapType && type !is SetType && type !is MultisetType && type !is SequenceType) {
+            if (type !is PlaceholderType && type !is MapType && type !is SetType && type !is MultisetType && type !is SequenceType) {
                 throw InvalidInputException("Invalid expression type for modulus. Got $type, expected map, set or seq")
             }
         }
@@ -248,18 +248,29 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
+    abstract class ObjectOrientedInstanceAST(name: String, type: Type, mutable: Boolean, initialised: Boolean) : IdentifierAST(name, type, mutable, initialised) {
+        abstract fun fields(): List<IdentifierAST>
+        abstract fun functionMethods(): List<ClassInstanceFunctionMethodSignatureAST>
+
+        abstract fun methods(): List<ClassInstanceMethodSignatureAST>
+    }
+
     class TraitInstanceAST(
         val trait: TraitAST,
         name: String,
         mutable: Boolean = true,
         initialised: Boolean = false,
-    ) : IdentifierAST(name, TraitType(trait), mutable, initialised) {
+    ) : ObjectOrientedInstanceAST(name, TraitType(trait), mutable, initialised) {
+        private val fields = trait.fields().map { ClassInstanceFieldAST(this, it) }
+        private val functionMethods = trait.functionMethods().map { ClassInstanceFunctionMethodSignatureAST(this, it) }
+        private val methods = trait.methods().map { ClassInstanceMethodSignatureAST(this, it) }
+
+        override fun fields(): List<IdentifierAST> = fields
+        override fun functionMethods(): List<ClassInstanceFunctionMethodSignatureAST> = functionMethods
+        override fun methods(): List<ClassInstanceMethodSignatureAST> = methods
+
         override fun initialise(): IdentifierAST =
             if (initialised()) this else TraitInstanceAST(trait, name, mutable, true)
-
-        val fields = trait.fields().map { ClassInstanceFieldAST(this, it) }
-        val functionMethods = trait.functionMethods().map { ClassInstanceFunctionMethodSignatureAST(this, it) }
-        val methods = trait.methods().map { ClassInstanceMethodSignatureAST(this, it) }
 
         override fun equals(other: Any?): Boolean = other is TraitInstanceAST && trait == other.trait && name == other.name
 
@@ -278,13 +289,19 @@ sealed class ExpressionAST : ASTElement {
         name: String,
         mutable: Boolean = true,
         initialised: Boolean = false,
-    ) : IdentifierAST(name, ClassType(clazz), mutable, initialised) {
+    ) : ObjectOrientedInstanceAST(name, ClassType(clazz), mutable, initialised) {
+        private val fields = clazz.fields.map { ClassInstanceFieldAST(this, it) }
+        private val functionMethods = clazz.functionMethods.map { ClassInstanceFunctionMethodSignatureAST(this, it.signature) }
+        private val methods = clazz.methods.map { ClassInstanceMethodSignatureAST(this, it.signature) }
+
+        override fun fields(): List<IdentifierAST> = fields
+
+        override fun functionMethods(): List<ClassInstanceFunctionMethodSignatureAST> = functionMethods
+
+        override fun methods(): List<ClassInstanceMethodSignatureAST> = methods
+
         override fun initialise(): IdentifierAST =
             if (initialised()) this else ClassInstanceAST(clazz, name, mutable, true)
-
-        val fields = clazz.fields.map { ClassInstanceFieldAST(this, it) }
-        val functionMethods = clazz.functionMethods.map { ClassInstanceFunctionMethodSignatureAST(this, it.signature) }
-        val methods = clazz.methods.map { ClassInstanceMethodSignatureAST(this, it.signature) }
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&

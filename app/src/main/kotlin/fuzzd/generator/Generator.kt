@@ -671,8 +671,8 @@ class Generator(
         // get callable methods
         val methods = (
                 context.functionSymbolTable.methods().map { it.signature } +
-                        context.symbolTable.classInstances().map { it.methods }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.methods }.unionAll()
+                        context.symbolTable.classInstances().map { it.methods() }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.methods() }.unionAll()
                 )
             .filter { method ->
                 context.methodContext == null ||
@@ -857,8 +857,8 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
-                context.symbolTable.traitInstances().map { it.functionMethods }.unionAll())
+                context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
+                context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll())
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)

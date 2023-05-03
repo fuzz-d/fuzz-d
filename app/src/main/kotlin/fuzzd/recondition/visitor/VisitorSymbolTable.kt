@@ -25,7 +25,7 @@ class VisitorSymbolTable<T>(private val parent: VisitorSymbolTable<T>? = null) {
         return cloned
     }
 
-    fun values(): List<T> = table.values.toList()
+    fun values(): List<T> = (parent?.values() ?: emptyList()) + table.values.toList()
 
     fun increaseDepth(): VisitorSymbolTable<T> = VisitorSymbolTable(this)
 

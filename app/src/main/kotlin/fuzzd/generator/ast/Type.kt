@@ -163,5 +163,7 @@ sealed class Type : ASTElement {
 
     object PlaceholderType : Type() {
         override fun toString(): String = "placeholder"
+
+        override fun equals(other: Any?): Boolean = other is Type
     }
 }
