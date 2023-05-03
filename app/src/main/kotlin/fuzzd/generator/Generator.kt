@@ -140,6 +140,7 @@ class Generator(
     private val traitNameGenerator = TraitNameGenerator()
     private val datatypeNameGenerator = DatatypeNameGenerator()
     private val datatypeConstructorGenerator = DatatypeConstructorGenerator()
+    private val constructorFieldGenerator = DatatypeConstructorFieldGenerator()
 
     private val methodCallTable = DependencyTable<MethodSignatureAST>()
     private val controlFlowGenerator = ControlFlowGenerator()
@@ -317,15 +318,14 @@ class Generator(
     override fun generateDatatype(context: GenerationContext): DatatypeAST {
         val datatypeName = datatypeNameGenerator.newValue()
         val numberOfConstructors = selectionManager.selectNumberOfDatatypeConstructors()
-        val fieldNameGenerator = DatatypeConstructorFieldGenerator()
         val constructors =
-            (1..numberOfConstructors).map { generateDatatypeConstructor(context, fieldNameGenerator) }
+            (1..numberOfConstructors).map { generateDatatypeConstructor(context) }
         val datatype = DatatypeAST(datatypeName, constructors.toMutableList())
 
         if (numberOfConstructors > 0 && selectionManager.selectMakeDatatypeInductive()) {
             val constructor = DatatypeConstructorAST(
                 datatypeConstructorGenerator.newValue(),
-                listOf(TopLevelDatatypeInstanceAST(fieldNameGenerator.newValue(), TopLevelDatatypeType(datatype))),
+                listOf(TopLevelDatatypeInstanceAST(constructorFieldGenerator.newValue(), TopLevelDatatypeType(datatype))),
             )
             datatype.constructors.add(constructor)
         }
@@ -379,13 +379,12 @@ class Generator(
 
     private fun generateDatatype(context: GenerationContext, requiresConstructorType: Type): DatatypeAST {
         val datatypeName = datatypeNameGenerator.newValue()
-        val fieldNameGenerator = DatatypeConstructorFieldGenerator()
         val compulsoryConstructor = DatatypeConstructorAST(
             datatypeConstructorGenerator.newValue(),
             listOf(
                 paramIdentifierFromType(
                     requiresConstructorType,
-                    fieldNameGenerator,
+                    constructorFieldGenerator,
                     mutable = true,
                     initialised = true,
                 ),
@@ -394,14 +393,14 @@ class Generator(
 
         val numberOfConstructors = selectionManager.selectNumberOfDatatypeConstructors() - 1
         val otherConstructors = (1..numberOfConstructors).map {
-            generateDatatypeConstructor(context, fieldNameGenerator)
+            generateDatatypeConstructor(context)
         }
         val datatype = DatatypeAST(datatypeName, (otherConstructors + compulsoryConstructor).toMutableList())
 
         if (numberOfConstructors > 0 && selectionManager.selectMakeDatatypeInductive()) {
             val constructor = DatatypeConstructorAST(
                 datatypeConstructorGenerator.newValue(),
-                listOf(TopLevelDatatypeInstanceAST(fieldNameGenerator.newValue(), TopLevelDatatypeType(datatype))),
+                listOf(TopLevelDatatypeInstanceAST(constructorFieldGenerator.newValue(), TopLevelDatatypeType(datatype))),
             )
             datatype.constructors.add(constructor)
         }
@@ -410,15 +409,12 @@ class Generator(
         return datatype
     }
 
-    private fun generateDatatypeConstructor(
-        context: GenerationContext,
-        fieldNameGenerator: NameGenerator,
-    ): DatatypeConstructorAST {
+    private fun generateDatatypeConstructor(context: GenerationContext): DatatypeConstructorAST {
         val numberOfFields = selectionManager.selectNumberOfDatatypeFields()
         val constructorName = datatypeConstructorGenerator.newValue()
         val fields = (1..numberOfFields).map {
             val type = generateType(context)
-            paramIdentifierFromType(type, fieldNameGenerator, mutable = true, initialised = true)
+            paramIdentifierFromType(type, constructorFieldGenerator, mutable = true, initialised = true)
         }
         return DatatypeConstructorAST(constructorName, fields.toMutableList())
     }
