@@ -861,11 +861,9 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
-        (
-                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                        context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.functionMethods }.unionAll()
-                )
+        (context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                context.symbolTable.classInstances().map { it.functionMethods }.unionAll() +
+                context.symbolTable.traitInstances().map { it.functionMethods }.unionAll())
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
@@ -947,8 +945,7 @@ class Generator(
         targetType: Type,
     ): Pair<MapConstructorAST, List<StatementAST>> {
         val mapType = targetType as MapType
-        val numberOfExpressions =
-            1 // selectionManager.selectNumberOfConstructorFields(context) - https://github.com/dafny-lang/dafny/issues/3856
+        val numberOfExpressions = 1 // selectionManager.selectNumberOfConstructorFields(context) - https://github.com/dafny-lang/dafny/issues/3856
         val exprContext = context.increaseExpressionDepth()
         val (assigns, assignDeps) = (1..numberOfExpressions).map {
             val (key, keyDeps) = generateExpression(exprContext, mapType.keyType)
@@ -989,19 +986,7 @@ class Generator(
         val (index, indexDeps) = generateExpression(context.increaseExpressionDepth(), targetType.innerType)
         val (newValue, newValueDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
 
-        val (typeSafeIndex, deps) = if (targetType.innerType !is LiteralType) {
-            val keyIdent = paramIdentifierFromType(
-                targetType.innerType,
-                context.identifierNameGenerator,
-                mutable = true,
-                initialised = true,
-            )
-            context.symbolTable.add(keyIdent)
-            Pair(keyIdent, listOf(DeclarationAST(keyIdent, index)))
-        } else {
-            Pair(index, emptyList())
-        }
-        return Pair(IndexAssignAST(ident, typeSafeIndex, newValue), identDeps + indexDeps + newValueDeps + deps)
+        return Pair(IndexAssignAST(ident, index, newValue), identDeps + indexDeps + newValueDeps)
     }
 
     private fun generateSequenceIndexAssign(
