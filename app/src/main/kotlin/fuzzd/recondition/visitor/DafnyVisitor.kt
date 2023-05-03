@@ -408,12 +408,15 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     private fun visitParametersList(ctx: ParametersContext): List<IdentifierAST> =
         ctx.identifierType().map { identifierTypeCtx -> visitIdentifierType(identifierTypeCtx) }.map { identifier ->
-            when (val type = identifier.type()) {
+            val result = when (val type = identifier.type()) {
                 is ClassType -> ClassInstanceAST(type.clazz, identifier.name, mutable = false, initialised = true)
                 is TraitType -> TraitInstanceAST(type.trait, identifier.name, mutable = false, initialised = true)
                 is TopLevelDatatypeType -> TopLevelDatatypeInstanceAST(identifier.name, type, mutable = false, initialised = true)
                 else -> IdentifierAST(identifier.name, identifier.type(), mutable = false, initialised = true)
             }
+
+            addToTables(result, identifiersTable)
+            result
         }
 
     override fun visitSequence(ctx: SequenceContext): SequenceAST =
