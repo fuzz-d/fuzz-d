@@ -30,7 +30,7 @@ def generate_program(output_log, runner: Runner):
     output_log.write(f'{seed}\n')
 
     output_dir = pathlib.Path(ROOT) / "coverage_experiment" / str(time.time())
-    output_dir.mkdir(parents=True, exists_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / "main.dfy"
 
     runner.run(seed, output_dir)
