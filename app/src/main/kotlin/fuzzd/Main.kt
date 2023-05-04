@@ -36,7 +36,9 @@ class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
 
     override fun execute() {
         val fileDir = if (outputFile != null) {
-            File(outputFile!!)
+            val file = File(outputFile!!)
+            file.mkdir();
+            file
         } else {
             val path = "output"
             val dir = UUID.randomUUID().toString()
