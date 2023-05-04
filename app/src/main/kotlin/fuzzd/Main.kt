@@ -32,10 +32,17 @@ class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
         "Generate a program without running differential testing on it",
     )
 
+    private val outputFile by option(ArgType.String, "output", "o", "Directory for output")
+
     override fun execute() {
-        val path = "output"
-        val dir = UUID.randomUUID().toString()
-        val fileDir = File("$path/$dir")
+        val fileDir = if (outputFile != null) {
+            File(outputFile!!)
+        } else {
+            val path = "output"
+            val dir = UUID.randomUUID().toString()
+            File("$path/$dir")
+        }
+
         val logger = Logger(fileDir)
         val generationSeed = seed?.toLong() ?: Random.Default.nextLong()
 
@@ -45,7 +52,7 @@ class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
                 advanced == true,
                 instrument == true,
                 noRun != true,
-                swarm == true
+                swarm == true,
             )
         } catch (e: Exception) {
             e.printStackTrace()

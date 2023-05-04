@@ -24,7 +24,7 @@ class FuzzRunner(private val dir: File, private val logger: Logger) {
         val generator = Generator(
             SelectionManager(
                 Random(seed),
-                if (swarm) RandomProbabilityManager(seed, setOf(ProbabilityManager::charType, ProbabilityManager::multisetConversion)) else BaseProbabilityManager()
+                if (swarm) RandomProbabilityManager(seed, setOf(ProbabilityManager::charType, ProbabilityManager::multisetConversion)) else BaseProbabilityManager(),
             ),
             instrument,
         )
