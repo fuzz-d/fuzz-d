@@ -16,11 +16,11 @@ class Runner():
 
 class FuzzdRunner(Runner):
     def run(self, seed, output_dir):
-        os.system(f'fuzzd fuzz -n -s {seed} -o {output_dir}')
+        return os.system(f'java -jar app/build/libs/app.jar fuzz -n -s {seed} -o {output_dir}')
 
 class XDSmithRunner(Runner):
     def run(self, seed, output_dir):
-        os.system(f'racket xdsmith/fuzzer.rkt --seed {seed} > {output_dir}/main.dfy')
+        return os.system(f'racket xdsmith/fuzzer.rkt --seed {seed} > {output_dir}/main.dfy')
 
 def generate_random_seed():
     return random.randint(-1 * 2 ** 63, 2 ** 63 - 1)
@@ -33,8 +33,8 @@ def generate_program(output_log, runner: Runner):
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / "main.dfy"
 
-    runner.run(seed, output_dir)
-    return output_file
+    return_code = runner.run(seed, output_dir)
+    return return_code, output_file
     
 def run_coverage(program, coverage_report_json, coverage_report_cobertura):
     os.system(f'./coverlet.sh {program} {coverage_report_json} {coverage_report_cobertura}')
@@ -70,6 +70,7 @@ if __name__ == '__main__':
                 copy_tree(coverage_dir, coverage_checkpoint_dir)
                 checkpoints_saved[i] = True
 
-        generated_file = generate_program(output_log, runner)
-        run_coverage(generated_file, coverage_report_json, coverage_report_cobertura)
+        return_code, generated_file = generate_program(output_log, runner)
+        if return_code == 0:
+            run_coverage(generated_file, coverage_report_json, coverage_report_cobertura)
 
