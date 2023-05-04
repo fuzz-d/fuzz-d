@@ -16,6 +16,8 @@ class Runner():
 
 class FuzzdRunner(Runner):
     def run(self, seed, output_dir):
+        os.system(f'cat {output_dir}/wrappers.dfy > {output_dir}/main.dfy')
+        os.system(f'cat {output_dir}/body.dfy >> {output_dir}/main.dfy')
         return os.system(f'java -jar app/build/libs/app.jar fuzz -n -s {seed} -o {output_dir}')
 
 class XDSmithRunner(Runner):
