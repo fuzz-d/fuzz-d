@@ -43,9 +43,9 @@ class FuzzRunner(private val dir: File, private val logger: Logger) {
             originalWriter.write { ast }
             originalWriter.close()
 
+            val output = reconditionRunner.run(ast, advanced)
+            
             if (run) {
-                val output = reconditionRunner.run(ast, advanced)
-
                 // differential testing; log results
                 val validationResult = validator.validateFile(dir, DAFNY_WRAPPERS, DAFNY_BODY, DAFNY_MAIN, output)
                 logger.log { validationResult }
