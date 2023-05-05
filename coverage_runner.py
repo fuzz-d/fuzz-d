@@ -16,7 +16,7 @@ class Runner():
 
 class FuzzdRunner(Runner):
     def run(self, seed, output_dir):
-        return_code = os.system(f'java -jar app/build/libs/app.jar fuzz -n -s {seed} -o {output_dir}')
+        return_code = os.system(f'timeout 30 java -jar app/build/libs/app.jar fuzz -n -s {seed} -o {output_dir}')
         if return_code == 0:
             os.system(f'cat {output_dir}/wrappers.dfy > {output_dir}/main.dfy')
             os.system(f'cat {output_dir}/body.dfy >> {output_dir}/main.dfy')
@@ -31,13 +31,14 @@ def generate_random_seed():
 
 def generate_program(output_log, runner: Runner):
     seed = generate_random_seed()
-    output_log.write(f'{seed}\n')
 
     output_dir = pathlib.Path(ROOT) / "coverage_experiment" / f'seed{seed}'
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / "main.dfy"
 
     return_code = runner.run(seed, output_dir)
+    if return_code == 0:
+        os.system(f'/bin/bash -c "echo {seed} >> {output_log}"')
     return return_code, output_file
     
 def run_coverage(program, coverage_report_json, coverage_report_cobertura):
@@ -58,10 +59,7 @@ if __name__ == '__main__':
     coverage_report_cobertura = coverage_dir / "coverage.cobertura.xml"
 
     output_log.write_text(f'Git commit: ')
-    os.system(f'git rev-parse HEAD >> {output_log}')
-
-    output_log = output_log.open("a")
-    output_log.write(f'test case seeds: ')
+    os.system(f'/bin/bash -c "git rev-parse HEAD >> {output_log}"')
 
     start_time = time.time()
     timeout_secs = 60 * 60 * 24
@@ -71,7 +69,7 @@ if __name__ == '__main__':
         for (i, checkpoint) in enumerate(checkpoints):
             if (not checkpoints_saved[i] and time.time() >= start_time + checkpoint * 60 * 60):
                 coverage_checkpoint_dir = output_dir / f'coverage_{checkpoint}'
-                copy_tree(coverage_dir, coverage_checkpoint_dir)
+                copy_tree(str(coverage_dir), str(coverage_checkpoint_dir))
                 checkpoints_saved[i] = True
 
         return_code, generated_file = generate_program(output_log, runner)
