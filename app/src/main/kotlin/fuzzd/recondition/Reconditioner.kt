@@ -26,6 +26,7 @@ import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -216,6 +217,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is SetDisplayAST -> reconditionSetDisplay(expression)
         is MapConstructorAST -> reconditionMapConstructor(expression)
         is SequenceDisplayAST -> reconditionSequenceDisplay(expression)
+        is SequenceComprehensionAST -> reconditionSequenceComprehension(expression)
         is DatatypeInstantiationAST -> reconditionDatatypeInstantiation(expression)
         is DatatypeUpdateAST -> reconditionDatatypeUpdate(expression)
         is MatchExpressionAST -> reconditionMatchExpression(expression)
@@ -436,17 +438,24 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             nonVoidMethodCall.params.map(this::reconditionExpression),
         )
 
-    override fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): ExpressionAST = SetDisplayAST(
-        setDisplayAST.exprs.map(this::reconditionExpression),
-        setDisplayAST.isMultiset,
+    override fun reconditionSetDisplay(setDisplay: SetDisplayAST): ExpressionAST = SetDisplayAST(
+        setDisplay.exprs.map(this::reconditionExpression),
+        setDisplay.isMultiset,
     )
 
-    override fun reconditionMapConstructor(mapConstructorAST: MapConstructorAST): MapConstructorAST = MapConstructorAST(
-        mapConstructorAST.keyType,
-        mapConstructorAST.valueType,
-        mapConstructorAST.assignments.map { (k, v) -> Pair(reconditionExpression(k), reconditionExpression(v)) },
+    override fun reconditionMapConstructor(mapConstructor: MapConstructorAST): MapConstructorAST = MapConstructorAST(
+        mapConstructor.keyType,
+        mapConstructor.valueType,
+        mapConstructor.assignments.map { (k, v) -> Pair(reconditionExpression(k), reconditionExpression(v)) },
     )
 
-    override fun reconditionSequenceDisplay(sequenceDisplayAST: SequenceDisplayAST): SequenceDisplayAST =
-        SequenceDisplayAST(sequenceDisplayAST.exprs.map(this::reconditionExpression))
+    override fun reconditionSequenceDisplay(sequenceDisplay: SequenceDisplayAST): SequenceDisplayAST =
+        SequenceDisplayAST(sequenceDisplay.exprs.map(this::reconditionExpression))
+
+    override fun reconditionSequenceComprehension(sequenceComprehension: SequenceComprehensionAST): SequenceComprehensionAST =
+        SequenceComprehensionAST(
+            FunctionMethodCallAST(ABSOLUTE.signature, listOf(sequenceComprehension.size)),
+            sequenceComprehension.identifier,
+            reconditionExpression(sequenceComprehension.expr),
+        )
 }

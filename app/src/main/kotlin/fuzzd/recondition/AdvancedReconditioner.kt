@@ -32,6 +32,7 @@ import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.ObjectOrientedInstanceAST
+import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -377,6 +378,7 @@ class AdvancedReconditioner {
             is SetDisplayAST -> reconditionSetDisplay(expressionAST)
             is MapConstructorAST -> reconditionMapConstructor(expressionAST)
             is SequenceDisplayAST -> reconditionSequenceDisplay(expressionAST)
+            is SequenceComprehensionAST -> reconditionSeqeunceComprehension(expressionAST)
             is DatatypeInstantiationAST -> reconditionDatatypeInstantiation(expressionAST)
             is DatatypeUpdateAST -> reconditionDatatypeUpdate(expressionAST)
             is MatchExpressionAST -> reconditionMatchExpression(expressionAST)
@@ -665,6 +667,19 @@ class AdvancedReconditioner {
     fun reconditionSequenceDisplay(sequenceDisplayAST: SequenceDisplayAST): Pair<SequenceDisplayAST, List<StatementAST>> {
         val (exprs, exprDependents) = reconditionExpressionList(sequenceDisplayAST.exprs)
         return Pair(SequenceDisplayAST(exprs), exprDependents)
+    }
+
+    fun reconditionSeqeunceComprehension(
+        sequenceComprehensionAST: SequenceComprehensionAST,
+    ): Pair<SequenceComprehensionAST, List<StatementAST>> {
+        val temp = IdentifierAST(tempGenerator.newValue(), IntType)
+        val safetyId = safetyIdGenerator.newValue()
+        val methodCall = NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(sequenceComprehensionAST.size, state, StringLiteralAST(safetyId)))
+        val tempDecl = DeclarationAST(temp, methodCall)
+
+        val (expr, exprDependents) = reconditionExpression(sequenceComprehensionAST.expr)
+
+        return Pair(SequenceComprehensionAST(temp, sequenceComprehensionAST.identifier, expr), listOf(tempDecl) + exprDependents)
     }
 
     fun reconditionType(type: Type): Type = when (type) {
