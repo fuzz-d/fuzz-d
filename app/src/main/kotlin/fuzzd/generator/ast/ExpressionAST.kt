@@ -22,7 +22,6 @@ import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.utils.escape
 import fuzzd.utils.indent
-import jdk.incubator.vector.VectorOperators.Binary
 
 fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, context: String) {
     if (expected.size != actual.size) {
@@ -84,8 +83,11 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): Type = datatypeInstance.type()
 
         override fun toString(): String {
-            val instanceStr = if (datatypeInstance is TernaryExpressionAST || datatypeInstance is BinaryExpressionAST)
-                "($datatypeInstance)" else "$datatypeInstance"
+            val instanceStr = if (datatypeInstance is TernaryExpressionAST || datatypeInstance is BinaryExpressionAST) {
+                "($datatypeInstance)"
+            } else {
+                "$datatypeInstance"
+            }
             return "$instanceStr.(${updates.joinToString(", ") { (ident, expr) -> "$ident := $expr" }})"
         }
     }
@@ -305,8 +307,8 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
-                    clazz == other.clazz &&
-                    name == other.name
+                clazz == other.clazz &&
+                name == other.name
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -523,6 +525,18 @@ sealed class ExpressionAST : ASTElement {
         override fun toString() = "map[${assignments.joinToString(", ") { "${it.first} := ${it.second}" }}]"
     }
 
+    class MapComprehensionAST(val identifier: IdentifierAST, val condition: ExpressionAST, val assign: Pair<ExpressionAST, ExpressionAST>) : ExpressionAST() {
+        init {
+            if (condition.type() != BoolType) {
+                throw InvalidInputException("Condition for map comprehension must be bool type")
+            }
+        }
+
+        override fun type(): Type = MapType(assign.first.type(), assign.second.type())
+
+        override fun toString(): String = "map $identifier : ${identifier.type()} | $condition :: ${assign.first} := ${assign.second}"
+    }
+
     class SetDisplayAST(val exprs: List<ExpressionAST>, val isMultiset: Boolean) : ExpressionAST() {
         private var innerType = if (exprs.isEmpty()) PlaceholderType else exprs[0].type()
 
@@ -535,6 +549,18 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "${if (isMultiset) "multiset" else ""}{${exprs.joinToString(", ")}}"
     }
 
+    class SetComprehensionAST(val identifier: ExpressionAST, val condition: ExpressionAST, val expr: ExpressionAST) : ExpressionAST() {
+        init {
+            if (condition.type() != BoolType) {
+                throw InvalidInputException("condition in set comprehension must be bool type")
+            }
+        }
+
+        override fun type(): Type = expr.type()
+
+        override fun toString(): String = "set $identifier : ${identifier.type()} | $condition :: $expr"
+    }
+
     class SequenceDisplayAST(val exprs: List<ExpressionAST>) : ExpressionAST() {
         private var innerType = if (exprs.isEmpty()) PlaceholderType else exprs[0].type()
 
@@ -545,6 +571,18 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): Type = SequenceType(innerType)
 
         override fun toString(): String = "[${exprs.joinToString(", ")}]"
+    }
+
+    class SequenceComprehensionAST(val size: ExpressionAST, val identifier: IdentifierAST, val expr: ExpressionAST) : ExpressionAST() {
+        init {
+            if (size.type() != IntType) {
+                throw InvalidInputException("Size of sequence comprehension must be an int expression")
+            }
+        }
+
+        override fun type(): Type = SequenceType(expr.type())
+
+        override fun toString(): String = "seq($size, $identifier => $expr)"
     }
 
     class ArrayLengthAST(val array: IdentifierAST) : ExpressionAST() {

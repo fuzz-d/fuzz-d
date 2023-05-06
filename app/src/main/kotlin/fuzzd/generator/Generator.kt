@@ -30,6 +30,7 @@ import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -670,16 +671,16 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-                context.functionSymbolTable.methods().map { it.signature } +
-                        context.symbolTable.classInstances().map { it.methods() }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.methods() }.unionAll()
-                )
+            context.functionSymbolTable.methods().map { it.signature } +
+                context.symbolTable.classInstances().map { it.methods() }.unionAll() +
+                context.symbolTable.traitInstances().map { it.methods() }.unionAll()
+            )
             .filter { method ->
                 context.methodContext == null ||
-                        method is ClassInstanceMethodSignatureAST &&
-                        methodCallTable.canUseDependency(context.methodContext, method.signature) ||
-                        method !is ClassInstanceMethodSignatureAST &&
-                        methodCallTable.canUseDependency(context.methodContext, method)
+                    method is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method.signature) ||
+                    method !is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method)
             }
 
         // no support for on demand method generation within methods
@@ -856,9 +857,11 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
-        (context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+        (
+            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
                 context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
-                context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll())
+                context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
+            )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
@@ -933,6 +936,19 @@ class Generator(
         }.foldPair()
 
         return Pair(SequenceDisplayAST(exprs), exprDeps)
+    }
+
+    override fun generateSequenceComprehension(
+        context: GenerationContext,
+        targetType: SequenceType,
+    ): Pair<SequenceComprehensionAST, List<StatementAST>> {
+        val (length, _) = generateIntegerLiteral(context)
+        val identifier = IdentifierAST(context.loopCounterGenerator.newValue(), targetType.innerType)
+        val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
+        exprContext.symbolTable.add(identifier)
+        val (expr, exprDeps) = generateExpression(exprContext, targetType.innerType)
+
+        return Pair(SequenceComprehensionAST(length, identifier, expr), exprDeps)
     }
 
     override fun generateMapConstructor(
