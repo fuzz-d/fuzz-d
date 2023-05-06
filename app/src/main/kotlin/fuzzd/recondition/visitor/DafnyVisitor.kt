@@ -5,8 +5,6 @@ import dafnyParser.* // ktlint-disable no-wildcard-imports
 import fuzzd.generator.Generator.Companion.GLOBAL_STATE
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.ClassAST
-import fuzzd.generator.ast.ClassInstanceFunctionMethodSignatureAST
-import fuzzd.generator.ast.ClassInstanceMethodSignatureAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.DatatypeAST
 import fuzzd.generator.ast.DatatypeConstructorAST
@@ -21,7 +19,6 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
-import fuzzd.generator.ast.ExpressionAST.DatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
@@ -37,6 +34,7 @@ import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.ObjectOrientedInstanceAST
+import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
@@ -117,7 +115,6 @@ import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
-import java.lang.reflect.Constructor
 
 class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     private val topLevelDatatypes = mutableListOf<DatatypeDeclContext>()
@@ -141,10 +138,14 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         } else if (identifier is TopLevelDatatypeInstanceAST) {
             identifier.datatype.datatype.constructors.forEach {
                 it.fields.forEach { f ->
-                    if (f == identifier) table.addEntry(
-                        identifier.name,
-                        identifier
-                    ) else addToTables(f, table)
+                    if (f == identifier) {
+                        table.addEntry(
+                            identifier.name,
+                            identifier,
+                        )
+                    } else {
+                        addToTables(f, table)
+                    }
                 }
             }
         }
@@ -231,8 +232,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             datatype.constructors.add(
                 DatatypeConstructorAST(
                     inductiveConstructorName,
-                    listOf(TopLevelDatatypeInstanceAST(inductiveConstructorFieldName, TopLevelDatatypeType(datatype)))
-                )
+                    listOf(TopLevelDatatypeInstanceAST(inductiveConstructorFieldName, TopLevelDatatypeType(datatype))),
+                ),
             )
         }
 
@@ -598,6 +599,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             ctx.arrayLength() != null -> visitArrayLength(ctx.arrayLength())
             ctx.setDisplay() != null -> visitSetDisplay(ctx.setDisplay())
             ctx.sequenceDisplay() != null -> visitSequenceDisplay(ctx.sequenceDisplay())
+            ctx.sequenceComprehension() != null -> visitSequenceComprehension(ctx.sequenceComprehension())
             ctx.mapConstructor() != null -> visitMapConstructor(ctx.mapConstructor())
             ctx.identifier() != null -> visitIdentifier(ctx.identifier())
             ctx.index() != null -> visitIndexExpression(ctx)
@@ -902,6 +904,19 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         return SequenceDisplayAST(exprs)
     }
 
+    override fun visitSequenceComprehension(ctx: SequenceComprehensionContext): SequenceComprehensionAST {
+        val size = visitExpression(ctx.expression(0))
+        val identifierName = visitIdentifierName(ctx.identifier())
+        val identifier = IdentifierAST(identifierName, IntType)
+
+        identifiersTable = identifiersTable.increaseDepth()
+        identifiersTable.addEntry(identifierName, identifier)
+        val expr = visitExpression(ctx.expression(1))
+        identifiersTable = identifiersTable.decreaseDepth()
+
+        return SequenceComprehensionAST(size, identifier, expr)
+    }
+
     override fun visitMapConstructor(ctx: MapConstructorContext): MapConstructorAST {
         val assigns = ctx.indexElem().map(this::visitIndexElement)
         val keyType = assigns[0].first.type()
@@ -937,7 +952,6 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         } else {
             IdentifierAST(name, PlaceholderType)
         }
-
 
     override fun visitLiteral(ctx: LiteralContext) = super.visitLiteral(ctx) as LiteralAST
 

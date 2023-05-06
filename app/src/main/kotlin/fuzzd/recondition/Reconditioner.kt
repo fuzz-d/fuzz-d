@@ -19,6 +19,7 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
+import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
@@ -29,6 +30,7 @@ import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
+import fuzzd.generator.ast.ExpressionAST.SetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -215,7 +217,9 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is NonVoidMethodCallAST -> reconditionNonVoidMethodCallAST(expression)
         is FunctionMethodCallAST -> reconditionFunctionMethodCall(expression)
         is SetDisplayAST -> reconditionSetDisplay(expression)
+        is SetComprehensionAST -> TODO()
         is MapConstructorAST -> reconditionMapConstructor(expression)
+        is MapComprehensionAST -> TODO()
         is SequenceDisplayAST -> reconditionSequenceDisplay(expression)
         is SequenceComprehensionAST -> reconditionSequenceComprehension(expression)
         is DatatypeInstantiationAST -> reconditionDatatypeInstantiation(expression)

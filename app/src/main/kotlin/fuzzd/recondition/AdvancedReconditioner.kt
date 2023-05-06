@@ -24,6 +24,7 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
+import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
@@ -35,6 +36,7 @@ import fuzzd.generator.ast.ExpressionAST.ObjectOrientedInstanceAST
 import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
+import fuzzd.generator.ast.ExpressionAST.SetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -83,6 +85,7 @@ import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.foldPair
+import jdk.jfr.SettingControl
 
 class AdvancedReconditioner {
     private val classes = mutableMapOf<String, ClassAST>()
@@ -376,7 +379,9 @@ class AdvancedReconditioner {
             is NonVoidMethodCallAST -> reconditionNonVoidMethodCall(expressionAST)
             is FunctionMethodCallAST -> reconditionFunctionMethodCall(expressionAST)
             is SetDisplayAST -> reconditionSetDisplay(expressionAST)
+            is SetComprehensionAST -> TODO()
             is MapConstructorAST -> reconditionMapConstructor(expressionAST)
+            is MapComprehensionAST -> TODO()
             is SequenceDisplayAST -> reconditionSequenceDisplay(expressionAST)
             is SequenceComprehensionAST -> reconditionSeqeunceComprehension(expressionAST)
             is DatatypeInstantiationAST -> reconditionDatatypeInstantiation(expressionAST)
