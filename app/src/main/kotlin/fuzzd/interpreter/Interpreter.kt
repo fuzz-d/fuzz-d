@@ -10,11 +10,9 @@ import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
-import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
-import fuzzd.generator.ast.ExpressionAST.DatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
@@ -30,12 +28,12 @@ import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetIndexAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.ObjectOrientedInstanceAST
+import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
-import fuzzd.generator.ast.ExpressionAST.TraitInstanceAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
@@ -114,6 +112,8 @@ import fuzzd.utils.mapFirst
 import fuzzd.utils.reduceLists
 import fuzzd.utils.toMultiset
 import java.math.BigInteger
+import java.math.BigInteger.ONE
+import java.math.BigInteger.ZERO
 
 class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     private val output = StringBuilder()
@@ -482,6 +482,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is IndexAssignAST -> interpretIndexAssign(expression, context)
             is SetDisplayAST -> interpretSetDisplay(expression, context)
             is SequenceDisplayAST -> interpretSequenceDisplay(expression, context)
+            is SequenceComprehensionAST -> interpretSequenceComprehension(expression, context)
             is MapConstructorAST -> interpretMapConstructor(expression, context)
             is ArrayLengthAST -> interpretArrayLength(expression, context)
             is ArrayInitAST -> interpretArrayInit(expression, context)
@@ -838,10 +839,10 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is DatatypeDestructorAST -> interpretDatatypeDestructor(identifier, context)
 
             else -> if (context.fields.has(identifier)) {
-                    context.fields.get(identifier)
-                } else {
-                    context.classContext!!.fields.get(identifier)
-                }
+                context.fields.get(identifier)
+            } else {
+                context.classContext!!.fields.get(identifier)
+            }
         }
 
     override fun interpretIndex(index: IndexAST, context: InterpreterContext): Value = when (index) {
@@ -889,6 +890,21 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
     override fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST, context: InterpreterContext): Value =
         SequenceValue(sequenceDisplay.exprs.map { interpretExpression(it, context) })
+
+    override fun interpretSequenceComprehension(sequenceComprehension: SequenceComprehensionAST, context: InterpreterContext): Value {
+        val size = interpretExpression(sequenceComprehension.size, context) as IntValue
+
+        val exprContext = context.increaseDepth()
+        val exprValues = mutableListOf<Value>()
+        var i = ZERO
+        while (i < size.value) {
+            exprContext.fields.declare(sequenceComprehension.identifier, IntValue(i))
+            exprValues.add(interpretExpression(sequenceComprehension.expr, exprContext))
+            i += ONE
+        }
+
+        return SequenceValue(exprValues)
+    }
 
     override fun interpretMapConstructor(mapConstructor: MapConstructorAST, context: InterpreterContext): Value {
         val map = mutableMapOf<Value, Value>()

@@ -20,6 +20,7 @@ import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
+import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
@@ -108,6 +109,8 @@ interface ASTInterpreter {
     fun interpretSetDisplay(setDisplay: SetDisplayAST, context: InterpreterContext): Value
 
     fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST, context: InterpreterContext): Value
+
+    fun interpretSequenceComprehension(sequenceComprehension: SequenceComprehensionAST, context: InterpreterContext): Value
 
     fun interpretMapConstructor(mapConstructor: MapConstructorAST, context: InterpreterContext): Value
 
