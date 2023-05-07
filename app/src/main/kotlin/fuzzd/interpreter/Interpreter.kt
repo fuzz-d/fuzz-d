@@ -12,6 +12,7 @@ import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.ComprehensionInitialisedArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
@@ -41,6 +42,7 @@ import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ValueInitialisedArrayInitAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
@@ -117,9 +119,9 @@ import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.mapFirst
 import fuzzd.utils.reduceLists
 import fuzzd.utils.toMultiset
-import java.math.BigInteger
 import java.math.BigInteger.ONE
 import java.math.BigInteger.ZERO
+import java.math.BigInteger.valueOf
 
 class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     private val output = StringBuilder()
@@ -1013,7 +1015,34 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     override fun interpretArrayInit(arrayInit: ArrayInitAST, context: InterpreterContext): Value =
-        ArrayValue(arrayInit.length)
+        when (arrayInit) {
+            is ComprehensionInitialisedArrayInitAST -> interpretComprehensionInitialisedArrayInit(arrayInit, context)
+            is ValueInitialisedArrayInitAST -> interpretValueInitialisedArrayInit(arrayInit, context)
+            else -> ArrayValue(arrayInit.length)
+        }
+
+    private fun interpretComprehensionInitialisedArrayInit(arrayInit: ComprehensionInitialisedArrayInitAST, context: InterpreterContext): Value {
+        val array = ArrayValue(arrayInit.length)
+
+        (0 until arrayInit.length).forEach { i ->
+            val exprContext = context.increaseDepth()
+            exprContext.fields.declare(arrayInit.identifier, IntValue(valueOf(i.toLong())))
+            array.setIndex(i, interpretExpression(arrayInit.expr, exprContext))
+        }
+
+        return array
+    }
+
+    private fun interpretValueInitialisedArrayInit(arrayInit: ValueInitialisedArrayInitAST, context: InterpreterContext): Value {
+        val array = ArrayValue(arrayInit.length)
+        val values = arrayInit.values.map { interpretExpression(it, context) }
+
+        values.indices.forEach { i ->
+            array.setIndex(i, values[i])
+        }
+
+        return array
+    }
 
     override fun interpretCharacterLiteral(
         characterLiteral: CharacterLiteralAST,
@@ -1025,7 +1054,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         StringValue(stringLiteral.value)
 
     override fun interpretIntegerLiteral(intLiteral: IntegerLiteralAST, context: InterpreterContext): IntValue =
-        IntValue(BigInteger.valueOf(intLiteral.value.toLong()))
+        IntValue(valueOf(intLiteral.value.toLong()))
 
     override fun interpretBooleanLiteral(boolLiteral: BooleanLiteralAST, context: InterpreterContext): BoolValue =
         BoolValue(boolLiteral.value)
