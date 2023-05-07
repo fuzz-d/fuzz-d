@@ -19,9 +19,14 @@ import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidFormatException
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator
+import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.LessThanEqualOperator
+import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
+import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.utils.escape
 import fuzzd.utils.indent
+import java.lang.reflect.Member
 
 fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, context: String) {
     if (expected.size != actual.size) {
@@ -307,8 +312,8 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
-                clazz == other.clazz &&
-                name == other.name
+                    clazz == other.clazz &&
+                    name == other.name
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -525,7 +530,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString() = "map[${assignments.joinToString(", ") { "${it.first} := ${it.second}" }}]"
     }
 
-    class MapComprehensionAST(val identifier: IdentifierAST, val condition: ExpressionAST, val assign: Pair<ExpressionAST, ExpressionAST>) : ExpressionAST() {
+    abstract class MapComprehensionAST(val identifier: IdentifierAST, val condition: ExpressionAST, val assign: Pair<ExpressionAST, ExpressionAST>) : ExpressionAST() {
         init {
             if (condition.type() != BoolType) {
                 throw InvalidInputException("Condition for map comprehension must be bool type")
@@ -536,6 +541,20 @@ sealed class ExpressionAST : ASTElement {
 
         override fun toString(): String = "map $identifier : ${identifier.type()} | $condition :: ${assign.first} := ${assign.second}"
     }
+
+    class IntRangeMapComprehensionAST(identifier: IdentifierAST, val bottomRange: ExpressionAST, val topRange: ExpressionAST, assign: Pair<ExpressionAST, ExpressionAST>) :
+        MapComprehensionAST(
+            identifier,
+            BinaryExpressionAST(
+                BinaryExpressionAST(bottomRange, LessThanEqualOperator, identifier),
+                ConjunctionOperator,
+                BinaryExpressionAST(identifier, LessThanOperator, topRange)
+            ),
+            assign,
+        )
+
+    class DataStructureMapComprehensionAST(identifier: IdentifierAST, val dataStructure: ExpressionAST, assign: Pair<ExpressionAST, ExpressionAST>) :
+        MapComprehensionAST(identifier, BinaryExpressionAST(identifier, MembershipOperator, dataStructure), assign)
 
     class SetDisplayAST(val exprs: List<ExpressionAST>, val isMultiset: Boolean) : ExpressionAST() {
         private var innerType = if (exprs.isEmpty()) PlaceholderType else exprs[0].type()

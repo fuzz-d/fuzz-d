@@ -20,6 +20,7 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
+import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
@@ -915,6 +916,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         }
         return MapValue(map)
     }
+
+    override fun interpretMapComprehension(mapComprehension: MapComprehensionAST, context: InterpreterContext): Value = TODO()
 
     override fun interpretArrayLength(arrayLength: ArrayLengthAST, context: InterpreterContext): Value {
         val array = interpretIdentifier(arrayLength.array, context) as ArrayValue

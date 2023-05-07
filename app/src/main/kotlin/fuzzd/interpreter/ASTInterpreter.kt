@@ -15,6 +15,7 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
+import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
@@ -113,6 +114,8 @@ interface ASTInterpreter {
     fun interpretSequenceComprehension(sequenceComprehension: SequenceComprehensionAST, context: InterpreterContext): Value
 
     fun interpretMapConstructor(mapConstructor: MapConstructorAST, context: InterpreterContext): Value
+
+    fun interpretMapComprehension(mapComprehension: MapComprehensionAST, context: InterpreterContext): Value
 
     fun interpretArrayLength(arrayLength: ArrayLengthAST, context: InterpreterContext): Value
 

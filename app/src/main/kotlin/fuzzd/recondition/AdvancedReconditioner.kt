@@ -15,6 +15,7 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
@@ -23,6 +24,7 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.IntRangeMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
@@ -668,12 +670,34 @@ class AdvancedReconditioner {
         )
     }
 
-    fun reconditionMapComprehension(mapComprehensionAST: MapComprehensionAST): Pair<ExpressionAST, List<StatementAST>> {
-        val (condition, conditionDependents) = reconditionExpression(mapComprehensionAST.condition)
+    fun reconditionMapComprehension(mapComprehensionAST: MapComprehensionAST): Pair<ExpressionAST, List<StatementAST>> =
+        when (mapComprehensionAST) {
+            is IntRangeMapComprehensionAST -> reconditionIntRangeMapComprehension(mapComprehensionAST)
+            is DataStructureMapComprehensionAST -> reconditionDataStructureMapComprehension(mapComprehensionAST)
+            else -> throw UnsupportedOperationException()
+        }
+
+    private fun reconditionIntRangeMapComprehension(mapComprehensionAST: IntRangeMapComprehensionAST): Pair<ExpressionAST, List<StatementAST>> {
+        val (bottomRange, bottomRangeDependents) = reconditionExpression(mapComprehensionAST.bottomRange)
+        val (topRange, topRangeDependents) = reconditionExpression(mapComprehensionAST.topRange)
         val (key, keyDependents) = reconditionExpression(mapComprehensionAST.assign.first)
         val (value, valueDependents) = reconditionExpression(mapComprehensionAST.assign.second)
 
-        return Pair(MapComprehensionAST(mapComprehensionAST.identifier, condition, Pair(key, value)), conditionDependents + keyDependents + valueDependents)
+        return Pair(
+            IntRangeMapComprehensionAST(mapComprehensionAST.identifier, bottomRange, topRange, Pair(key, value)),
+            bottomRangeDependents + topRangeDependents + keyDependents + valueDependents
+        )
+    }
+
+    private fun reconditionDataStructureMapComprehension(mapComprehensionAST: DataStructureMapComprehensionAST): Pair<ExpressionAST, List<StatementAST>> {
+        val (dataStructure, dataStructureDependents) = reconditionExpression(mapComprehensionAST.dataStructure)
+        val (key, keyDependents) = reconditionExpression(mapComprehensionAST.assign.first)
+        val (value, valueDependents) = reconditionExpression(mapComprehensionAST.assign.second)
+
+        return Pair(
+            DataStructureMapComprehensionAST(mapComprehensionAST.identifier, dataStructure, Pair(key, value)),
+            dataStructureDependents + keyDependents + valueDependents
+        )
     }
 
     fun reconditionSequenceDisplay(sequenceDisplayAST: SequenceDisplayAST): Pair<SequenceDisplayAST, List<StatementAST>> {

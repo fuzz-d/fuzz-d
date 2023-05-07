@@ -13,6 +13,7 @@ import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
@@ -21,6 +22,7 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.IntRangeMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
@@ -984,32 +986,26 @@ class Generator(
         val (bottomRange, _) = generateIntegerLiteral(context)
         val (topRange, _) = generateIntegerLiteral(context)
         val identifier = IdentifierAST(context.identifierNameGenerator.newValue(), IntType)
-        val rangeCondition = BinaryExpressionAST(
-            BinaryExpressionAST(bottomRange, LessThanEqualOperator, identifier),
-            ConjunctionOperator,
-            BinaryExpressionAST(identifier, LessThanOperator, topRange),
-        )
 
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
         val (keyExpr, _) = generateExpression(exprContext, targetType.keyType) // _ since we have disabled on-demand so there should be no dependencies
         val (valueExpr, _) = generateExpression(exprContext, targetType.valueType)
 
-        return Pair(MapComprehensionAST(identifier, rangeCondition, Pair(keyExpr, valueExpr)), emptyList())
+        return Pair(IntRangeMapComprehensionAST(identifier, bottomRange, topRange, Pair(keyExpr, valueExpr)), emptyList())
     }
 
     private fun generateMapComprehensionOverDataStructure(context: GenerationContext, targetType: MapType): Pair<MapComprehensionAST, List<StatementAST>> {
         val dataStructureType = selectionManager.selectDataStructureType(context.disableOnDemand(), 1)
         val identifier = IdentifierAST(context.identifierNameGenerator.newValue(), dataStructureType.innerType)
         val (dataStructure, dataStructureDependencies) = generateExpression(context.increaseExpressionDepth(), dataStructureType)
-        val condition = BinaryExpressionAST(identifier, MembershipOperator, dataStructure)
 
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
         val (keyExpr, _) = generateExpression(exprContext, targetType.keyType)
         val (valueExpr, _) = generateExpression(exprContext, targetType.valueType)
 
-        return Pair(MapComprehensionAST(identifier, condition, Pair(keyExpr, valueExpr)), dataStructureDependencies)
+        return Pair(DataStructureMapComprehensionAST(identifier, dataStructure, Pair(keyExpr, valueExpr)), dataStructureDependencies)
     }
 
     override fun generateIndexAssign(

@@ -11,6 +11,7 @@ import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
@@ -18,6 +19,7 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.IntRangeMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
@@ -83,11 +85,11 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
         return DafnyAST(
             reconditionedDatatypes +
-                reconditionedTraits +
-                reconditionedClasses +
-                reconditionedFunctionMethods +
-                reconditionedMethods +
-                reconditionedMain,
+                    reconditionedTraits +
+                    reconditionedClasses +
+                    reconditionedFunctionMethods +
+                    reconditionedMethods +
+                    reconditionedMain,
         )
     }
 
@@ -453,11 +455,27 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         mapConstructor.assignments.map { (k, v) -> Pair(reconditionExpression(k), reconditionExpression(v)) },
     )
 
-    override fun reconditionMapComprehension(mapComprehension: MapComprehensionAST): MapComprehensionAST = MapComprehensionAST(
-        mapComprehension.identifier,
-        reconditionExpression(mapComprehension.condition),
-        Pair(reconditionExpression(mapComprehension.assign.first), reconditionExpression(mapComprehension.assign.second))
-    )
+    override fun reconditionMapComprehension(mapComprehension: MapComprehensionAST): MapComprehensionAST =
+        when (mapComprehension) {
+            is IntRangeMapComprehensionAST -> reconditionIntRangeMapComprehension(mapComprehension)
+            is DataStructureMapComprehensionAST -> reconditionDataStructureMapComprehension(mapComprehension)
+            else -> throw UnsupportedOperationException()
+        }
+
+    private fun reconditionIntRangeMapComprehension(mapComprehension: IntRangeMapComprehensionAST): IntRangeMapComprehensionAST =
+        IntRangeMapComprehensionAST(
+            mapComprehension.identifier,
+            reconditionExpression(mapComprehension.bottomRange),
+            reconditionExpression(mapComprehension.topRange),
+            Pair(reconditionExpression(mapComprehension.assign.first), reconditionExpression(mapComprehension.assign.second))
+        )
+
+    private fun reconditionDataStructureMapComprehension(mapComprehension: DataStructureMapComprehensionAST): DataStructureMapComprehensionAST =
+        DataStructureMapComprehensionAST(
+            mapComprehension.identifier,
+            reconditionExpression(mapComprehension.dataStructure),
+            Pair(reconditionExpression(mapComprehension.assign.first), reconditionExpression(mapComprehension.assign.second))
+        )
 
     override fun reconditionSequenceDisplay(sequenceDisplay: SequenceDisplayAST): SequenceDisplayAST =
         SequenceDisplayAST(sequenceDisplay.exprs.map(this::reconditionExpression))
