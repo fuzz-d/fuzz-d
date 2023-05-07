@@ -15,6 +15,7 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.ComprehensionInitialisedArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
@@ -46,6 +47,7 @@ import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.TraitInstanceAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ValueInitialisedArrayInitAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
@@ -71,13 +73,13 @@ import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
-import fuzzd.generator.ast.Type.DatatypeType
-import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.DataStructureType.MapType
 import fuzzd.generator.ast.Type.DataStructureType.MultisetType
 import fuzzd.generator.ast.Type.DataStructureType.SequenceType
 import fuzzd.generator.ast.Type.DataStructureType.SetType
 import fuzzd.generator.ast.Type.DataStructureType.StringType
+import fuzzd.generator.ast.Type.DatatypeType
+import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
@@ -121,10 +123,10 @@ class AdvancedReconditioner {
 
         return DafnyAST(
             reconditionedDatatypes +
-                    reconditionedTraits +
-                    reconditionedClasses +
-                    reconditionedMethods +
-                    reconditionedMain,
+                reconditionedTraits +
+                reconditionedClasses +
+                reconditionedMethods +
+                reconditionedMain,
         )
     }
 
@@ -274,7 +276,7 @@ class AdvancedReconditioner {
         val (reconditionedIdentifier, identifierDependents) = reconditionIdentifier(declaration.identifier)
         val (reconditionedDataStructure, dataStructureDependents) = reconditionIdentifier(declaration.dataStructure)
         return identifierDependents + dataStructureDependents +
-                DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
+            DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
     }
 
     fun reconditionMultiAssignment(multiAssignmentAST: MultiAssignmentAST): List<StatementAST> {
@@ -282,7 +284,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
         return identifierDependents + exprDependents +
-                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+            MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMultiTypedDeclaration(multiTypedDeclarationAST: MultiTypedDeclarationAST): List<StatementAST> {
@@ -300,7 +302,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
 
         return identifierDependents + exprDependents +
-                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+            MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMatchStatement(matchStatementAST: MatchStatementAST): List<StatementAST> {
@@ -376,7 +378,8 @@ class AdvancedReconditioner {
             is IdentifierAST -> reconditionIdentifier(expressionAST)
             is IndexAST -> reconditionIndex(expressionAST)
             is IndexAssignAST -> reconditionIndexAssign(expressionAST)
-            is LiteralAST, is ArrayInitAST -> Pair(expressionAST, emptyList()) // do nothing
+            is ArrayInitAST -> reconditionArrayInit(expressionAST)
+            is LiteralAST -> Pair(expressionAST, emptyList()) // do nothing
             is ClassInstantiationAST -> reconditionClassInstantiation(expressionAST)
             is ArrayLengthAST -> reconditionArrayLength(expressionAST)
             is NonVoidMethodCallAST -> reconditionNonVoidMethodCall(expressionAST)
@@ -483,6 +486,23 @@ class AdvancedReconditioner {
         val (params, dependents) = reconditionExpressionList(classInstantiationAST.params)
 
         return Pair(ClassInstantiationAST(reconditionedClass, params), dependents)
+    }
+
+    fun reconditionArrayInit(arrayInitAST: ArrayInitAST): Pair<ArrayInitAST, List<StatementAST>> = when (arrayInitAST) {
+        is ComprehensionInitialisedArrayInitAST -> reconditionComprehensionArrayInit(arrayInitAST)
+        is ValueInitialisedArrayInitAST -> reconditionValueInitialisedArrayInit(arrayInitAST)
+        else -> Pair(arrayInitAST, emptyList())
+    }
+
+    private fun reconditionValueInitialisedArrayInit(arrayInit: ValueInitialisedArrayInitAST): Pair<ArrayInitAST, List<StatementAST>> {
+        val (exprs, exprDependents) = reconditionExpressionList(arrayInit.values)
+
+        return Pair(ValueInitialisedArrayInitAST(arrayInit.length, exprs), exprDependents)
+    }
+
+    private fun reconditionComprehensionArrayInit(arrayInit: ComprehensionInitialisedArrayInitAST): Pair<ArrayInitAST, List<StatementAST>> {
+        val (expr, exprDependents) = reconditionExpression(arrayInit.expr)
+        return Pair(ComprehensionInitialisedArrayInitAST(arrayInit.length, arrayInit.identifier, expr), exprDependents)
     }
 
     fun reconditionArrayLength(arrayLengthAST: ArrayLengthAST): Pair<ArrayLengthAST, List<StatementAST>> {
@@ -709,7 +729,7 @@ class AdvancedReconditioner {
 
         return Pair(
             IntRangeMapComprehensionAST(mapComprehensionAST.identifier, bottomRange, topRange, Pair(key, value)),
-            bottomRangeDependents + topRangeDependents + keyDependents + valueDependents
+            bottomRangeDependents + topRangeDependents + keyDependents + valueDependents,
         )
     }
 
@@ -720,7 +740,7 @@ class AdvancedReconditioner {
 
         return Pair(
             DataStructureMapComprehensionAST(mapComprehensionAST.identifier, dataStructure, Pair(key, value)),
-            dataStructureDependents + keyDependents + valueDependents
+            dataStructureDependents + keyDependents + valueDependents,
         )
     }
 

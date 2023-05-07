@@ -3,6 +3,7 @@ package fuzzd.recondition
 import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.ast.ExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
@@ -105,6 +106,8 @@ interface ASTReconditioner {
     fun reconditionTernaryExpression(ternaryExpression: TernaryExpressionAST): ExpressionAST
 
     fun reconditionClassInstantiation(classInstantiation: ClassInstantiationAST): ExpressionAST
+
+    fun reconditionArrayInit(arrayInit: ArrayInitAST): ArrayInitAST
 
     fun reconditionArrayLengthAST(arrayLengthAST: ArrayLengthAST): ExpressionAST
 

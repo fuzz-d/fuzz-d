@@ -11,6 +11,7 @@ import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.ComprehensionInitialisedArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
@@ -39,6 +40,7 @@ import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ValueInitialisedArrayInitAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
@@ -87,11 +89,11 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
         return DafnyAST(
             reconditionedDatatypes +
-                    reconditionedTraits +
-                    reconditionedClasses +
-                    reconditionedFunctionMethods +
-                    reconditionedMethods +
-                    reconditionedMain,
+                reconditionedTraits +
+                reconditionedClasses +
+                reconditionedFunctionMethods +
+                reconditionedMethods +
+                reconditionedMain,
         )
     }
 
@@ -215,7 +217,8 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is IdentifierAST -> reconditionIdentifier(expression)
         is IndexAST -> reconditionIndex(expression)
         is IndexAssignAST -> reconditionIndexAssign(expression)
-        is StringLiteralAST, is LiteralAST, is ArrayInitAST -> expression // don't need to do anything
+        is ArrayInitAST -> reconditionArrayInit(expression)
+        is StringLiteralAST, is LiteralAST -> expression // don't need to do anything
         is ClassInstantiationAST -> reconditionClassInstantiation(expression)
         is ArrayLengthAST -> reconditionArrayLengthAST(expression)
         is NonVoidMethodCallAST -> reconditionNonVoidMethodCallAST(expression)
@@ -437,6 +440,25 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             classInstantiation.params.map(this::reconditionExpression),
         )
 
+    override fun reconditionArrayInit(arrayInit: ArrayInitAST): ArrayInitAST = when (arrayInit) {
+        is ComprehensionInitialisedArrayInitAST -> reconditionComprehensionInitialisedArrayInit(arrayInit)
+        is ValueInitialisedArrayInitAST -> reconditionValueInitialisedArrayInit(arrayInit)
+        else -> arrayInit
+    }
+
+    private fun reconditionComprehensionInitialisedArrayInit(arrayInit: ComprehensionInitialisedArrayInitAST): ComprehensionInitialisedArrayInitAST =
+        ComprehensionInitialisedArrayInitAST(
+            arrayInit.length,
+            arrayInit.identifier,
+            reconditionExpression(arrayInit.expr),
+        )
+
+    private fun reconditionValueInitialisedArrayInit(arrayInit: ValueInitialisedArrayInitAST): ValueInitialisedArrayInitAST =
+        ValueInitialisedArrayInitAST(
+            arrayInit.length,
+            arrayInit.values.map(this::reconditionExpression),
+        )
+
     override fun reconditionArrayLengthAST(arrayLengthAST: ArrayLengthAST): ExpressionAST =
         ArrayLengthAST(reconditionIdentifier(arrayLengthAST.array))
 
@@ -449,10 +471,10 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
     override fun reconditionSetDisplay(setDisplay: SetDisplayAST): ExpressionAST = SetDisplayAST(
         setDisplay.exprs.map(this::reconditionExpression),
         setDisplay.isMultiset,
-        )
+    )
 
     override fun reconditionSetComprehension(setComprehension: SetComprehensionAST): SetComprehensionAST =
-        when(setComprehension){
+        when (setComprehension) {
             is IntRangeSetComprehensionAST -> reconditionIntRangeSetComprehension(setComprehension)
             is DataStructureSetComprehensionAST -> reconditionDataStructureSetComprehension(setComprehension)
             else -> throw UnsupportedOperationException()
@@ -463,14 +485,14 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             setComprehension.identifier,
             reconditionExpression(setComprehension.bottomRange),
             reconditionExpression(setComprehension.topRange),
-            reconditionExpression(setComprehension.expr)
+            reconditionExpression(setComprehension.expr),
         )
 
     private fun reconditionDataStructureSetComprehension(setComprehension: DataStructureSetComprehensionAST): DataStructureSetComprehensionAST =
         DataStructureSetComprehensionAST(
             setComprehension.identifier,
             reconditionExpression(setComprehension.dataStructure),
-            reconditionExpression(setComprehension.expr)
+            reconditionExpression(setComprehension.expr),
         )
 
     override fun reconditionMapConstructor(mapConstructor: MapConstructorAST): MapConstructorAST = MapConstructorAST(
@@ -491,14 +513,14 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             mapComprehension.identifier,
             reconditionExpression(mapComprehension.bottomRange),
             reconditionExpression(mapComprehension.topRange),
-            Pair(reconditionExpression(mapComprehension.assign.first), reconditionExpression(mapComprehension.assign.second))
+            Pair(reconditionExpression(mapComprehension.assign.first), reconditionExpression(mapComprehension.assign.second)),
         )
 
     private fun reconditionDataStructureMapComprehension(mapComprehension: DataStructureMapComprehensionAST): DataStructureMapComprehensionAST =
         DataStructureMapComprehensionAST(
             mapComprehension.identifier,
             reconditionExpression(mapComprehension.dataStructure),
-            Pair(reconditionExpression(mapComprehension.assign.first), reconditionExpression(mapComprehension.assign.second))
+            Pair(reconditionExpression(mapComprehension.assign.first), reconditionExpression(mapComprehension.assign.second)),
         )
 
     override fun reconditionSequenceDisplay(sequenceDisplay: SequenceDisplayAST): SequenceDisplayAST =
