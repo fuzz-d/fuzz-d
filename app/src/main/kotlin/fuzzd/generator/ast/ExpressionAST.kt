@@ -5,15 +5,15 @@ import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
-import fuzzd.generator.ast.Type.DatatypeType
-import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.DataStructureType.MapType
-import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.DataStructureType.MultisetType
-import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.DataStructureType.SequenceType
 import fuzzd.generator.ast.Type.DataStructureType.SetType
 import fuzzd.generator.ast.Type.DataStructureType.StringType
+import fuzzd.generator.ast.Type.DatatypeType
+import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.MethodReturnType
+import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidFormatException
@@ -26,7 +26,6 @@ import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.utils.escape
 import fuzzd.utils.indent
-import java.lang.reflect.Member
 
 fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, context: String) {
     if (expected.size != actual.size) {
@@ -318,8 +317,8 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
-                    clazz == other.clazz &&
-                    name == other.name
+                clazz == other.clazz &&
+                name == other.name
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -556,7 +555,7 @@ sealed class ExpressionAST : ASTElement {
             BinaryExpressionAST(
                 BinaryExpressionAST(bottomRange, LessThanEqualOperator, identifier),
                 ConjunctionOperator,
-                BinaryExpressionAST(identifier, LessThanOperator, topRange)
+                BinaryExpressionAST(identifier, LessThanOperator, topRange),
             ),
             assign,
         )
@@ -595,9 +594,9 @@ sealed class ExpressionAST : ASTElement {
         BinaryExpressionAST(
             BinaryExpressionAST(bottomRange, LessThanEqualOperator, identifier),
             ConjunctionOperator,
-            BinaryExpressionAST(identifier, LessThanOperator, topRange)
+            BinaryExpressionAST(identifier, LessThanOperator, topRange),
         ),
-        expr
+        expr,
     )
 
     class DataStructureSetComprehensionAST(identifier: IdentifierAST, val dataStructure: ExpressionAST, expr: ExpressionAST) :
@@ -645,6 +644,18 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): Type = type
 
         override fun toString(): String = "new ${type.internalType}[$length]"
+    }
+
+    class ValueInitialisedArrayInitAST(val length: Int, val values: List<ExpressionAST>) : ExpressionAST() {
+        override fun type(): Type = ArrayType(values[0].type())
+
+        override fun toString(): String = "new ${type()}[$length] [${values.joinToString(", ")}]"
+    }
+
+    class ComprehensionInitialisedArrayInitAST(val length: Int, val identifier: IdentifierAST, val expr: ExpressionAST) : ExpressionAST() {
+        override fun type(): Type = ArrayType(expr.type())
+
+        override fun toString(): String = "new ${type()}[$length]($identifier => $expr)"
     }
 
     abstract class LiteralAST(private val value: String, private val type: Type) : ExpressionAST() {
