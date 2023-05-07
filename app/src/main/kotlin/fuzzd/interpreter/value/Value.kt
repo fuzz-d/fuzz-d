@@ -119,12 +119,16 @@ sealed class Value {
         abstract fun contains(item: Value): BoolValue
         abstract fun notContains(item: Value): BoolValue
         abstract fun modulus(): IntValue
+
+        abstract fun elements(): List<Value>
     }
 
     data class SequenceValue(val seq: List<Value>) : DataStructureValue() {
         override fun contains(item: Value): BoolValue = BoolValue(item in seq)
         override fun notContains(item: Value): BoolValue = BoolValue(item !in seq)
         override fun modulus(): IntValue = IntValue(valueOf(seq.size.toLong()))
+        override fun elements(): List<Value> = seq
+
         fun properSubsetOf(other: SequenceValue): BoolValue =
             BoolValue(other.seq.containsAll(seq) && (other.seq - seq.toSet()).isNotEmpty())
 
@@ -155,6 +159,7 @@ sealed class Value {
         override fun contains(item: Value): BoolValue = BoolValue(map.containsKey(item))
         override fun notContains(item: Value): BoolValue = BoolValue(!map.containsKey(item))
         override fun modulus(): IntValue = IntValue(valueOf(map.size.toLong()))
+        override fun elements(): List<Value> = map.keys.toList()
         fun union(other: MapValue): MapValue = MapValue(map + other.map)
         fun difference(other: SetValue): MapValue = MapValue(map - other.set)
 
@@ -175,6 +180,7 @@ sealed class Value {
         override fun contains(item: Value): BoolValue = BoolValue(map.containsKey(item) && map[item] != 0)
         override fun notContains(item: Value): BoolValue = BoolValue(!map.containsKey(item) || map[item] == 0)
         override fun modulus(): IntValue = IntValue(valueOf(map.values.sum().toLong()))
+        override fun elements(): List<Value> = map.keys.toList()
 
         fun properSubsetOf(other: MultisetValue): BoolValue =
             BoolValue(multisetDifference(map, other.map).isEmpty() && multisetDifference(map, other.map).isNotEmpty())
@@ -218,6 +224,7 @@ sealed class Value {
         override fun contains(item: Value): BoolValue = BoolValue(item in set)
         override fun notContains(item: Value): BoolValue = BoolValue(item !in set)
         override fun modulus(): IntValue = IntValue(valueOf(set.size.toLong()))
+        override fun elements(): List<Value> = set.toList()
         override fun toExpressionAST(): ExpressionAST = SetDisplayAST(set.map { it.toExpressionAST() }, false)
 
         fun properSubsetOf(other: SetValue): BoolValue =
@@ -241,6 +248,7 @@ sealed class Value {
         override fun contains(item: Value): BoolValue = BoolValue((item as CharValue).value in value)
         override fun notContains(item: Value): BoolValue = BoolValue((item as CharValue).value !in value)
         override fun modulus(): IntValue = IntValue(valueOf(value.length.toLong()))
+        override fun elements(): List<Value> = value.toCharArray().map { c -> CharValue(c) }
 
         fun concat(other: StringValue): StringValue = StringValue(value + other.value)
         fun getIndex(index: Int): CharValue = CharValue(value[index])

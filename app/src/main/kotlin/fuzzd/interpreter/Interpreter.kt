@@ -12,6 +12,7 @@ import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
@@ -19,6 +20,7 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.IntRangeMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
@@ -917,7 +919,51 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         return MapValue(map)
     }
 
-    override fun interpretMapComprehension(mapComprehension: MapComprehensionAST, context: InterpreterContext): Value = TODO()
+    override fun interpretMapComprehension(mapComprehension: MapComprehensionAST, context: InterpreterContext): Value =
+        when (mapComprehension) {
+            is IntRangeMapComprehensionAST -> interpretIntRangeMapComprehension(mapComprehension, context)
+            is DataStructureMapComprehensionAST -> interpretDataStructureMapComprehension(mapComprehension, context)
+            else -> throw UnsupportedOperationException()
+        }
+
+    private fun interpretIntRangeMapComprehension(mapComprehension: IntRangeMapComprehensionAST, context: InterpreterContext): Value {
+        val map = mutableMapOf<Value, Value>()
+
+        val bottomRange = interpretExpression(mapComprehension.bottomRange, context) as IntValue
+        val topRange = interpretExpression(mapComprehension.topRange, context) as IntValue
+
+        var i = bottomRange.value
+        while (i < topRange.value) {
+            val exprContext = context.increaseDepth()
+            exprContext.fields.declare(mapComprehension.identifier, IntValue(i))
+
+            val key = interpretExpression(mapComprehension.assign.first, exprContext)
+            val value = interpretExpression(mapComprehension.assign.second, exprContext)
+
+            map[key] = value
+
+            i += ONE
+        }
+
+        return MapValue(map)
+    }
+
+    private fun interpretDataStructureMapComprehension(mapComprehension: DataStructureMapComprehensionAST, context: InterpreterContext): Value {
+        val map = mutableMapOf<Value, Value>()
+        val dataStructureValue = interpretExpression(mapComprehension.dataStructure, context) as DataStructureValue
+
+        dataStructureValue.elements().forEach { elemValue ->
+            val exprContext = context.increaseDepth()
+            exprContext.fields.declare(mapComprehension.identifier, elemValue)
+
+            val key = interpretExpression(mapComprehension.assign.first, exprContext)
+            val value = interpretExpression(mapComprehension.assign.second, exprContext)
+
+            map[key] = value
+        }
+
+        return MapValue(map)
+    }
 
     override fun interpretArrayLength(arrayLength: ArrayLengthAST, context: InterpreterContext): Value {
         val array = interpretIdentifier(arrayLength.array, context) as ArrayValue
