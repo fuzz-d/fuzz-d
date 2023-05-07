@@ -957,7 +957,7 @@ class Generator(
 
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
-        val (expr, _) = generateBinaryExpressionWithIdentifier(identifier, context, targetType.innerType)
+        val (expr, _) = generateBinaryExpressionWithIdentifier(identifier, exprContext, targetType.innerType)
 
         return Pair(IntRangeSetComprehensionAST(identifier, bottomRange, topRange, expr), emptyList())
     }
