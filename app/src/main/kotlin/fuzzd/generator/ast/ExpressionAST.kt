@@ -568,7 +568,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "${if (isMultiset) "multiset" else ""}{${exprs.joinToString(", ")}}"
     }
 
-    abstract class SetComprehensionAST(val identifier: ExpressionAST, val condition: ExpressionAST, val expr: ExpressionAST) : ExpressionAST() {
+    abstract class SetComprehensionAST(val identifier: IdentifierAST, val condition: ExpressionAST, val expr: ExpressionAST) : ExpressionAST() {
         init {
             if (condition.type() != BoolType) {
                 throw InvalidInputException("condition in set comprehension must be bool type")
@@ -580,7 +580,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "set $identifier : ${identifier.type()} | $condition :: $expr"
     }
 
-    class IntRangeSetComprehensionAST(identifier: ExpressionAST, val bottomRange: ExpressionAST, val topRange: ExpressionAST, expr: ExpressionAST) : SetComprehensionAST(
+    class IntRangeSetComprehensionAST(identifier: IdentifierAST, val bottomRange: ExpressionAST, val topRange: ExpressionAST, expr: ExpressionAST) : SetComprehensionAST(
         identifier,
         BinaryExpressionAST(
             BinaryExpressionAST(bottomRange, LessThanEqualOperator, identifier),
@@ -590,7 +590,7 @@ sealed class ExpressionAST : ASTElement {
         expr
     )
 
-    class DataStructureSetComprehensionAST(identifier: ExpressionAST, val dataStructure: ExpressionAST, expr: ExpressionAST) :
+    class DataStructureSetComprehensionAST(identifier: IdentifierAST, val dataStructure: ExpressionAST, expr: ExpressionAST) :
         SetComprehensionAST(identifier, BinaryExpressionAST(identifier, MembershipOperator, dataStructure), expr)
 
     class SequenceDisplayAST(val exprs: List<ExpressionAST>) : ExpressionAST() {

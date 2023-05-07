@@ -13,6 +13,7 @@ import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
+import fuzzd.generator.ast.ExpressionAST.DataStructureSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
@@ -21,6 +22,7 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntRangeMapComprehensionAST
+import fuzzd.generator.ast.ExpressionAST.IntRangeSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
@@ -34,6 +36,7 @@ import fuzzd.generator.ast.ExpressionAST.ObjectOrientedInstanceAST
 import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
+import fuzzd.generator.ast.ExpressionAST.SetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -484,6 +487,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is IndexAST -> interpretIndex(expression, context)
             is IndexAssignAST -> interpretIndexAssign(expression, context)
             is SetDisplayAST -> interpretSetDisplay(expression, context)
+            is SetComprehensionAST -> interpretSetComprehension(expression, context)
             is SequenceDisplayAST -> interpretSequenceDisplay(expression, context)
             is SequenceComprehensionAST -> interpretSequenceComprehension(expression, context)
             is MapConstructorAST -> interpretMapConstructor(expression, context)
@@ -890,6 +894,43 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     override fun interpretSetDisplay(setDisplay: SetDisplayAST, context: InterpreterContext): Value {
         val values = setDisplay.exprs.map { interpretExpression(it, context) }
         return if (setDisplay.isMultiset) MultisetValue(values.toMultiset()) else SetValue(values.toSet())
+    }
+
+    override fun interpretSetComprehension(setComprehension: SetComprehensionAST, context: InterpreterContext): Value =
+        when (setComprehension) {
+            is IntRangeSetComprehensionAST -> interpretIntRangeSetComprehension(setComprehension, context)
+            is DataStructureSetComprehensionAST -> interpretDataStructureSetComprehension(setComprehension, context)
+            else -> throw UnsupportedOperationException()
+        }
+
+    private fun interpretIntRangeSetComprehension(setComprehension: IntRangeSetComprehensionAST, context: InterpreterContext): Value {
+        val set = mutableSetOf<Value>()
+
+        val bottomRange = interpretExpression(setComprehension.bottomRange, context) as IntValue
+        val topRange = interpretExpression(setComprehension.topRange, context) as IntValue
+
+        var i = bottomRange.value
+        while (i < topRange.value) {
+            val exprContext = context.increaseDepth()
+            exprContext.fields.declare(setComprehension.identifier, IntValue(i))
+            set.add(interpretExpression(setComprehension.expr, exprContext))
+            i += ONE
+        }
+
+        return SetValue(set)
+    }
+
+    private fun interpretDataStructureSetComprehension(setComprehension: DataStructureSetComprehensionAST, context: InterpreterContext): Value {
+        val set = mutableSetOf<Value>()
+        val dataStructure = interpretExpression(setComprehension.dataStructure, context) as DataStructureValue
+
+        dataStructure.elements().forEach { elemValue ->
+            val exprContext = context.increaseDepth()
+            exprContext.fields.declare(setComprehension.identifier, elemValue)
+            set.add(interpretExpression(setComprehension.expr, exprContext))
+        }
+
+        return SetValue(set)
     }
 
     override fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST, context: InterpreterContext): Value =
