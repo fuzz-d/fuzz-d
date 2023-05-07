@@ -47,6 +47,8 @@ sealed class ExpressionAST : ASTElement {
 
     abstract fun type(): Type
 
+    open fun requiresParenthesesWrap(): Boolean = false
+
     class ClassInstantiationAST(val clazz: ClassAST, val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
@@ -88,7 +90,7 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): Type = datatypeInstance.type()
 
         override fun toString(): String {
-            val instanceStr = if (datatypeInstance is TernaryExpressionAST || datatypeInstance is BinaryExpressionAST) {
+            val instanceStr = if (datatypeInstance.requiresParenthesesWrap()) {
                 "($datatypeInstance)"
             } else {
                 "$datatypeInstance"
@@ -147,6 +149,8 @@ sealed class ExpressionAST : ASTElement {
         val ifBranch: ExpressionAST,
         val elseBranch: ExpressionAST,
     ) : ExpressionAST() {
+        override fun requiresParenthesesWrap(): Boolean = true
+
         init {
             if (condition.type() != BoolType) {
                 throw InvalidInputException("Invalid input type for ternary expression condition. Got ${condition.type()}")
@@ -186,7 +190,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): Type = IntType
 
-        override fun toString(): String = "|$expr|"
+        override fun toString(): String = if (expr.requiresParenthesesWrap()) "|($expr)|" else "|$expr|"
     }
 
     class MultisetConversionAST(val expr: ExpressionAST) : ExpressionAST() {
@@ -216,6 +220,8 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
+        override fun requiresParenthesesWrap(): Boolean = true
+
         override fun type(): Type = operator.outputType(type1, type2)
 
         override fun toString(): String {
@@ -227,7 +233,7 @@ sealed class ExpressionAST : ASTElement {
             return sb.toString()
         }
 
-        private fun shouldWrap(expr: ExpressionAST) = expr is TernaryExpressionAST || expr is BinaryExpressionAST
+        private fun shouldWrap(expr: ExpressionAST) = expr.requiresParenthesesWrap()
     }
 
     open class IdentifierAST(
@@ -537,9 +543,11 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
+        override fun requiresParenthesesWrap(): Boolean = true
+
         override fun type(): Type = MapType(assign.first.type(), assign.second.type())
 
-        override fun toString(): String = "map $identifier : ${identifier.type()} | $condition :: ${assign.first} := ${assign.second}"
+        override fun toString(): String = "map $identifier : ${identifier.type()} | $condition :: (${assign.first}) := (${assign.second})"
     }
 
     class IntRangeMapComprehensionAST(identifier: IdentifierAST, val bottomRange: ExpressionAST, val topRange: ExpressionAST, assign: Pair<ExpressionAST, ExpressionAST>) :
@@ -575,9 +583,11 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
-        override fun type(): Type = expr.type()
+        override fun requiresParenthesesWrap(): Boolean = true
 
-        override fun toString(): String = "set $identifier : ${identifier.type()} | $condition :: $expr"
+        override fun type(): Type = SetType(expr.type())
+
+        override fun toString(): String = "set $identifier : ${identifier.type()} | $condition :: ($expr)"
     }
 
     class IntRangeSetComprehensionAST(identifier: IdentifierAST, val bottomRange: ExpressionAST, val topRange: ExpressionAST, expr: ExpressionAST) : SetComprehensionAST(
@@ -612,9 +622,11 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
+        override fun requiresParenthesesWrap(): Boolean = true
+
         override fun type(): Type = SequenceType(expr.type())
 
-        override fun toString(): String = "seq($size, $identifier => $expr)"
+        override fun toString(): String = "seq($size, $identifier => ($expr))"
     }
 
     class ArrayLengthAST(val array: IdentifierAST) : ExpressionAST() {

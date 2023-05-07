@@ -57,6 +57,7 @@ import fuzzd.generator.selection.StatementType.WHILE
 import fuzzd.generator.selection.probability_manager.BaseProbabilityManager
 import fuzzd.generator.selection.probability_manager.ProbabilityManager
 import fuzzd.utils.unionAll
+import javax.xml.crypto.Data
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
@@ -107,6 +108,18 @@ class SelectionManager(
                 ),
             ),
         ).invoke(context, depth)
+
+    fun selectDataStructureTypeWithInnerType(innerType: Type, context: GenerationContext): DataStructureType =
+        randomWeightedSelection(
+            normaliseWeights(
+                listOf(
+                    SetType(innerType) to probabilityManager.setType(),
+                    SequenceType(innerType) to probabilityManager.sequenceType(),
+                    MapType(innerType, selectType(context, 2)) to probabilityManager.mapType(),
+                    MultisetType(innerType) to probabilityManager.multisetType()
+                )
+            )
+        )
 
     @Suppress("UNUSED_PARAMETER")
     private fun selectStringType(context: GenerationContext, depth: Int): StringType = StringType
@@ -240,11 +253,11 @@ class SelectionManager(
 
     private fun isBinaryType(targetType: Type): Boolean =
         targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType &&
-            targetType !is TopLevelDatatypeType && targetType != CharType
+                targetType !is TopLevelDatatypeType && targetType != CharType
 
     private fun isAssignType(targetType: Type): Boolean =
         targetType is MapType || targetType is MultisetType || targetType is SequenceType ||
-            (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
+                (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability =
@@ -288,7 +301,8 @@ class SelectionManager(
             } else {
                 0.0
             }
-        val comprehensionProbability = if (!targetType.hasHeapType() && targetType !is MultisetType && targetType is DataStructureType) probabilityManager.comprehension() else 0.0
+        val comprehensionProbability =
+            if (!targetType.hasHeapType() && targetType !is MultisetType && targetType is DataStructureType && targetType.innerType != BoolType) probabilityManager.comprehension() else 0.0
 
         val selection = listOf(
             COMPREHENSION to comprehensionProbability,

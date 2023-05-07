@@ -6,6 +6,7 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGene
 import fuzzd.generator.ast.identifier_generator.NameGenerator.LoopCounterGenerator
 import fuzzd.generator.symbol_table.FunctionSymbolTable
 import fuzzd.generator.symbol_table.SymbolTable
+import kotlin.math.exp
 
 data class GenerationContext(
     val functionSymbolTable: FunctionSymbolTable,
@@ -90,5 +91,17 @@ data class GenerationContext(
             methodContext,
             onDemandIdentifiers,
             false,
+        ).setGlobalState(globalState)
+
+    fun withSymbolTable(symbolTable: SymbolTable): GenerationContext =
+        GenerationContext(
+            functionSymbolTable,
+            statementDepth,
+            expressionDepth,
+            symbolTable,
+            identifierNameGenerator,
+            loopCounterGenerator,
+            methodContext,
+            onDemandIdentifiers
         ).setGlobalState(globalState)
 }

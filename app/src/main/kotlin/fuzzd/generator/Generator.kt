@@ -95,6 +95,7 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.ParameterNameGener
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ReturnsNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TraitNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.Companion.isBinaryType
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DataStructureMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
@@ -822,20 +823,20 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): Pair<ExpressionAST, List<StatementAST>> = when (exprType) {
-        COMPREHENSION -> generateComprehensionForType(context, targetType)
-        CONSTRUCTOR -> generateConstructorForType(context, targetType)
-        UNARY -> generateUnaryExpression(context, targetType)
-        MODULUS -> generateModulus(context, targetType)
-        MULTISET_CONVERSION -> generateMultisetConversion(context, targetType)
-        BINARY -> generateBinaryExpression(context, targetType)
-        TERNARY -> generateTernaryExpression(context, targetType)
-        MATCH -> generateMatchExpression(context, targetType)
-        FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
-        IDENTIFIER -> generateIdentifier(context, targetType, initialisedConstraint = true)
-        LITERAL -> generateLiteralForType(context, targetType as LiteralType)
-        INDEX_ASSIGN -> generateIndexAssign(context, targetType)
-        INDEX -> generateIndex(context, targetType)
-    }
+            COMPREHENSION -> generateComprehensionForType(context, targetType)
+            CONSTRUCTOR -> generateConstructorForType(context, targetType)
+            UNARY -> generateUnaryExpression(context, targetType)
+            MODULUS -> generateModulus(context, targetType)
+            MULTISET_CONVERSION -> generateMultisetConversion(context, targetType)
+            BINARY -> generateBinaryExpression(context, targetType)
+            TERNARY -> generateTernaryExpression(context, targetType)
+            MATCH -> generateMatchExpression(context, targetType)
+            FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
+            IDENTIFIER -> generateIdentifier(context, targetType, initialisedConstraint = true)
+            LITERAL -> generateLiteralForType(context, targetType as LiteralType)
+            INDEX_ASSIGN -> generateIndexAssign(context, targetType)
+            INDEX -> generateIndex(context, targetType)
+        }
 
     override fun generateFunctionMethodCall(
         context: GenerationContext,
@@ -935,8 +936,15 @@ class Generator(
         return Pair(SetDisplayAST(exprs, isMultiset), exprDeps)
     }
 
+    private fun generateBinaryExpressionWithIdentifier(identifier: IdentifierAST, context: GenerationContext, targetType: Type): Pair<BinaryExpressionAST, List<StatementAST>> {
+        val (binaryOperator, types) = selectionManager.selectBinaryOperator(context, targetType)
+        val (expr, exprDeps) = generateExpression(context.increaseExpressionDepth(), types.second)
+
+        return Pair(BinaryExpressionAST(identifier, binaryOperator, expr), exprDeps)
+    }
+
     override fun generateSetComprehension(context: GenerationContext, targetType: SetType): Pair<SetComprehensionAST, List<StatementAST>> =
-        if (selectionManager.selectComprehensionConditionWithIntRange()) {
+        if (targetType.innerType == IntType && selectionManager.selectComprehensionConditionWithIntRange()) {
             generateIntRangeSetComprehension(context, targetType)
         } else {
             generateDataStructureSetComprehension(context, targetType)
@@ -949,19 +957,19 @@ class Generator(
 
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
-        val (expr, _) = generateExpression(exprContext, targetType.innerType)
+        val (expr, _) = generateBinaryExpressionWithIdentifier(identifier, context, targetType.innerType)
 
         return Pair(IntRangeSetComprehensionAST(identifier, bottomRange, topRange, expr), emptyList())
     }
 
     private fun generateDataStructureSetComprehension(context: GenerationContext, targetType: SetType): Pair<DataStructureSetComprehensionAST, List<StatementAST>> {
-        val dataStructureType = selectionManager.selectDataStructureType(context.disableOnDemand(), 1)
+        val dataStructureType = selectionManager.selectDataStructureTypeWithInnerType(targetType.innerType, context.disableOnDemand())
         val (dataStructure, dataStructureDeps) = generateExpression(context.increaseExpressionDepth(), dataStructureType)
         val identifier = IdentifierAST(context.identifierNameGenerator.newValue(), dataStructureType.innerType)
 
-        val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
+        val exprContext = context.withSymbolTable(SymbolTable()).disableOnDemand()
         exprContext.symbolTable.add(identifier)
-        val (expr, _) = generateExpression(exprContext, targetType.innerType)
+        val (expr, _) = if (isBinaryType(targetType.innerType)) generateBinaryExpressionWithIdentifier(identifier, exprContext, targetType.innerType) else Pair(identifier, emptyList())
 
         return Pair(DataStructureSetComprehensionAST(identifier, dataStructure, expr), dataStructureDeps)
     }
@@ -1013,7 +1021,7 @@ class Generator(
 
     // either generate a map comprehension over an int range or over the elements of a data structure
     override fun generateMapComprehension(context: GenerationContext, targetType: MapType): Pair<MapComprehensionAST, List<StatementAST>> =
-        if (selectionManager.selectComprehensionConditionWithIntRange()) {
+        if (targetType.keyType == IntType && selectionManager.selectComprehensionConditionWithIntRange()) {
             generateMapComprehensionWithIntRange(context, targetType)
         } else {
             generateMapComprehensionOverDataStructure(context, targetType)
@@ -1026,20 +1034,20 @@ class Generator(
 
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
-        val (keyExpr, _) = generateExpression(exprContext, targetType.keyType) // _ since we have disabled on-demand so there should be no dependencies
+        val (keyExpr, _) = generateBinaryExpressionWithIdentifier(identifier, exprContext, targetType.keyType) // _ since we have disabled on-demand so there should be no dependencies
         val (valueExpr, _) = generateExpression(exprContext, targetType.valueType)
 
         return Pair(IntRangeMapComprehensionAST(identifier, bottomRange, topRange, Pair(keyExpr, valueExpr)), emptyList())
     }
 
     private fun generateMapComprehensionOverDataStructure(context: GenerationContext, targetType: MapType): Pair<MapComprehensionAST, List<StatementAST>> {
-        val dataStructureType = selectionManager.selectDataStructureType(context.disableOnDemand(), 1)
+        val dataStructureType = selectionManager.selectDataStructureTypeWithInnerType(targetType.innerType, context.disableOnDemand())
         val identifier = IdentifierAST(context.identifierNameGenerator.newValue(), dataStructureType.innerType)
         val (dataStructure, dataStructureDependencies) = generateExpression(context.increaseExpressionDepth(), dataStructureType)
 
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
-        val (keyExpr, _) = generateExpression(exprContext, targetType.keyType)
+        val (keyExpr, _) = if (isBinaryType(targetType.keyType)) generateBinaryExpressionWithIdentifier(identifier, exprContext, targetType.keyType) else Pair(identifier, emptyList())
         val (valueExpr, _) = generateExpression(exprContext, targetType.valueType)
 
         return Pair(DataStructureMapComprehensionAST(identifier, dataStructure, Pair(keyExpr, valueExpr)), dataStructureDependencies)
