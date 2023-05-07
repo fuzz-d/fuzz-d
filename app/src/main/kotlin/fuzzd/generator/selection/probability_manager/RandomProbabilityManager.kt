@@ -1,5 +1,6 @@
 package fuzzd.generator.selection.probability_manager
 
+import kotlin.math.min
 import kotlin.random.Random
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.declaredFunctions
@@ -65,15 +66,20 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun identifier(): Double = getProbability(ProbabilityManager::identifier)
     override fun literal(): Double = getProbability(ProbabilityManager::literal)
     override fun constructor(): Double = getProbability(ProbabilityManager::constructor)
+
+    override fun comprehensionConditionIntRange(): Double = getProbability(ProbabilityManager::comprehensionConditionIntRange)
+
     override fun arrayIndexType(): Double = getProbability(ProbabilityManager::arrayIndexType)
     override fun mapIndexType(): Double = getProbability(ProbabilityManager::mapIndexType)
     override fun multisetIndexType(): Double = getProbability(ProbabilityManager::multisetIndexType)
     override fun sequenceIndexType(): Double = getProbability(ProbabilityManager::sequenceIndexType)
     override fun stringIndexType(): Double = getProbability(ProbabilityManager::stringIndexType)
     override fun datatypeIndexType(): Double = getProbability(ProbabilityManager::datatypeIndexType)
+
     override fun methodStatements(): Int = getStatementCount(ProbabilityManager::methodStatements)
     override fun ifBranchStatements(): Int = getStatementCount(ProbabilityManager::ifBranchStatements)
     override fun whileBodyStatements(): Int = getStatementCount(ProbabilityManager::whileBodyStatements)
     override fun mainFunctionStatements(): Int = getStatementCount(ProbabilityManager::mainFunctionStatements) + 5 // adjust for smaller random #
     override fun matchStatements(): Int = getStatementCount(ProbabilityManager::matchStatements)
+    override fun comprehensionIdentifiers(): Int = min(getStatementCount(ProbabilityManager::comprehensionIdentifiers), 4)
 }

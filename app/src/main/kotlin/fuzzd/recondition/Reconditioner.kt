@@ -53,9 +53,9 @@ import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
-import fuzzd.generator.ast.Type.MapType
-import fuzzd.generator.ast.Type.MultisetType
-import fuzzd.generator.ast.Type.SequenceType
+import fuzzd.generator.ast.Type.DataStructureType.MapType
+import fuzzd.generator.ast.Type.DataStructureType.MultisetType
+import fuzzd.generator.ast.Type.DataStructureType.SequenceType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.MathematicalBinaryOperator
 import fuzzd.logging.Logger

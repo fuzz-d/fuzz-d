@@ -69,11 +69,11 @@ import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
-import fuzzd.generator.ast.Type.MapType
-import fuzzd.generator.ast.Type.MultisetType
-import fuzzd.generator.ast.Type.SequenceType
-import fuzzd.generator.ast.Type.SetType
-import fuzzd.generator.ast.Type.StringType
+import fuzzd.generator.ast.Type.DataStructureType.MapType
+import fuzzd.generator.ast.Type.DataStructureType.MultisetType
+import fuzzd.generator.ast.Type.DataStructureType.SequenceType
+import fuzzd.generator.ast.Type.DataStructureType.SetType
+import fuzzd.generator.ast.Type.DataStructureType.StringType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
@@ -85,7 +85,6 @@ import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.foldPair
-import jdk.jfr.SettingControl
 
 class AdvancedReconditioner {
     private val classes = mutableMapOf<String, ClassAST>()

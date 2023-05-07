@@ -5,10 +5,10 @@ import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
-import fuzzd.generator.ast.Type.MapType
-import fuzzd.generator.ast.Type.MultisetType
-import fuzzd.generator.ast.Type.SequenceType
-import fuzzd.generator.ast.Type.SetType
+import fuzzd.generator.ast.Type.DataStructureType.MapType
+import fuzzd.generator.ast.Type.DataStructureType.MultisetType
+import fuzzd.generator.ast.Type.DataStructureType.SequenceType
+import fuzzd.generator.ast.Type.DataStructureType.SetType
 
 /**
  * Supported operators with associated precedences taken from documentation

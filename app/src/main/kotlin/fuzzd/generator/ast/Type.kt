@@ -84,63 +84,55 @@ sealed class Type : ASTElement {
         }
     }
 
-    class MapType(val keyType: Type, val valueType: Type) : Type() {
+    sealed class DataStructureType(val innerType: Type) : Type() {
         override fun requiresTypeAnnotation(): Boolean = true
 
-        override fun hasHeapType(): Boolean = keyType.hasHeapType() || valueType.hasHeapType()
+        override fun hasHeapType(): Boolean = innerType.hasHeapType()
 
-        override fun toString() = "map<$keyType, $valueType>"
+        class MapType(val keyType: Type, val valueType: Type) : DataStructureType(keyType) {
+            override fun hasHeapType(): Boolean = keyType.hasHeapType() || valueType.hasHeapType()
 
-        override fun equals(other: Any?): Boolean =
-            other is MapType && other.keyType == keyType && other.valueType == valueType
+            override fun toString() = "map<$keyType, $valueType>"
 
-        override fun hashCode(): Int {
-            var result = keyType.hashCode()
-            result = 31 * result + valueType.hashCode()
-            return result
+            override fun equals(other: Any?): Boolean =
+                other is MapType && other.keyType == keyType && other.valueType == valueType
+
+            override fun hashCode(): Int {
+                var result = keyType.hashCode()
+                result = 31 * result + valueType.hashCode()
+                return result
+            }
         }
-    }
 
-    class SetType(val innerType: Type) : Type() {
-        override fun requiresTypeAnnotation(): Boolean = true
+        class SetType(innerType: Type) : DataStructureType(innerType) {
+            override fun toString(): String = "set<$innerType>"
 
-        override fun hasHeapType(): Boolean = innerType.hasHeapType()
+            override fun equals(other: Any?): Boolean = other is SetType && other.innerType == innerType
 
-        override fun toString(): String = "set<$innerType>"
+            override fun hashCode(): Int = innerType.hashCode()
+        }
 
-        override fun equals(other: Any?): Boolean = other is SetType && other.innerType == innerType
+        class MultisetType(innerType: Type) : DataStructureType(innerType) {
+            override fun toString(): String = "multiset<$innerType>"
 
-        override fun hashCode(): Int = innerType.hashCode()
-    }
+            override fun equals(other: Any?): Boolean = other is MultisetType && other.innerType == innerType
 
-    class MultisetType(val innerType: Type) : Type() {
-        override fun requiresTypeAnnotation(): Boolean = true
+            override fun hashCode(): Int = innerType.hashCode()
+        }
 
-        override fun hasHeapType(): Boolean = innerType.hasHeapType()
+        open class SequenceType(innerType: Type) : DataStructureType(innerType) {
+            override fun toString(): String = "seq<$innerType>"
 
-        override fun toString(): String = "multiset<$innerType>"
+            override fun equals(other: Any?): Boolean = other is SequenceType && other.innerType == innerType
 
-        override fun equals(other: Any?): Boolean = other is MultisetType && other.innerType == innerType
+            override fun hashCode(): Int = innerType.hashCode()
+        }
 
-        override fun hashCode(): Int = innerType.hashCode()
-    }
+        object StringType : SequenceType(CharType) {
+            override fun requiresTypeAnnotation(): Boolean = false
 
-    open class SequenceType(val innerType: Type) : Type() {
-        override fun requiresTypeAnnotation(): Boolean = true
-
-        override fun hasHeapType(): Boolean = innerType.hasHeapType()
-
-        override fun toString(): String = "seq<$innerType>"
-
-        override fun equals(other: Any?): Boolean = other is SequenceType && other.innerType == innerType
-
-        override fun hashCode(): Int = innerType.hashCode()
-    }
-
-    object StringType : SequenceType(CharType) {
-        override fun requiresTypeAnnotation(): Boolean = false
-
-        override fun toString(): String = "string"
+            override fun toString(): String = "string"
+        }
     }
 
     class MethodReturnType(val types: List<Type>) : Type() {

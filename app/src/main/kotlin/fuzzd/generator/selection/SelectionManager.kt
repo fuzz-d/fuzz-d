@@ -5,14 +5,15 @@ import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
+import fuzzd.generator.ast.Type.DataStructureType
 import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
-import fuzzd.generator.ast.Type.MapType
-import fuzzd.generator.ast.Type.MultisetType
-import fuzzd.generator.ast.Type.SequenceType
-import fuzzd.generator.ast.Type.SetType
-import fuzzd.generator.ast.Type.StringType
+import fuzzd.generator.ast.Type.DataStructureType.MapType
+import fuzzd.generator.ast.Type.DataStructureType.MultisetType
+import fuzzd.generator.ast.Type.DataStructureType.SequenceType
+import fuzzd.generator.ast.Type.DataStructureType.SetType
+import fuzzd.generator.ast.Type.DataStructureType.StringType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidInputException
@@ -93,10 +94,10 @@ class SelectionManager(
         return randomSelection(context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers))
     }
 
-    fun selectDataStructureType(context: GenerationContext, depth: Int): Type =
+    fun selectDataStructureType(context: GenerationContext, depth: Int): DataStructureType =
         randomWeightedSelection(
             normaliseWeights(
-                listOf<Pair<(GenerationContext, Int) -> Type, Double>>(
+                listOf<Pair<(GenerationContext, Int) -> DataStructureType, Double>>(
                     this::selectSetType to probabilityManager.setType(),
                     this::selectMultisetType to probabilityManager.multisetType(),
                     this::selectMapType to probabilityManager.mapType(),
@@ -239,11 +240,11 @@ class SelectionManager(
 
     private fun isBinaryType(targetType: Type): Boolean =
         targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType &&
-                targetType !is TopLevelDatatypeType && targetType != CharType
+            targetType !is TopLevelDatatypeType && targetType != CharType
 
     private fun isAssignType(targetType: Type): Boolean =
         targetType is MapType || targetType is MultisetType || targetType is SequenceType ||
-                (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
+            (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability =
@@ -326,7 +327,11 @@ class SelectionManager(
         return items.mapNotNull { item -> if (item.second == 0.0) null else Pair(item.first, item.second / weightSum) }
     }
 
-    fun <T> randomSelection(items: List<T>): T = if(items.size == 1) items[0] else items[random.nextInt(items.size)]
+    fun selectComprehensionConditionWithIntRange() = withProbability(probabilityManager.comprehensionConditionIntRange())
+
+    fun selectNumberOfComprehensionIdentifiers() = random.nextInt(1, probabilityManager.comprehensionIdentifiers())
+
+    fun <T> randomSelection(items: List<T>): T = if (items.size == 1) items[0] else items[random.nextInt(items.size)]
 
     fun <T> randomWeightedSelection(items: List<Pair<T, Double>>): T {
         val probability = random.nextFloat()

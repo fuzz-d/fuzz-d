@@ -19,8 +19,8 @@ import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.IntType
-import fuzzd.generator.ast.Type.MapType
-import fuzzd.generator.ast.Type.StringType
+import fuzzd.generator.ast.Type.DataStructureType.MapType
+import fuzzd.generator.ast.Type.DataStructureType.StringType
 import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator

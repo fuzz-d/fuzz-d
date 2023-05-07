@@ -23,6 +23,7 @@ import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
+import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
@@ -66,11 +67,11 @@ import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
-import fuzzd.generator.ast.Type.MapType
-import fuzzd.generator.ast.Type.MultisetType
-import fuzzd.generator.ast.Type.SequenceType
-import fuzzd.generator.ast.Type.SetType
-import fuzzd.generator.ast.Type.StringType
+import fuzzd.generator.ast.Type.DataStructureType.MapType
+import fuzzd.generator.ast.Type.DataStructureType.MultisetType
+import fuzzd.generator.ast.Type.DataStructureType.SequenceType
+import fuzzd.generator.ast.Type.DataStructureType.SetType
+import fuzzd.generator.ast.Type.DataStructureType.StringType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
@@ -88,7 +89,11 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.ParameterNameGener
 import fuzzd.generator.ast.identifier_generator.NameGenerator.ReturnsNameGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TraitNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DataStructureMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
+import fuzzd.generator.ast.operators.BinaryOperator.LessThanEqualOperator
+import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.selection.AssignType
@@ -965,6 +970,46 @@ class Generator(
         }.foldPair()
 
         return Pair(MapConstructorAST(mapType.keyType, mapType.valueType, assigns), assignDeps)
+    }
+
+    // either generate a map comprehension over an int range or over the elements of a data structure
+    override fun generateMapComprehension(context: GenerationContext, targetType: MapType): Pair<MapComprehensionAST, List<StatementAST>> =
+        if (selectionManager.selectComprehensionConditionWithIntRange()) {
+            generateMapComprehensionWithIntRange(context, targetType)
+        } else {
+            generateMapComprehensionOverDataStructure(context, targetType)
+        }
+
+    private fun generateMapComprehensionWithIntRange(context: GenerationContext, targetType: MapType): Pair<MapComprehensionAST, List<StatementAST>> {
+        val (bottomRange, _) = generateIntegerLiteral(context)
+        val (topRange, _) = generateIntegerLiteral(context)
+        val identifier = IdentifierAST(context.identifierNameGenerator.newValue(), IntType)
+        val rangeCondition = BinaryExpressionAST(
+            BinaryExpressionAST(bottomRange, LessThanEqualOperator, identifier),
+            ConjunctionOperator,
+            BinaryExpressionAST(identifier, LessThanOperator, topRange),
+        )
+
+        val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
+        exprContext.symbolTable.add(identifier)
+        val (keyExpr, _) = generateExpression(exprContext, targetType.keyType) // _ since we have disabled on-demand so there should be no dependencies
+        val (valueExpr, _) = generateExpression(exprContext, targetType.valueType)
+
+        return Pair(MapComprehensionAST(identifier, rangeCondition, Pair(keyExpr, valueExpr)), emptyList())
+    }
+
+    private fun generateMapComprehensionOverDataStructure(context: GenerationContext, targetType: MapType): Pair<MapComprehensionAST, List<StatementAST>> {
+        val dataStructureType = selectionManager.selectDataStructureType(context.disableOnDemand(), 1)
+        val identifier = IdentifierAST(context.identifierNameGenerator.newValue(), dataStructureType.innerType)
+        val (dataStructure, dataStructureDependencies) = generateExpression(context.increaseExpressionDepth(), dataStructureType)
+        val condition = BinaryExpressionAST(identifier, MembershipOperator, dataStructure)
+
+        val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
+        exprContext.symbolTable.add(identifier)
+        val (keyExpr, _) = generateExpression(exprContext, targetType.keyType)
+        val (valueExpr, _) = generateExpression(exprContext, targetType.valueType)
+
+        return Pair(MapComprehensionAST(identifier, condition, Pair(keyExpr, valueExpr)), dataStructureDependencies)
     }
 
     override fun generateIndexAssign(

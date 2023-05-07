@@ -13,6 +13,7 @@ import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
+import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
@@ -34,7 +35,8 @@ import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.DatatypeType
-import fuzzd.generator.ast.Type.SequenceType
+import fuzzd.generator.ast.Type.DataStructureType.MapType
+import fuzzd.generator.ast.Type.DataStructureType.SequenceType
 import fuzzd.generator.context.GenerationContext
 
 interface ASTGenerator {
@@ -157,6 +159,11 @@ interface ASTGenerator {
         context: GenerationContext,
         targetType: Type,
     ): Pair<MapConstructorAST, List<StatementAST>>
+
+    fun generateMapComprehension(
+        context: GenerationContext,
+        targetType: MapType,
+    ): Pair<MapComprehensionAST, List<StatementAST>>
 
     fun generateIndexAssign(
         context: GenerationContext,

@@ -47,6 +47,8 @@ interface ProbabilityManager {
     fun literal(): Double
     fun constructor(): Double
 
+    fun comprehensionConditionIntRange(): Double
+
     // index type
     fun arrayIndexType(): Double
     fun mapIndexType(): Double
@@ -61,4 +63,5 @@ interface ProbabilityManager {
     fun whileBodyStatements(): Int
     fun mainFunctionStatements(): Int
     fun matchStatements(): Int
+    fun comprehensionIdentifiers(): Int
 }

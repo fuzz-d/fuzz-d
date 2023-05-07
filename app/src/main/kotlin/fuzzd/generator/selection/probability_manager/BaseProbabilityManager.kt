@@ -48,6 +48,8 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun literal() = 0.2
     override fun constructor() = 0.3
 
+    override fun comprehensionConditionIntRange(): Double = 0.6
+
     // index type
     override fun arrayIndexType() = 0.2
     override fun mapIndexType() = 0.2
@@ -62,4 +64,5 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun whileBodyStatements(): Int = 5
     override fun mainFunctionStatements(): Int = 18
     override fun matchStatements(): Int = 5
+    override fun comprehensionIdentifiers(): Int = 3
 }
