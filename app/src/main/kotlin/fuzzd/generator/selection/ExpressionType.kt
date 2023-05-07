@@ -22,5 +22,11 @@ enum class IndexType {
     MULTISET,
     SEQUENCE,
     STRING,
-    DATATYPE
+    DATATYPE,
+}
+
+enum class ArrayInitType {
+    COMPREHENSION,
+    DEFAULT,
+    VALUE,
 }

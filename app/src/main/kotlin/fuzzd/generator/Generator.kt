@@ -13,6 +13,7 @@ import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.ComprehensionInitialisedArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
@@ -45,6 +46,7 @@ import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.TopLevelDatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.TraitInstanceAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ValueInitialisedArrayInitAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
@@ -98,6 +100,9 @@ import fuzzd.generator.ast.operators.BinaryOperator.Companion.isBinaryType
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.context.GenerationContext
+import fuzzd.generator.selection.ArrayInitType
+import fuzzd.generator.selection.ArrayInitType.DEFAULT
+import fuzzd.generator.selection.ArrayInitType.VALUE
 import fuzzd.generator.selection.AssignType
 import fuzzd.generator.selection.AssignType.ARRAY_INDEX
 import fuzzd.generator.selection.ExpressionType
@@ -1369,8 +1374,33 @@ class Generator(
     override fun generateArrayInitialisation(
         context: GenerationContext,
         targetType: ArrayType,
-    ): Pair<ArrayInitAST, List<StatementAST>> =
-        Pair(ArrayInitAST(selectionManager.selectArrayLength(), targetType), emptyList())
+    ): Pair<ArrayInitAST, List<StatementAST>> = when (selectionManager.selectArrayInitType(context, targetType)) {
+        ArrayInitType.COMPREHENSION -> generateComprehensionArrayInit(context, targetType)
+        DEFAULT -> Pair(ArrayInitAST(selectionManager.selectArrayLength(), targetType), emptyList())
+        VALUE -> generateValueBasedArrayInit(context, targetType)
+    }
+
+    private fun generateComprehensionArrayInit(
+        context: GenerationContext,
+        targetType: ArrayType,
+    ): Pair<ComprehensionInitialisedArrayInitAST, List<StatementAST>> {
+        val length = selectionManager.selectArrayLength()
+        val identifier = IdentifierAST(context.loopCounterGenerator.newValue(), IntType)
+        val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
+        exprContext.symbolTable.add(identifier)
+        val (expr, exprDeps) = generateExpression(exprContext, targetType.internalType)
+
+        return Pair(ComprehensionInitialisedArrayInitAST(length, identifier, expr), exprDeps)
+    }
+
+    private fun generateValueBasedArrayInit(
+        context: GenerationContext,
+        targetType: ArrayType,
+    ): Pair<ValueInitialisedArrayInitAST, List<StatementAST>> {
+        val length = selectionManager.selectArrayLength()
+        val (values, dependents) = (1..length).map { generateExpression(context, targetType.internalType) }.foldPair()
+        return Pair(ValueInitialisedArrayInitAST(length, values), dependents)
+    }
 
     override fun generateBooleanLiteral(context: GenerationContext): Pair<BooleanLiteralAST, List<StatementAST>> =
         Pair(BooleanLiteralAST(selectionManager.selectBoolean()), emptyList())

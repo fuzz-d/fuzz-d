@@ -58,6 +58,11 @@ interface ProbabilityManager {
     fun stringIndexType(): Double
     fun datatypeIndexType(): Double
 
+    // array init type
+    fun arrayInitDefault(): Double
+    fun arrayInitComprehension(): Double
+    fun arrayInitValues(): Double
+
     // additional data
     fun methodStatements(): Int
     fun ifBranchStatements(): Int

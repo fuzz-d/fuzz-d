@@ -77,6 +77,10 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun stringIndexType(): Double = getProbability(ProbabilityManager::stringIndexType)
     override fun datatypeIndexType(): Double = getProbability(ProbabilityManager::datatypeIndexType)
 
+    override fun arrayInitValues(): Double = getProbability(ProbabilityManager::arrayInitValues)
+    override fun arrayInitComprehension(): Double = getProbability(ProbabilityManager::arrayInitComprehension)
+    override fun arrayInitDefault(): Double = getProbability(ProbabilityManager::arrayInitDefault)
+
     override fun methodStatements(): Int = getStatementCount(ProbabilityManager::methodStatements)
     override fun ifBranchStatements(): Int = getStatementCount(ProbabilityManager::ifBranchStatements)
     override fun whileBodyStatements(): Int = getStatementCount(ProbabilityManager::whileBodyStatements)

@@ -6,14 +6,14 @@ import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.DataStructureType
-import fuzzd.generator.ast.Type.DatatypeType
-import fuzzd.generator.ast.Type.IntType
-import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.DataStructureType.MapType
 import fuzzd.generator.ast.Type.DataStructureType.MultisetType
 import fuzzd.generator.ast.Type.DataStructureType.SequenceType
 import fuzzd.generator.ast.Type.DataStructureType.SetType
 import fuzzd.generator.ast.Type.DataStructureType.StringType
+import fuzzd.generator.ast.Type.DatatypeType
+import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.InvalidInputException
@@ -28,6 +28,8 @@ import fuzzd.generator.ast.operators.UnaryOperator.Companion.isUnaryType
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.generator.context.GenerationContext
+import fuzzd.generator.selection.ArrayInitType.DEFAULT
+import fuzzd.generator.selection.ArrayInitType.VALUE
 import fuzzd.generator.selection.AssignType.ARRAY_INDEX
 import fuzzd.generator.selection.ExpressionType.BINARY
 import fuzzd.generator.selection.ExpressionType.COMPREHENSION
@@ -57,7 +59,6 @@ import fuzzd.generator.selection.StatementType.WHILE
 import fuzzd.generator.selection.probability_manager.BaseProbabilityManager
 import fuzzd.generator.selection.probability_manager.ProbabilityManager
 import fuzzd.utils.unionAll
-import javax.xml.crypto.Data
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
@@ -116,9 +117,9 @@ class SelectionManager(
                     SetType(innerType) to probabilityManager.setType(),
                     SequenceType(innerType) to probabilityManager.sequenceType(),
                     MapType(innerType, selectType(context, 2)) to probabilityManager.mapType(),
-                    MultisetType(innerType) to probabilityManager.multisetType()
-                )
-            )
+                    MultisetType(innerType) to probabilityManager.multisetType(),
+                ),
+            ),
         )
 
     @Suppress("UNUSED_PARAMETER")
@@ -253,11 +254,11 @@ class SelectionManager(
 
     private fun isBinaryType(targetType: Type): Boolean =
         targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType &&
-                targetType !is TopLevelDatatypeType && targetType != CharType
+            targetType !is TopLevelDatatypeType && targetType != CharType
 
     private fun isAssignType(targetType: Type): Boolean =
         targetType is MapType || targetType is MultisetType || targetType is SequenceType ||
-                (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
+            (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability =
@@ -332,6 +333,16 @@ class SelectionManager(
                 SEQUENCE to probabilityManager.sequenceIndexType(),
                 STRING to if (targetType == CharType) probabilityManager.stringIndexType() else 0.0,
                 DATATYPE to probabilityManager.datatypeIndexType(),
+            ),
+        ),
+    )
+
+    fun selectArrayInitType(context: GenerationContext, targetType: ArrayType): ArrayInitType = randomWeightedSelection(
+        normaliseWeights(
+            listOf(
+                DEFAULT to probabilityManager.arrayInitDefault(),
+                VALUE to probabilityManager.arrayInitValues(),
+                ArrayInitType.COMPREHENSION to if (!targetType.internalType.hasHeapType()) probabilityManager.arrayInitComprehension() else 0.0,
             ),
         ),
     )

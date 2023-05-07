@@ -59,6 +59,11 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun stringIndexType() = 0.2
     override fun datatypeIndexType() = 0.2
 
+    // array init type
+    override fun arrayInitDefault(): Double = 0.4
+    override fun arrayInitValues(): Double = 0.3
+    override fun arrayInitComprehension(): Double = 0.3
+
     // other data
     override fun methodStatements(): Int = 7
     override fun ifBranchStatements(): Int = 6

@@ -640,19 +640,26 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "${array.name}.Length"
     }
 
-    class ArrayInitAST(val length: Int, private val type: ArrayType) : ExpressionAST() {
+    open class ArrayInitAST(val length: Int, private val type: ArrayType) : ExpressionAST() {
         override fun type(): Type = type
 
         override fun toString(): String = "new ${type.internalType}[$length]"
     }
 
-    class ValueInitialisedArrayInitAST(val length: Int, val values: List<ExpressionAST>) : ExpressionAST() {
+    class ValueInitialisedArrayInitAST(
+        length: Int,
+        val values: List<ExpressionAST>,
+    ) : ArrayInitAST(length, ArrayType(values[0].type())) {
         override fun type(): Type = ArrayType(values[0].type())
 
         override fun toString(): String = "new ${type()}[$length] [${values.joinToString(", ")}]"
     }
 
-    class ComprehensionInitialisedArrayInitAST(val length: Int, val identifier: IdentifierAST, val expr: ExpressionAST) : ExpressionAST() {
+    class ComprehensionInitialisedArrayInitAST(
+        length: Int,
+        val identifier: IdentifierAST,
+        val expr: ExpressionAST,
+    ) : ArrayInitAST(length, ArrayType(expr.type())) {
         override fun type(): Type = ArrayType(expr.type())
 
         override fun toString(): String = "new ${type()}[$length]($identifier => $expr)"
