@@ -1,6 +1,7 @@
 package fuzzd.generator.selection
 
 enum class ExpressionType {
+    COMPREHENSION,
     CONSTRUCTOR,
     UNARY,
     MODULUS,

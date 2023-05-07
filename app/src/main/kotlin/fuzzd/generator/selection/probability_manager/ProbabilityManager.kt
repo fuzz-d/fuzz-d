@@ -46,6 +46,7 @@ interface ProbabilityManager {
     fun identifier(): Double
     fun literal(): Double
     fun constructor(): Double
+    fun comprehension(): Double
 
     fun comprehensionConditionIntRange(): Double
 

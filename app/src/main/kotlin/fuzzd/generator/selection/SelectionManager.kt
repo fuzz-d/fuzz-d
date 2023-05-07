@@ -30,6 +30,7 @@ import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.selection.AssignType.ARRAY_INDEX
 import fuzzd.generator.selection.ExpressionType.BINARY
+import fuzzd.generator.selection.ExpressionType.COMPREHENSION
 import fuzzd.generator.selection.ExpressionType.CONSTRUCTOR
 import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
@@ -162,7 +163,6 @@ class SelectionManager(
                             is MultisetType -> dataStructureType.innerType
                             is SequenceType -> dataStructureType.innerType
                             is MapType -> dataStructureType.keyType
-                            else -> throw UnsupportedOperationException()
                         }
 
                         Pair(selectedSubclass, Pair(keyType, dataStructureType))
@@ -288,8 +288,10 @@ class SelectionManager(
             } else {
                 0.0
             }
+        val comprehensionProbability = if (!targetType.hasHeapType() && targetType !is MultisetType && targetType is DataStructureType) probabilityManager.comprehension() else 0.0
 
         val selection = listOf(
+            COMPREHENSION to comprehensionProbability,
             CONSTRUCTOR to constructorProbability,
             LITERAL to literalProbability,
             TERNARY to ternaryProbability,

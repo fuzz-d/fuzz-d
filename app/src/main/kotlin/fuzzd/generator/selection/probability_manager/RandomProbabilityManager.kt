@@ -66,6 +66,7 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun identifier(): Double = getProbability(ProbabilityManager::identifier)
     override fun literal(): Double = getProbability(ProbabilityManager::literal)
     override fun constructor(): Double = getProbability(ProbabilityManager::constructor)
+    override fun comprehension(): Double = getProbability(ProbabilityManager::comprehension)
 
     override fun comprehensionConditionIntRange(): Double = getProbability(ProbabilityManager::comprehensionConditionIntRange)
 

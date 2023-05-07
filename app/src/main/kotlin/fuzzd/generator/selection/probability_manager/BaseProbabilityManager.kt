@@ -47,6 +47,7 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun identifier() = 0.5
     override fun literal() = 0.2
     override fun constructor() = 0.3
+    override fun comprehension() = 0.1
 
     override fun comprehensionConditionIntRange(): Double = 0.6
 

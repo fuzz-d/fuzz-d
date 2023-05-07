@@ -69,6 +69,7 @@ import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
+import fuzzd.generator.ast.Type.DataStructureType
 import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
@@ -105,6 +106,7 @@ import fuzzd.generator.selection.AssignType
 import fuzzd.generator.selection.AssignType.ARRAY_INDEX
 import fuzzd.generator.selection.ExpressionType
 import fuzzd.generator.selection.ExpressionType.BINARY
+import fuzzd.generator.selection.ExpressionType.COMPREHENSION
 import fuzzd.generator.selection.ExpressionType.CONSTRUCTOR
 import fuzzd.generator.selection.ExpressionType.FUNCTION_METHOD_CALL
 import fuzzd.generator.selection.ExpressionType.IDENTIFIER
@@ -820,6 +822,7 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): Pair<ExpressionAST, List<StatementAST>> = when (exprType) {
+        COMPREHENSION -> generateComprehensionForType(context, targetType)
         CONSTRUCTOR -> generateConstructorForType(context, targetType)
         UNARY -> generateUnaryExpression(context, targetType)
         MODULUS -> generateModulus(context, targetType)
@@ -1264,6 +1267,13 @@ class Generator(
         else -> throw UnsupportedOperationException("Trying to generate base for non-base type $targetType")
     }
 
+    private fun generateComprehensionForType(context: GenerationContext, targetType: Type) = when(targetType) {
+        is MapType -> generateMapComprehension(context, targetType)
+        is SequenceType -> generateSequenceComprehension(context, targetType)
+        is SetType -> generateSetComprehension(context, targetType)
+        else -> throw UnsupportedOperationException("Trying to generate comprehension for non-comprehension type $targetType")
+    }
+
     private fun generateConstructorForType(
         context: GenerationContext,
         targetType: Type,
@@ -1277,7 +1287,7 @@ class Generator(
         is SetType, is MultisetType -> generateSetDisplay(context, targetType)
         is StringType -> generateStringLiteral(context)
         is SequenceType -> generateSequenceDisplay(context, targetType)
-        else -> throw UnsupportedOperationException("Trying to generate constructor for non-constructor type")
+        else -> throw UnsupportedOperationException("Trying to generate constructor for non-constructor type $targetType")
     }
 
     private fun generateClassConstructor(
