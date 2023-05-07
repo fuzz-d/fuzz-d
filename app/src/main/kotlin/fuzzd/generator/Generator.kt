@@ -69,15 +69,14 @@ import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
-import fuzzd.generator.ast.Type.DataStructureType
-import fuzzd.generator.ast.Type.DatatypeType
-import fuzzd.generator.ast.Type.IntType
-import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.DataStructureType.MapType
 import fuzzd.generator.ast.Type.DataStructureType.MultisetType
 import fuzzd.generator.ast.Type.DataStructureType.SequenceType
 import fuzzd.generator.ast.Type.DataStructureType.SetType
 import fuzzd.generator.ast.Type.DataStructureType.StringType
+import fuzzd.generator.ast.Type.DatatypeType
+import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.error.IdentifierOnDemandException
@@ -96,11 +95,7 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.ReturnsNameGenerat
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TraitNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.Companion.isBinaryType
-import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
-import fuzzd.generator.ast.operators.BinaryOperator.DataStructureMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
-import fuzzd.generator.ast.operators.BinaryOperator.LessThanEqualOperator
-import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.selection.AssignType
@@ -684,16 +679,16 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-                context.functionSymbolTable.methods().map { it.signature } +
-                        context.symbolTable.classInstances().map { it.methods() }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.methods() }.unionAll()
-                )
+            context.functionSymbolTable.methods().map { it.signature } +
+                context.symbolTable.classInstances().map { it.methods() }.unionAll() +
+                context.symbolTable.traitInstances().map { it.methods() }.unionAll()
+            )
             .filter { method ->
                 context.methodContext == null ||
-                        method is ClassInstanceMethodSignatureAST &&
-                        methodCallTable.canUseDependency(context.methodContext, method.signature) ||
-                        method !is ClassInstanceMethodSignatureAST &&
-                        methodCallTable.canUseDependency(context.methodContext, method)
+                    method is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method.signature) ||
+                    method !is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method)
             }
 
         // no support for on demand method generation within methods
@@ -823,20 +818,20 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): Pair<ExpressionAST, List<StatementAST>> = when (exprType) {
-            COMPREHENSION -> generateComprehensionForType(context, targetType)
-            CONSTRUCTOR -> generateConstructorForType(context, targetType)
-            UNARY -> generateUnaryExpression(context, targetType)
-            MODULUS -> generateModulus(context, targetType)
-            MULTISET_CONVERSION -> generateMultisetConversion(context, targetType)
-            BINARY -> generateBinaryExpression(context, targetType)
-            TERNARY -> generateTernaryExpression(context, targetType)
-            MATCH -> generateMatchExpression(context, targetType)
-            FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
-            IDENTIFIER -> generateIdentifier(context, targetType, initialisedConstraint = true)
-            LITERAL -> generateLiteralForType(context, targetType as LiteralType)
-            INDEX_ASSIGN -> generateIndexAssign(context, targetType)
-            INDEX -> generateIndex(context, targetType)
-        }
+        COMPREHENSION -> generateComprehensionForType(context, targetType)
+        CONSTRUCTOR -> generateConstructorForType(context, targetType)
+        UNARY -> generateUnaryExpression(context, targetType)
+        MODULUS -> generateModulus(context, targetType)
+        MULTISET_CONVERSION -> generateMultisetConversion(context, targetType)
+        BINARY -> generateBinaryExpression(context, targetType)
+        TERNARY -> generateTernaryExpression(context, targetType)
+        MATCH -> generateMatchExpression(context, targetType)
+        FUNCTION_METHOD_CALL -> generateFunctionMethodCall(context, targetType)
+        IDENTIFIER -> generateIdentifier(context, targetType, initialisedConstraint = true)
+        LITERAL -> generateLiteralForType(context, targetType as LiteralType)
+        INDEX_ASSIGN -> generateIndexAssign(context, targetType)
+        INDEX -> generateIndex(context, targetType)
+    }
 
     override fun generateFunctionMethodCall(
         context: GenerationContext,
@@ -872,10 +867,10 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (
-                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                        context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
-                )
+            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
+                context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
+            )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
@@ -936,7 +931,11 @@ class Generator(
         return Pair(SetDisplayAST(exprs, isMultiset), exprDeps)
     }
 
-    private fun generateBinaryExpressionWithIdentifier(identifier: IdentifierAST, context: GenerationContext, targetType: Type): Pair<BinaryExpressionAST, List<StatementAST>> {
+    private fun generateBinaryExpressionWithIdentifier(
+        identifier: IdentifierAST,
+        context: GenerationContext,
+        targetType: Type,
+    ): Pair<BinaryExpressionAST, List<StatementAST>> {
         val (binaryOperator, types) = selectionManager.selectBinaryOperator(context, targetType)
         val (expr, exprDeps) = generateExpression(context.increaseExpressionDepth(), types.second)
 
@@ -969,7 +968,14 @@ class Generator(
 
         val exprContext = context.withSymbolTable(SymbolTable()).disableOnDemand()
         exprContext.symbolTable.add(identifier)
-        val (expr, _) = if (isBinaryType(targetType.innerType)) generateBinaryExpressionWithIdentifier(identifier, exprContext, targetType.innerType) else Pair(identifier, emptyList())
+        val (expr, _) = if (isBinaryType(targetType.innerType)) {
+            generateBinaryExpressionWithIdentifier(identifier, exprContext, targetType.innerType)
+        } else {
+            Pair(
+                identifier,
+                emptyList(),
+            )
+        }
 
         return Pair(DataStructureSetComprehensionAST(identifier, dataStructure, expr), dataStructureDeps)
     }
@@ -1034,7 +1040,11 @@ class Generator(
 
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
-        val (keyExpr, _) = generateBinaryExpressionWithIdentifier(identifier, exprContext, targetType.keyType) // _ since we have disabled on-demand so there should be no dependencies
+        val (keyExpr, _) = generateBinaryExpressionWithIdentifier(
+            identifier,
+            exprContext,
+            targetType.keyType,
+        ) // _ since we have disabled on-demand so there should be no dependencies
         val (valueExpr, _) = generateExpression(exprContext, targetType.valueType)
 
         return Pair(IntRangeMapComprehensionAST(identifier, bottomRange, topRange, Pair(keyExpr, valueExpr)), emptyList())
@@ -1047,7 +1057,14 @@ class Generator(
 
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
-        val (keyExpr, _) = if (isBinaryType(targetType.keyType)) generateBinaryExpressionWithIdentifier(identifier, exprContext, targetType.keyType) else Pair(identifier, emptyList())
+        val (keyExpr, _) = if (isBinaryType(targetType.keyType)) {
+            generateBinaryExpressionWithIdentifier(identifier, exprContext, targetType.keyType)
+        } else {
+            Pair(
+                identifier,
+                emptyList(),
+            )
+        }
         val (valueExpr, _) = generateExpression(exprContext, targetType.valueType)
 
         return Pair(DataStructureMapComprehensionAST(identifier, dataStructure, Pair(keyExpr, valueExpr)), dataStructureDependencies)
@@ -1275,7 +1292,7 @@ class Generator(
         else -> throw UnsupportedOperationException("Trying to generate base for non-base type $targetType")
     }
 
-    private fun generateComprehensionForType(context: GenerationContext, targetType: Type) = when(targetType) {
+    private fun generateComprehensionForType(context: GenerationContext, targetType: Type) = when (targetType) {
         is MapType -> generateMapComprehension(context, targetType)
         is SequenceType -> generateSequenceComprehension(context, targetType)
         is SetType -> generateSetComprehension(context, targetType)
