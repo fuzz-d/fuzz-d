@@ -19,6 +19,7 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
+import fuzzd.generator.ast.ExpressionAST.DataStructureSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
@@ -26,6 +27,7 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntRangeMapComprehensionAST
+import fuzzd.generator.ast.ExpressionAST.IntRangeSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
@@ -40,6 +42,7 @@ import fuzzd.generator.ast.ExpressionAST.ObjectOrientedInstanceAST
 import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
+import fuzzd.generator.ast.ExpressionAST.SetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -119,6 +122,7 @@ import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
+import jdk.incubator.vector.VectorOperators.Binary
 import java.lang.reflect.Member
 
 class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
@@ -603,6 +607,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             ctx.matchExpression() != null -> visitMatchExpression(ctx.matchExpression())
             ctx.arrayLength() != null -> visitArrayLength(ctx.arrayLength())
             ctx.setDisplay() != null -> visitSetDisplay(ctx.setDisplay())
+            ctx.setComprehension() != null -> visitSetComprehension(ctx.setComprehension())
             ctx.sequenceDisplay() != null -> visitSequenceDisplay(ctx.sequenceDisplay())
             ctx.sequenceComprehension() != null -> visitSequenceComprehension(ctx.sequenceComprehension())
             ctx.mapConstructor() != null -> visitMapConstructor(ctx.mapConstructor())
@@ -892,6 +897,30 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitSetDisplay(ctx: SetDisplayContext): SetDisplayAST {
         val exprs = ctx.expression().map(this::visitExpression)
         return SetDisplayAST(exprs, ctx.MULTISET() != null)
+    }
+
+    override fun visitSetComprehension(ctx: SetComprehensionContext): SetComprehensionAST {
+        val identifier = visitIdentifierType(ctx.identifierType())
+
+        identifiersTable = identifiersTable.increaseDepth()
+        identifiersTable.addEntry(identifier.name, identifier)
+        val condition = visitExpression(ctx.expression(0))
+        val expr = visitExpression(ctx.expression(1))
+        identifiersTable = identifiersTable.decreaseDepth()
+
+        if (condition !is BinaryExpressionAST) {
+            throw UnsupportedOperationException("Invalid set comprehension condition")
+        }
+
+        return if (condition.operator == MembershipOperator) {
+            DataStructureSetComprehensionAST(identifier, condition.expr2, expr)
+        } else {
+            if (condition.expr1 !is BinaryExpressionAST || condition.expr2 !is BinaryExpressionAST) {
+                throw UnsupportedOperationException("Invalid int range set comprehension condition")
+            }
+
+            IntRangeSetComprehensionAST(identifier, condition.expr1.expr1, condition.expr2.expr2, expr)
+        }
     }
 
     private fun visitIndexExpression(ctx: ExpressionContext): ExpressionAST {
