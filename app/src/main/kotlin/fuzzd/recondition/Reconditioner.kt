@@ -219,7 +219,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is SetDisplayAST -> reconditionSetDisplay(expression)
         is SetComprehensionAST -> TODO()
         is MapConstructorAST -> reconditionMapConstructor(expression)
-        is MapComprehensionAST -> TODO()
+        is MapComprehensionAST -> reconditionMapComprehension(expression)
         is SequenceDisplayAST -> reconditionSequenceDisplay(expression)
         is SequenceComprehensionAST -> reconditionSequenceComprehension(expression)
         is DatatypeInstantiationAST -> reconditionDatatypeInstantiation(expression)
@@ -451,6 +451,12 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         mapConstructor.keyType,
         mapConstructor.valueType,
         mapConstructor.assignments.map { (k, v) -> Pair(reconditionExpression(k), reconditionExpression(v)) },
+    )
+
+    override fun reconditionMapComprehension(mapComprehension: MapComprehensionAST): MapComprehensionAST = MapComprehensionAST(
+        mapComprehension.identifier,
+        reconditionExpression(mapComprehension.condition),
+        Pair(reconditionExpression(mapComprehension.assign.first), reconditionExpression(mapComprehension.assign.second))
     )
 
     override fun reconditionSequenceDisplay(sequenceDisplay: SequenceDisplayAST): SequenceDisplayAST =

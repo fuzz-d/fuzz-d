@@ -117,10 +117,10 @@ class AdvancedReconditioner {
 
         return DafnyAST(
             reconditionedDatatypes +
-                reconditionedTraits +
-                reconditionedClasses +
-                reconditionedMethods +
-                reconditionedMain,
+                    reconditionedTraits +
+                    reconditionedClasses +
+                    reconditionedMethods +
+                    reconditionedMain,
         )
     }
 
@@ -270,7 +270,7 @@ class AdvancedReconditioner {
         val (reconditionedIdentifier, identifierDependents) = reconditionIdentifier(declaration.identifier)
         val (reconditionedDataStructure, dataStructureDependents) = reconditionIdentifier(declaration.dataStructure)
         return identifierDependents + dataStructureDependents +
-            DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
+                DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
     }
 
     fun reconditionMultiAssignment(multiAssignmentAST: MultiAssignmentAST): List<StatementAST> {
@@ -278,7 +278,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
         return identifierDependents + exprDependents +
-            MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMultiTypedDeclaration(multiTypedDeclarationAST: MultiTypedDeclarationAST): List<StatementAST> {
@@ -296,7 +296,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
 
         return identifierDependents + exprDependents +
-            MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMatchStatement(matchStatementAST: MatchStatementAST): List<StatementAST> {
@@ -380,7 +380,7 @@ class AdvancedReconditioner {
             is SetDisplayAST -> reconditionSetDisplay(expressionAST)
             is SetComprehensionAST -> TODO()
             is MapConstructorAST -> reconditionMapConstructor(expressionAST)
-            is MapComprehensionAST -> TODO()
+            is MapComprehensionAST -> reconditionMapComprehension(expressionAST)
             is SequenceDisplayAST -> reconditionSequenceDisplay(expressionAST)
             is SequenceComprehensionAST -> reconditionSeqeunceComprehension(expressionAST)
             is DatatypeInstantiationAST -> reconditionDatatypeInstantiation(expressionAST)
@@ -666,6 +666,14 @@ class AdvancedReconditioner {
             MapConstructorAST(reconditionType(mapConstructorAST.keyType), reconditionType(mapConstructorAST.valueType), assigns),
             assignDependents,
         )
+    }
+
+    fun reconditionMapComprehension(mapComprehensionAST: MapComprehensionAST): Pair<ExpressionAST, List<StatementAST>> {
+        val (condition, conditionDependents) = reconditionExpression(mapComprehensionAST.condition)
+        val (key, keyDependents) = reconditionExpression(mapComprehensionAST.assign.first)
+        val (value, valueDependents) = reconditionExpression(mapComprehensionAST.assign.second)
+
+        return Pair(MapComprehensionAST(mapComprehensionAST.identifier, condition, Pair(key, value)), conditionDependents + keyDependents + valueDependents)
     }
 
     fun reconditionSequenceDisplay(sequenceDisplayAST: SequenceDisplayAST): Pair<SequenceDisplayAST, List<StatementAST>> {

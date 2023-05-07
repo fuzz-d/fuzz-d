@@ -12,6 +12,7 @@ import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
+import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
@@ -111,6 +112,8 @@ interface ASTReconditioner {
     fun reconditionSetDisplay(setDisplay: SetDisplayAST): ExpressionAST
 
     fun reconditionMapConstructor(mapConstructor: MapConstructorAST): MapConstructorAST
+
+    fun reconditionMapComprehension(mapComprehension: MapComprehensionAST): MapComprehensionAST
 
     fun reconditionSequenceDisplay(sequenceDisplay: SequenceDisplayAST): SequenceDisplayAST
 
