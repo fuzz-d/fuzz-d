@@ -20,6 +20,7 @@ import fuzzd.generator.ast.ExpressionAST.ModulusExpressionAST
 import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
+import fuzzd.generator.ast.ExpressionAST.SetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -37,6 +38,7 @@ import fuzzd.generator.ast.Type.ConstructorType.ArrayType
 import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.DataStructureType.MapType
 import fuzzd.generator.ast.Type.DataStructureType.SequenceType
+import fuzzd.generator.ast.Type.DataStructureType.SetType
 import fuzzd.generator.context.GenerationContext
 
 interface ASTGenerator {
@@ -144,6 +146,8 @@ interface ASTGenerator {
     fun generateArrayIndex(context: GenerationContext, targetType: Type): Pair<ArrayIndexAST, List<StatementAST>>
 
     fun generateSetDisplay(context: GenerationContext, targetType: Type): Pair<SetDisplayAST, List<StatementAST>>
+
+    fun generateSetComprehension(context: GenerationContext, targetType: SetType): Pair<SetComprehensionAST, List<StatementAST>>
 
     fun generateSequenceDisplay(
         context: GenerationContext,

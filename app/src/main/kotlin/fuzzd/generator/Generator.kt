@@ -14,6 +14,7 @@ import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
+import fuzzd.generator.ast.ExpressionAST.DataStructureSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
@@ -23,6 +24,7 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntRangeMapComprehensionAST
+import fuzzd.generator.ast.ExpressionAST.IntRangeSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
@@ -36,6 +38,7 @@ import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SequenceIndexAST
+import fuzzd.generator.ast.ExpressionAST.SetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
@@ -678,16 +681,16 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-            context.functionSymbolTable.methods().map { it.signature } +
-                context.symbolTable.classInstances().map { it.methods() }.unionAll() +
-                context.symbolTable.traitInstances().map { it.methods() }.unionAll()
-            )
+                context.functionSymbolTable.methods().map { it.signature } +
+                        context.symbolTable.classInstances().map { it.methods() }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.methods() }.unionAll()
+                )
             .filter { method ->
                 context.methodContext == null ||
-                    method is ClassInstanceMethodSignatureAST &&
-                    methodCallTable.canUseDependency(context.methodContext, method.signature) ||
-                    method !is ClassInstanceMethodSignatureAST &&
-                    methodCallTable.canUseDependency(context.methodContext, method)
+                        method is ClassInstanceMethodSignatureAST &&
+                        methodCallTable.canUseDependency(context.methodContext, method.signature) ||
+                        method !is ClassInstanceMethodSignatureAST &&
+                        methodCallTable.canUseDependency(context.methodContext, method)
             }
 
         // no support for on demand method generation within methods
@@ -865,10 +868,10 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (
-            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
-                context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
-            )
+                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                        context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
+                )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
@@ -927,6 +930,37 @@ class Generator(
             )
         }.foldPair()
         return Pair(SetDisplayAST(exprs, isMultiset), exprDeps)
+    }
+
+    override fun generateSetComprehension(context: GenerationContext, targetType: SetType): Pair<SetComprehensionAST, List<StatementAST>> =
+        if (selectionManager.selectComprehensionConditionWithIntRange()) {
+            generateIntRangeSetComprehension(context, targetType)
+        } else {
+            generateDataStructureSetComprehension(context, targetType)
+        }
+
+    private fun generateIntRangeSetComprehension(context: GenerationContext, targetType: SetType): Pair<IntRangeSetComprehensionAST, List<StatementAST>> {
+        val (bottomRange, _) = generateIntegerLiteral(context)
+        val (topRange, _) = generateIntegerLiteral(context)
+        val identifier = IdentifierAST(context.identifierNameGenerator.newValue(), IntType)
+
+        val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
+        exprContext.symbolTable.add(identifier)
+        val (expr, _) = generateExpression(exprContext, targetType.innerType)
+
+        return Pair(IntRangeSetComprehensionAST(identifier, bottomRange, topRange, expr), emptyList())
+    }
+
+    private fun generateDataStructureSetComprehension(context: GenerationContext, targetType: SetType): Pair<DataStructureSetComprehensionAST, List<StatementAST>> {
+        val dataStructureType = selectionManager.selectDataStructureType(context.disableOnDemand(), 1)
+        val (dataStructure, dataStructureDeps) = generateExpression(context.increaseExpressionDepth(), dataStructureType)
+        val identifier = IdentifierAST(context.identifierNameGenerator.newValue(), dataStructureType.innerType)
+
+        val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
+        exprContext.symbolTable.add(identifier)
+        val (expr, _) = generateExpression(exprContext, targetType.innerType)
+
+        return Pair(DataStructureSetComprehensionAST(identifier, dataStructure, expr), dataStructureDeps)
     }
 
     override fun generateSequenceDisplay(
