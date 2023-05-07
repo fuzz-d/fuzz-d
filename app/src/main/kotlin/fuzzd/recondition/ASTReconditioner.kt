@@ -20,6 +20,7 @@ import fuzzd.generator.ast.ExpressionAST.MultisetConversionAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.SequenceComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
+import fuzzd.generator.ast.ExpressionAST.SetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
@@ -110,6 +111,8 @@ interface ASTReconditioner {
     fun reconditionNonVoidMethodCallAST(nonVoidMethodCall: NonVoidMethodCallAST): ExpressionAST
 
     fun reconditionSetDisplay(setDisplay: SetDisplayAST): ExpressionAST
+
+    fun reconditionSetComprehension(setComprehension: SetComprehensionAST): SetComprehensionAST
 
     fun reconditionMapConstructor(mapConstructor: MapConstructorAST): MapConstructorAST
 

@@ -16,6 +16,7 @@ import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
+import fuzzd.generator.ast.ExpressionAST.DataStructureSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
@@ -25,6 +26,7 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntRangeMapComprehensionAST
+import fuzzd.generator.ast.ExpressionAST.IntRangeSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
@@ -380,7 +382,7 @@ class AdvancedReconditioner {
             is NonVoidMethodCallAST -> reconditionNonVoidMethodCall(expressionAST)
             is FunctionMethodCallAST -> reconditionFunctionMethodCall(expressionAST)
             is SetDisplayAST -> reconditionSetDisplay(expressionAST)
-            is SetComprehensionAST -> TODO()
+            is SetComprehensionAST -> reconditionSetComprehension(expressionAST)
             is MapConstructorAST -> reconditionMapConstructor(expressionAST)
             is MapComprehensionAST -> reconditionMapComprehension(expressionAST)
             is SequenceDisplayAST -> reconditionSequenceDisplay(expressionAST)
@@ -655,6 +657,28 @@ class AdvancedReconditioner {
     fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): Pair<ExpressionAST, List<StatementAST>> {
         val (exprs, exprDependents) = reconditionExpressionList(setDisplayAST.exprs)
         return Pair(SetDisplayAST(exprs, setDisplayAST.isMultiset), exprDependents)
+    }
+
+    fun reconditionSetComprehension(setComprehensionAST: SetComprehensionAST): Pair<ExpressionAST, List<StatementAST>> =
+        when (setComprehensionAST) {
+            is IntRangeSetComprehensionAST -> reconditionIntRangeSetComprehension(setComprehensionAST)
+            is DataStructureSetComprehensionAST -> reconditionDataStructureSetComprehension(setComprehensionAST)
+            else -> throw UnsupportedOperationException()
+        }
+
+    private fun reconditionIntRangeSetComprehension(setComprehensionAST: IntRangeSetComprehensionAST): Pair<ExpressionAST, List<StatementAST>> {
+        val (bottomRange, bottomRangeDependents) = reconditionExpression(setComprehensionAST.bottomRange)
+        val (topRange, topRangeDependents) = reconditionExpression(setComprehensionAST.topRange)
+        val (expr, exprDependents) = reconditionExpression(setComprehensionAST.expr)
+
+        return Pair(IntRangeSetComprehensionAST(setComprehensionAST.identifier, bottomRange, topRange, expr), bottomRangeDependents + topRangeDependents + exprDependents)
+    }
+
+    private fun reconditionDataStructureSetComprehension(setComprehensionAST: DataStructureSetComprehensionAST): Pair<ExpressionAST, List<StatementAST>> {
+        val (dataStructure, dataStructureDependents) = reconditionExpression(setComprehensionAST.dataStructure)
+        val (expr, exprDependents) = reconditionExpression(setComprehensionAST.expr)
+
+        return Pair(DataStructureSetComprehensionAST(setComprehensionAST.identifier, dataStructure, expr), dataStructureDependents + exprDependents)
     }
 
     fun reconditionMapConstructor(mapConstructorAST: MapConstructorAST): Pair<ExpressionAST, List<StatementAST>> {

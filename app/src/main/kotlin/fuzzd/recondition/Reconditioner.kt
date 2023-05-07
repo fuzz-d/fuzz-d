@@ -12,6 +12,7 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
+import fuzzd.generator.ast.ExpressionAST.DataStructureSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
@@ -20,6 +21,7 @@ import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntRangeMapComprehensionAST
+import fuzzd.generator.ast.ExpressionAST.IntRangeSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
@@ -219,7 +221,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is NonVoidMethodCallAST -> reconditionNonVoidMethodCallAST(expression)
         is FunctionMethodCallAST -> reconditionFunctionMethodCall(expression)
         is SetDisplayAST -> reconditionSetDisplay(expression)
-        is SetComprehensionAST -> TODO()
+        is SetComprehensionAST -> reconditionSetComprehension(expression)
         is MapConstructorAST -> reconditionMapConstructor(expression)
         is MapComprehensionAST -> reconditionMapComprehension(expression)
         is SequenceDisplayAST -> reconditionSequenceDisplay(expression)
@@ -447,7 +449,29 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
     override fun reconditionSetDisplay(setDisplay: SetDisplayAST): ExpressionAST = SetDisplayAST(
         setDisplay.exprs.map(this::reconditionExpression),
         setDisplay.isMultiset,
-    )
+        )
+
+    override fun reconditionSetComprehension(setComprehension: SetComprehensionAST): SetComprehensionAST =
+        when(setComprehension){
+            is IntRangeSetComprehensionAST -> reconditionIntRangeSetComprehension(setComprehension)
+            is DataStructureSetComprehensionAST -> reconditionDataStructureSetComprehension(setComprehension)
+            else -> throw UnsupportedOperationException()
+        }
+
+    private fun reconditionIntRangeSetComprehension(setComprehension: IntRangeSetComprehensionAST): IntRangeSetComprehensionAST =
+        IntRangeSetComprehensionAST(
+            setComprehension.identifier,
+            reconditionExpression(setComprehension.bottomRange),
+            reconditionExpression(setComprehension.topRange),
+            reconditionExpression(setComprehension.expr)
+        )
+
+    private fun reconditionDataStructureSetComprehension(setComprehension: DataStructureSetComprehensionAST): DataStructureSetComprehensionAST =
+        DataStructureSetComprehensionAST(
+            setComprehension.identifier,
+            reconditionExpression(setComprehension.dataStructure),
+            reconditionExpression(setComprehension.expr)
+        )
 
     override fun reconditionMapConstructor(mapConstructor: MapConstructorAST): MapConstructorAST = MapConstructorAST(
         mapConstructor.keyType,
