@@ -487,6 +487,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is SequenceDisplayAST -> interpretSequenceDisplay(expression, context)
             is SequenceComprehensionAST -> interpretSequenceComprehension(expression, context)
             is MapConstructorAST -> interpretMapConstructor(expression, context)
+            is MapComprehensionAST -> interpretMapComprehension(expression, context)
             is ArrayLengthAST -> interpretArrayLength(expression, context)
             is ArrayInitAST -> interpretArrayInit(expression, context)
             is CharacterLiteralAST -> interpretCharacterLiteral(expression, context)

@@ -18,14 +18,17 @@ import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeUpdateAST
 import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
+import fuzzd.generator.ast.ExpressionAST.IntRangeMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
+import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.MapIndexAST
 import fuzzd.generator.ast.ExpressionAST.MatchExpressionAST
@@ -78,6 +81,7 @@ import fuzzd.generator.ast.Type.DataStructureType.SetType
 import fuzzd.generator.ast.Type.DataStructureType.StringType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
+import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
@@ -115,6 +119,7 @@ import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
+import java.lang.reflect.Member
 
 class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     private val topLevelDatatypes = mutableListOf<DatatypeDeclContext>()
@@ -601,6 +606,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
             ctx.sequenceDisplay() != null -> visitSequenceDisplay(ctx.sequenceDisplay())
             ctx.sequenceComprehension() != null -> visitSequenceComprehension(ctx.sequenceComprehension())
             ctx.mapConstructor() != null -> visitMapConstructor(ctx.mapConstructor())
+            ctx.mapComprehension() != null -> visitMapComprehension(ctx.mapComprehension())
             ctx.identifier() != null -> visitIdentifier(ctx.identifier())
             ctx.index() != null -> visitIndexExpression(ctx)
             ctx.indexElem() != null -> visitIndexAssign(ctx)
@@ -928,6 +934,32 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         visitExpression(ctx.expression(0)),
         visitExpression(ctx.expression(1)),
     )
+
+    override fun visitMapComprehension(ctx: MapComprehensionContext): MapComprehensionAST {
+        val identifier = visitIdentifierType(ctx.identifierType())
+
+        identifiersTable = identifiersTable.increaseDepth()
+        identifiersTable.addEntry(identifier.name, identifier)
+        val condition = visitExpression(ctx.expression(0))
+        val key = visitExpression(ctx.expression(1))
+        val value = visitExpression(ctx.expression(2))
+        identifiersTable = identifiersTable.decreaseDepth()
+
+        if (condition !is BinaryExpressionAST) {
+            throw UnsupportedOperationException("Invalid map comprehension condition")
+        }
+
+        return if (condition.operator == MembershipOperator) {
+            DataStructureMapComprehensionAST(identifier, condition.expr2, Pair(key, value))
+        } else {
+            // condition should be int range: <br> <= x && x <= <tr>
+            if (condition.expr1 !is BinaryExpressionAST || condition.expr2 !is BinaryExpressionAST) {
+                throw UnsupportedOperationException("Invalid int range map comprehension condition")
+            }
+
+            IntRangeMapComprehensionAST(identifier, condition.expr1.expr1, condition.expr2.expr2, Pair(key, value))
+        }
+    }
 
     private fun visitParametersForCall(ctx: CallParametersContext): List<ExpressionAST> =
         ctx.expression().map { expr -> visitExpression(expr) }
