@@ -49,7 +49,6 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
-import fuzzd.generator.ast.StatementAST.DataStructureMemberDeclarationAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -143,7 +142,6 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
     override fun reconditionStatement(statement: StatementAST) = when (statement) {
         is BreakAST -> statement
-        is DataStructureMemberDeclarationAST -> reconditionDataStructureMemberDeclaration(statement)
         is MultiAssignmentAST -> reconditionMultiAssignmentAST(statement) // covers AssignmentAST
         is MultiTypedDeclarationAST -> reconditionMultiTypedDeclarationAST(statement)
         is MultiDeclarationAST -> reconditionMultiDeclarationAST(statement) // covers DeclarationAST
@@ -156,12 +154,6 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is VoidMethodCallAST -> reconditionVoidMethodCall(statement)
         else -> throw UnsupportedOperationException()
     }
-
-    override fun reconditionDataStructureMemberDeclaration(declarationAST: DataStructureMemberDeclarationAST) =
-        DataStructureMemberDeclarationAST(
-            reconditionIdentifier(declarationAST.identifier),
-            reconditionIdentifier(declarationAST.dataStructure),
-        )
 
     override fun reconditionMultiAssignmentAST(multiAssignmentAST: MultiAssignmentAST) = MultiAssignmentAST(
         multiAssignmentAST.identifiers.map(this::reconditionIdentifier),

@@ -59,7 +59,6 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
-import fuzzd.generator.ast.StatementAST.DataStructureMemberDeclarationAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
@@ -265,7 +264,6 @@ class AdvancedReconditioner {
 
     fun reconditionStatement(statementAST: StatementAST): List<StatementAST> = when (statementAST) {
         is BreakAST -> listOf(statementAST)
-        is DataStructureMemberDeclarationAST -> reconditionDataStructureMemberDeclaration(statementAST)
         is MultiAssignmentAST -> reconditionMultiAssignment(statementAST)
         is MultiTypedDeclarationAST -> reconditionMultiTypedDeclaration(statementAST)
         is MultiDeclarationAST -> reconditionMultiDeclaration(statementAST)
@@ -278,13 +276,6 @@ class AdvancedReconditioner {
         is PrintAST -> reconditionPrint(statementAST)
         is VoidMethodCallAST -> reconditionVoidMethodCall(statementAST)
         else -> throw UnsupportedOperationException()
-    }
-
-    fun reconditionDataStructureMemberDeclaration(declaration: DataStructureMemberDeclarationAST): List<StatementAST> {
-        val (reconditionedIdentifier, identifierDependents) = reconditionIdentifier(declaration.identifier)
-        val (reconditionedDataStructure, dataStructureDependents) = reconditionIdentifier(declaration.dataStructure)
-        return identifierDependents + dataStructureDependents +
-                DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
     }
 
     fun reconditionMultiAssignment(multiAssignmentAST: MultiAssignmentAST): List<StatementAST> {

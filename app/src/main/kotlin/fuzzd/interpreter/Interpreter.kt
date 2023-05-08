@@ -254,7 +254,6 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is MultiDeclarationAST -> interpretMultiDeclaration(statement, context)
             is MultiAssignmentAST -> interpretMultiAssign(statement, context)
             is PrintAST -> interpretPrint(statement, context)
-            else -> throw UnsupportedOperationException()
         }
     }
 
