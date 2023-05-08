@@ -76,6 +76,8 @@ interface ASTGenerator {
 
     fun generateIfStatement(context: GenerationContext): List<StatementAST>
 
+    fun generateForallStatement(context: GenerationContext): List<StatementAST>
+
     fun generateWhileStatement(context: GenerationContext): List<StatementAST>
 
     fun generatePrintStatement(context: GenerationContext): List<StatementAST>

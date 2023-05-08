@@ -137,7 +137,7 @@ class SelectionManager(
     private fun selectSequenceType(context: GenerationContext, depth: Int): SequenceType =
         SequenceType(selectType(context, depth + 1))
 
-    private fun selectArrayType(context: GenerationContext, depth: Int): ArrayType =
+    fun selectArrayType(context: GenerationContext, depth: Int): ArrayType =
         ArrayType(selectType(context, depth + 1))
 
     @Suppress("UNUSED_PARAMETER")

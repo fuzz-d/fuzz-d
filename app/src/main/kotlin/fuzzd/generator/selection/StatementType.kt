@@ -4,6 +4,7 @@ enum class StatementType {
     ASSIGN,
     CLASS_INSTANTIATION,
     DECLARATION,
+    FORALL,
     IF,
     MATCH,
     MAP_ASSIGN,

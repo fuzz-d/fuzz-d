@@ -8,6 +8,7 @@ import fuzzd.generator.ast.DatatypeConstructorAST
 import fuzzd.generator.ast.ExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ArrayIndexAST
 import fuzzd.generator.ast.ExpressionAST.ArrayInitAST
+import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
@@ -58,6 +59,7 @@ import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
+import fuzzd.generator.ast.StatementAST.ForallStatement
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
@@ -130,6 +132,7 @@ import fuzzd.generator.selection.StatementType
 import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.CLASS_INSTANTIATION
 import fuzzd.generator.selection.StatementType.DECLARATION
+import fuzzd.generator.selection.StatementType.FORALL
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.MAP_ASSIGN
 import fuzzd.generator.selection.StatementType.METHOD_CALL
@@ -523,6 +526,7 @@ class Generator(
         ASSIGN -> generateAssignmentStatement(context)
         CLASS_INSTANTIATION -> generateClassInstantiation(context)
         DECLARATION -> generateDeclarationStatement(context)
+        FORALL -> generateForallStatement(context)
         IF -> generateIfStatement(context)
         MAP_ASSIGN -> generateMapAssign(context)
         METHOD_CALL -> generateMethodCall(context)
@@ -565,6 +569,23 @@ class Generator(
         )
 
         return conditionDeps + ifStatement
+    }
+
+    override fun generateForallStatement(context: GenerationContext): List<StatementAST> {
+        val identifier = IdentifierAST(context.identifierNameGenerator.newValue(), IntType)
+        val arrayType = selectionManager.selectArrayType(context.disableOnDemand(), 1)
+        val (array, arrayDeps) = generateIdentifier(context, arrayType, mutableConstraint = true, initialisedConstraint = true)
+
+        val statementContext = context.increaseStatementDepth().disableOnDemand()
+        statementContext.symbolTable.add(identifier)
+        val (assignExpr, _) = if (arrayType.internalType == IntType) generateBinaryExpressionWithIdentifier(
+            identifier,
+            statementContext,
+            arrayType.internalType
+        ) else generateBinaryExpression(statementContext, arrayType.internalType)
+
+        return arrayDeps +
+            ForallStatement(identifier, IntegerLiteralAST(0), ArrayLengthAST(array), AssignmentAST(ArrayIndexAST(array, identifier), assignExpr))
     }
 
     override fun generateWhileStatement(context: GenerationContext): List<StatementAST> {
@@ -684,16 +705,16 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-            context.functionSymbolTable.methods().map { it.signature } +
-                context.symbolTable.classInstances().map { it.methods() }.unionAll() +
-                context.symbolTable.traitInstances().map { it.methods() }.unionAll()
-            )
+                context.functionSymbolTable.methods().map { it.signature } +
+                        context.symbolTable.classInstances().map { it.methods() }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.methods() }.unionAll()
+                )
             .filter { method ->
                 context.methodContext == null ||
-                    method is ClassInstanceMethodSignatureAST &&
-                    methodCallTable.canUseDependency(context.methodContext, method.signature) ||
-                    method !is ClassInstanceMethodSignatureAST &&
-                    methodCallTable.canUseDependency(context.methodContext, method)
+                        method is ClassInstanceMethodSignatureAST &&
+                        methodCallTable.canUseDependency(context.methodContext, method.signature) ||
+                        method !is ClassInstanceMethodSignatureAST &&
+                        methodCallTable.canUseDependency(context.methodContext, method)
             }
 
         // no support for on demand method generation within methods
@@ -872,10 +893,10 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (
-            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
-                context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
-            )
+                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                        context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
+                )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
