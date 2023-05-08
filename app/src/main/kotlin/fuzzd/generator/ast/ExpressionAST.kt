@@ -650,9 +650,11 @@ sealed class ExpressionAST : ASTElement {
         length: Int,
         val values: List<ExpressionAST>,
     ) : ArrayInitAST(length, ArrayType(values[0].type())) {
-        override fun type(): Type = ArrayType(values[0].type())
+        private val innerType = values[0].type()
 
-        override fun toString(): String = "new ${type()}[$length] [${values.joinToString(", ")}]"
+        override fun type(): Type = ArrayType(innerType)
+
+        override fun toString(): String = "new $innerType[$length] [${values.joinToString(", ")}]"
     }
 
     class ComprehensionInitialisedArrayInitAST(
@@ -660,9 +662,11 @@ sealed class ExpressionAST : ASTElement {
         val identifier: IdentifierAST,
         val expr: ExpressionAST,
     ) : ArrayInitAST(length, ArrayType(expr.type())) {
-        override fun type(): Type = ArrayType(expr.type())
+        private val innerType = expr.type()
 
-        override fun toString(): String = "new ${type()}[$length]($identifier => $expr)"
+        override fun type(): Type = ArrayType(innerType)
+
+        override fun toString(): String = "new $innerType[$length]($identifier => $expr)"
     }
 
     abstract class LiteralAST(private val value: String, private val type: Type) : ExpressionAST() {

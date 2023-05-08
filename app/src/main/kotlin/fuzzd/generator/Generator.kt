@@ -1398,7 +1398,7 @@ class Generator(
         targetType: ArrayType,
     ): Pair<ValueInitialisedArrayInitAST, List<StatementAST>> {
         val length = selectionManager.selectArrayLength()
-        val (values, dependents) = (1..length).map { generateExpression(context, targetType.internalType) }.foldPair()
+        val (values, dependents) = (1..length).map { generateExpression(context.increaseExpressionDepth(), targetType.internalType) }.foldPair()
         return Pair(ValueInitialisedArrayInitAST(length, values), dependents)
     }
 
