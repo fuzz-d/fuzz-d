@@ -60,6 +60,8 @@ import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
+import fuzzd.generator.ast.StatementAST.ForLoopAST
+import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
@@ -567,6 +569,32 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         identifiersTable = identifiersTable.decreaseDepth()
 
         return IfStatementAST(ifCondition, ifBranch, elseBranch)
+    }
+
+    override fun visitForLoop(ctx: ForLoopContext): ForLoopAST {
+        val identifier = IdentifierAST(visitIdentifierName(ctx.identifier()), IntType)
+        val bottomRange = visitExpression(ctx.expression(0))
+        val topRange = visitExpression(ctx.expression(1))
+
+        identifiersTable = identifiersTable.increaseDepth()
+        identifiersTable.addEntry(identifier.name, identifier)
+        val sequence = visitSequence(ctx.sequence())
+        identifiersTable = identifiersTable.decreaseDepth()
+
+        return ForLoopAST(identifier, bottomRange, topRange, sequence)
+    }
+
+    override fun visitForallStatement(ctx: ForallStatementContext): ForallStatementAST {
+        val identifier = IdentifierAST(visitIdentifierName(ctx.identifier(0)), IntType)
+        val bottomRange = visitExpression(ctx.expression(0))
+        val topRange = visitExpression(ctx.expression(1))
+
+        identifiersTable = identifiersTable.increaseDepth()
+        identifiersTable.addEntry(identifier.name, identifier)
+        val assign = visitAssignment(ctx.assignment())
+        identifiersTable = identifiersTable.decreaseDepth()
+
+        return ForallStatementAST(identifier, bottomRange, topRange, assign)
     }
 
     override fun visitWhileStatement(ctx: WhileStatementContext): WhileLoopAST {
