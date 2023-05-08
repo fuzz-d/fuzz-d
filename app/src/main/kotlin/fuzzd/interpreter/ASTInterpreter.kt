@@ -32,6 +32,8 @@ import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
+import fuzzd.generator.ast.StatementAST.ForLoopAST
+import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
@@ -63,6 +65,10 @@ interface ASTInterpreter {
     fun interpretIfStatement(ifStatement: IfStatementAST, context: InterpreterContext)
 
     fun interpretCounterLimitedWhileStatement(whileStatement: CounterLimitedWhileLoopAST, context: InterpreterContext)
+
+    fun interpretForallStatement(forallStatement: ForallStatementAST, context: InterpreterContext)
+
+    fun interpretForLoopStatement(forLoop: ForLoopAST, context: InterpreterContext)
 
     fun interpretWhileStatement(whileStatement: WhileLoopAST, context: InterpreterContext)
 

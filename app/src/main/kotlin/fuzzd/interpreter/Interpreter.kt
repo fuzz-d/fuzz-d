@@ -52,6 +52,8 @@ import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
+import fuzzd.generator.ast.StatementAST.ForLoopAST
+import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
@@ -241,6 +243,8 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is MatchStatementAST -> interpretMatchStatement(statement, context)
             is IfStatementAST -> interpretIfStatement(statement, context)
             is CounterLimitedWhileLoopAST -> interpretCounterLimitedWhileStatement(statement, context)
+            is ForallStatementAST -> interpretForallStatement(statement, context)
+            is ForLoopAST -> interpretForLoopStatement(statement, context)
             is WhileLoopAST -> interpretWhileStatement(statement, context)
             is VoidMethodCallAST -> interpretVoidMethodCall(statement, context)
             is MultiTypedDeclarationAST -> interpretMultiTypedDeclaration(statement, context)
@@ -298,6 +302,32 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             condition = interpretExpression(whileStatement.condition, context)
         }
         doBreak = prevBreak
+    }
+
+    override fun interpretForLoopStatement(forLoop: ForLoopAST, context: InterpreterContext) {
+        val bottomRange = interpretExpression(forLoop.bottomRange, context) as IntValue
+        val topRange = interpretExpression(forLoop.topRange, context) as IntValue
+
+        var i = bottomRange.value
+        while (i < topRange.value) {
+            val sequenceContext = context.increaseDepth()
+            sequenceContext.fields.declare(forLoop.identifier, IntValue(i))
+            interpretSequence(forLoop.body, sequenceContext)
+            i += ONE
+        }
+    }
+
+    override fun interpretForallStatement(forallStatement: ForallStatementAST, context: InterpreterContext) {
+        val bottomRange = interpretExpression(forallStatement.bottomRange, context) as IntValue
+        val topRange = interpretExpression(forallStatement.topRange, context) as IntValue
+
+        var i = bottomRange.value
+        while(i < topRange.value) {
+            val assignContext = context.increaseDepth()
+            assignContext.fields.declare(forallStatement.identifier, IntValue(i))
+            interpretMultiAssign(forallStatement.assignment, assignContext)
+            i += ONE
+        }
     }
 
     override fun interpretWhileStatement(whileStatement: WhileLoopAST, context: InterpreterContext) {
