@@ -56,9 +56,11 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
+import fuzzd.generator.ast.StatementAST.DataStructureAssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.DeclarationAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
@@ -75,6 +77,7 @@ import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
+import fuzzd.generator.ast.Type.DataStructureType
 import fuzzd.generator.ast.Type.DataStructureType.MapType
 import fuzzd.generator.ast.Type.DataStructureType.MultisetType
 import fuzzd.generator.ast.Type.DataStructureType.SequenceType
@@ -85,8 +88,10 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
+import fuzzd.generator.ast.operators.BinaryOperator.DifferenceOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
+import fuzzd.generator.ast.operators.BinaryOperator.NotEqualsOperator
 import fuzzd.generator.ast.operators.BinaryOperator.UnionOperator
 import fuzzd.utils.ADVANCED_ABSOLUTE
 import fuzzd.utils.ADVANCED_RECONDITION_CLASS
@@ -94,7 +99,6 @@ import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.foldPair
-import kotlin.io.path.ExperimentalPathApi
 
 class AdvancedReconditioner {
     private val classes = mutableMapOf<String, ClassAST>()
@@ -742,7 +746,33 @@ class AdvancedReconditioner {
         val (dataStructure, dataStructureDependents) = reconditionExpression(setComprehensionAST.dataStructure)
         val (expr, exprDependents) = reconditionExpression(setComprehensionAST.expr)
 
-        return Pair(DataStructureSetComprehensionAST(setComprehensionAST.identifier, dataStructure, expr), dataStructureDependents + exprDependents)
+        return if (exprDependents.isEmpty()) {
+            Pair(DataStructureSetComprehensionAST(setComprehensionAST.identifier, dataStructure, expr), dataStructureDependents)
+        } else {
+            val temp = IdentifierAST(tempGenerator.newValue(), setComprehensionAST.type())
+            val tempDecl = DeclarationAST(temp, SetDisplayAST(emptyList(), false, setComprehensionAST.type()))
+            val dataStructureType = dataStructure.type() as DataStructureType
+            val (dataStructureTemp, dataStructureExpr) = if (dataStructureType is SequenceType || dataStructureType is MultisetType) {
+                val counter = IdentifierAST(tempGenerator.newValue(), (dataStructure.type() as DataStructureType).innerType)
+                Pair(
+                    IdentifierAST(tempGenerator.newValue(), SetType(dataStructureType.innerType)),
+                    DataStructureSetComprehensionAST(counter, dataStructure, counter)
+                )
+            } else Pair(IdentifierAST(tempGenerator.newValue(), dataStructureType), dataStructure)
+
+            val dataStructureDecl = DeclarationAST(dataStructureTemp, dataStructureExpr)
+            val assignSuchThat = DataStructureAssignSuchThatStatement(setComprehensionAST.identifier, dataStructureTemp)
+            val tempUpdate = AssignmentAST(temp, BinaryExpressionAST(temp, UnionOperator, setComprehensionAST.identifier))
+            val dataStructureUpdate = AssignmentAST(
+                dataStructureTemp, BinaryExpressionAST(dataStructureTemp, DifferenceOperator, SetDisplayAST(listOf(setComprehensionAST.identifier), false))
+            )
+            val loop = WhileLoopAST(
+                BinaryExpressionAST(ModulusExpressionAST(dataStructureTemp), NotEqualsOperator, IntegerLiteralAST(0)),
+                SequenceAST(listOf(assignSuchThat) + exprDependents + tempUpdate + dataStructureUpdate)
+            )
+
+            Pair(temp, dataStructureDependents + tempDecl + dataStructureDecl + loop)
+        }
     }
 
     fun reconditionMapConstructor(mapConstructorAST: MapConstructorAST): Pair<ExpressionAST, List<StatementAST>> {
@@ -790,10 +820,32 @@ class AdvancedReconditioner {
         val (key, keyDependents) = reconditionExpression(mapComprehensionAST.assign.first)
         val (value, valueDependents) = reconditionExpression(mapComprehensionAST.assign.second)
 
-        return Pair(
-            DataStructureMapComprehensionAST(mapComprehensionAST.identifier, dataStructure, Pair(key, value)),
-            dataStructureDependents + keyDependents + valueDependents,
-        )
+        val internalDependents = keyDependents + valueDependents
+
+        return if (internalDependents.isEmpty()) {
+            Pair(DataStructureMapComprehensionAST(mapComprehensionAST.identifier, dataStructure, Pair(key, value)), dataStructureDependents)
+        } else {
+            val temp = IdentifierAST(tempGenerator.newValue(), mapComprehensionAST.type())
+            val tempDecl = DeclarationAST(temp, MapConstructorAST(mapComprehensionAST.type().keyType, mapComprehensionAST.type().valueType))
+            val dataStructureType = dataStructure.type() as DataStructureType
+            val (dataStructureTemp, dataStructureExpr) = if (dataStructureType is SequenceType || dataStructureType is MultisetType) {
+                val counter = IdentifierAST(tempGenerator.newValue(), (dataStructure.type() as DataStructureType).innerType)
+                Pair(
+                    IdentifierAST(tempGenerator.newValue(), SetType(dataStructureType.innerType)),
+                    DataStructureSetComprehensionAST(counter, dataStructure, counter)
+                )
+            } else Pair(IdentifierAST(tempGenerator.newValue(), dataStructureType), dataStructure)
+
+            val dataStructureDecl = DeclarationAST(dataStructureTemp, dataStructureExpr)
+            val assignSuchThat = DataStructureAssignSuchThatStatement(mapComprehensionAST.identifier, dataStructureTemp)
+            val tempUpdate = AssignmentAST(temp, IndexAssignAST(temp, key, value))
+            val dataStructureUpdate =
+                AssignmentAST(dataStructureTemp, BinaryExpressionAST(dataStructureTemp, DifferenceOperator, SetDisplayAST(listOf(mapComprehensionAST.identifier), false)))
+            val loop = WhileLoopAST(BinaryExpressionAST(ModulusExpressionAST(dataStructureTemp), NotEqualsOperator, IntegerLiteralAST(0)),
+                SequenceAST(listOf(assignSuchThat) + internalDependents + tempUpdate + dataStructureUpdate))
+
+            Pair(temp, dataStructureDependents + tempDecl + dataStructureDecl + loop)
+        }
     }
 
     fun reconditionSequenceDisplay(sequenceDisplayAST: SequenceDisplayAST): Pair<SequenceDisplayAST, List<StatementAST>> {
@@ -810,7 +862,7 @@ class AdvancedReconditioner {
         val tempDecl = DeclarationAST(temp, methodCall)
         val (expr, exprDependents) = reconditionExpression(sequenceComprehensionAST.expr)
 
-        return if(exprDependents.isEmpty()) {
+        return if (exprDependents.isEmpty()) {
             Pair(SequenceComprehensionAST(temp, sequenceComprehensionAST.identifier, expr), listOf(tempDecl))
         } else {
             val tempSeq = IdentifierAST(tempGenerator.newValue(), sequenceComprehensionAST.type())
