@@ -18,6 +18,7 @@ import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
+import fuzzd.generator.ast.ExpressionAST.ComprehensionInitialisedArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureSetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeDestructorAST
@@ -49,6 +50,7 @@ import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.TopLevelDatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.TraitInstanceAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.ValueInitialisedArrayInitAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.FunctionMethodSignatureAST
 import fuzzd.generator.ast.MainFunctionAST
@@ -72,19 +74,18 @@ import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.CharType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
-import fuzzd.generator.ast.Type.DatatypeType
-import fuzzd.generator.ast.Type.IntType
-import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.DataStructureType.MapType
-import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.DataStructureType.MultisetType
-import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.DataStructureType.SequenceType
 import fuzzd.generator.ast.Type.DataStructureType.SetType
 import fuzzd.generator.ast.Type.DataStructureType.StringType
+import fuzzd.generator.ast.Type.DatatypeType
+import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.LiteralType
+import fuzzd.generator.ast.Type.MethodReturnType
+import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
-import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
@@ -122,8 +123,6 @@ import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
-import jdk.incubator.vector.VectorOperators.Binary
-import java.lang.reflect.Member
 
 class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     private val topLevelDatatypes = mutableListOf<DatatypeDeclContext>()
@@ -833,9 +832,22 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitArrayConstructor(ctx: ArrayConstructorContext): ArrayInitAST {
         val innerType = visitType(ctx.type())
-        val dimension = visitIntLiteral(ctx.intLiteral(0)).toString().toInt()
+        val dimension = visitIntLiteral(ctx.intLiteral()).toString().toInt()
 
-        return ArrayInitAST(dimension, ArrayType(innerType))
+        return when {
+            ctx.arrayComprehension() != null -> {
+                val identifier = IdentifierAST(visitIdentifierName(ctx.arrayComprehension().identifier()), IntType)
+                identifiersTable = identifiersTable.increaseDepth()
+                identifiersTable.addEntry(identifier.name, identifier)
+                val expr = visitExpression(ctx.arrayComprehension().expression())
+                identifiersTable = identifiersTable.decreaseDepth()
+
+                ComprehensionInitialisedArrayInitAST(dimension, identifier, expr)
+            }
+
+            ctx.arrayValues() != null -> ValueInitialisedArrayInitAST(dimension, ctx.arrayValues().expression().map(this::visitExpression))
+            else -> ArrayInitAST(dimension, ArrayType(innerType))
+        }
     }
 
     private fun visitDotExpression(ctx: ExpressionContext): ExpressionAST {
