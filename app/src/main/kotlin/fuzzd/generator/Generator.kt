@@ -1388,9 +1388,17 @@ class Generator(
         val identifier = IdentifierAST(context.loopCounterGenerator.newValue(), IntType)
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
-        val (expr, exprDeps) = generateExpression(exprContext, targetType.internalType)
+        val (expr, _) = if (targetType.internalType == IntType) {
+            generateBinaryExpressionWithIdentifier(
+                identifier,
+                exprContext,
+                targetType.internalType,
+            )
+        } else {
+            generateExpression(exprContext, targetType.internalType)
+        }
 
-        return Pair(ComprehensionInitialisedArrayInitAST(length, identifier, expr), exprDeps)
+        return Pair(ComprehensionInitialisedArrayInitAST(length, identifier, expr), emptyList())
     }
 
     private fun generateValueBasedArrayInit(
