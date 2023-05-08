@@ -46,9 +46,12 @@ import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DataStructureMemberDeclarationAST
+import fuzzd.generator.ast.StatementAST.ForLoopAST
+import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
@@ -89,11 +92,11 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
         return DafnyAST(
             reconditionedDatatypes +
-                reconditionedTraits +
-                reconditionedClasses +
-                reconditionedFunctionMethods +
-                reconditionedMethods +
-                reconditionedMain,
+                    reconditionedTraits +
+                    reconditionedClasses +
+                    reconditionedFunctionMethods +
+                    reconditionedMethods +
+                    reconditionedMain,
         )
     }
 
@@ -146,6 +149,8 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is MultiDeclarationAST -> reconditionMultiDeclarationAST(statement) // covers DeclarationAST
         is MatchStatementAST -> reconditionMatchStatement(statement)
         is IfStatementAST -> reconditionIfStatement(statement)
+        is ForLoopAST -> TODO()
+        is ForallStatementAST -> reconditionForallStatement(statement)
         is WhileLoopAST -> reconditionWhileLoopAST(statement)
         is PrintAST -> reconditionPrintAST(statement)
         is VoidMethodCallAST -> reconditionVoidMethodCall(statement)
@@ -185,6 +190,19 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         reconditionSequence(ifStatementAST.ifBranch),
         ifStatementAST.elseBranch?.let(this::reconditionSequence),
     )
+
+    override fun reconditionForallStatement(forallStatementAST: ForallStatementAST): ForallStatementAST {
+        val arrayIndex = forallStatementAST.assignment.identifier as ArrayIndexAST
+        return ForallStatementAST(
+            forallStatementAST.identifier,
+            reconditionExpression(forallStatementAST.bottomRange),
+            reconditionExpression(forallStatementAST.topRange),
+            AssignmentAST(
+                ArrayIndexAST(reconditionIdentifier(arrayIndex.array), arrayIndex.index),
+                reconditionExpression(forallStatementAST.assignment.expr),
+            )
+        )
+    }
 
     override fun reconditionWhileLoopAST(whileLoopAST: WhileLoopAST) = when (whileLoopAST) {
         is CounterLimitedWhileLoopAST -> CounterLimitedWhileLoopAST(

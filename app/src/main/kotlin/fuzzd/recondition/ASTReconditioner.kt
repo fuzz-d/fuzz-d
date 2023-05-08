@@ -31,6 +31,7 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.DataStructureMemberDeclarationAST
+import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
@@ -71,6 +72,8 @@ interface ASTReconditioner {
     fun reconditionMatchStatement(matchStatement: MatchStatementAST): MatchStatementAST
 
     fun reconditionIfStatement(ifStatementAST: IfStatementAST): IfStatementAST
+
+    fun reconditionForallStatement(forallStatementAST: ForallStatementAST): ForallStatementAST
 
     fun reconditionWhileLoopAST(whileLoopAST: WhileLoopAST): WhileLoopAST
 

@@ -50,7 +50,26 @@ sealed class StatementAST : ASTElement {
         }
     }
 
-    class ForallStatement(
+    class ForLoopAST(
+        val identifier: IdentifierAST,
+        val bottomRange: ExpressionAST,
+        val topRange: ExpressionAST,
+        val body: SequenceAST,
+    ) : StatementAST() {
+        init {
+            if (identifier.type() != IntType) {
+                throw InvalidInputException("For-loop must iterate over int range")
+            }
+
+            if (bottomRange.type() != IntType || topRange.type() != IntType) {
+                throw InvalidInputException("Invalid int range provided to for-loop")
+            }
+        }
+
+        override fun toString(): String = "for $identifier := $bottomRange to $topRange {\n$body\n}"
+    }
+
+    class ForallStatementAST(
         val identifier: IdentifierAST,
         val bottomRange: ExpressionAST,
         val topRange: ExpressionAST,
@@ -131,7 +150,7 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "${identifiers.joinToString(", ")} := ${exprs.joinToString(", ")};"
     }
 
-    class AssignmentAST(identifier: IdentifierAST, expr: ExpressionAST) :
+    class AssignmentAST(val identifier: IdentifierAST, val expr: ExpressionAST) :
         MultiAssignmentAST(listOf(identifier), listOf(expr))
 
     class PrintAST(val expr: List<ExpressionAST>, val newLine: Boolean = true) : StatementAST() {

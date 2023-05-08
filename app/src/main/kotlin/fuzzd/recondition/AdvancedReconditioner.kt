@@ -60,6 +60,8 @@ import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DataStructureMemberDeclarationAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
+import fuzzd.generator.ast.StatementAST.ForLoopAST
+import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
@@ -266,6 +268,8 @@ class AdvancedReconditioner {
         is MultiDeclarationAST -> reconditionMultiDeclaration(statementAST)
         is MatchStatementAST -> reconditionMatchStatement(statementAST)
         is IfStatementAST -> reconditionIfStatement(statementAST)
+        is ForLoopAST -> TODO()
+        is ForallStatementAST -> reconditionForallStatement(statementAST)
         is CounterLimitedWhileLoopAST -> reconditionCounterLimitedWhileLoop(statementAST)
         is WhileLoopAST -> reconditionWhileLoop(statementAST)
         is PrintAST -> reconditionPrint(statementAST)
@@ -322,6 +326,19 @@ class AdvancedReconditioner {
             reconditionSequence(ifStatementAST.ifBranch),
             ifStatementAST.elseBranch?.let(this::reconditionSequence),
         )
+    }
+
+    fun reconditionForallStatement(forallStatementAST: ForallStatementAST): List<StatementAST> {
+        val (bottomRange, bottomRangeDependents) = reconditionExpression(forallStatementAST.bottomRange)
+        val (topRange, topRangeDependents) = reconditionExpression(forallStatementAST.topRange)
+
+        val arrayIndex = forallStatementAST.assignment.identifier as ArrayIndexAST
+        val (array, arrayDependents) = reconditionIdentifier(arrayIndex.array)
+        val (assignExpr, assignExprDependents) = reconditionExpression(forallStatementAST.assignment.expr)
+
+        // conversion to equivalent for-loop due to possible method calls (not allowed in forall statement)
+        return bottomRangeDependents + topRangeDependents + arrayDependents +
+            ForLoopAST(forallStatementAST.identifier, bottomRange, topRange, SequenceAST(assignExprDependents + AssignmentAST(ArrayIndexAST(array, arrayIndex.index), assignExpr)))
     }
 
     fun reconditionCounterLimitedWhileLoop(whileLoopAST: CounterLimitedWhileLoopAST): List<StatementAST> {

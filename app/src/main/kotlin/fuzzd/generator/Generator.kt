@@ -59,7 +59,7 @@ import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
-import fuzzd.generator.ast.StatementAST.ForallStatement
+import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
@@ -585,7 +585,7 @@ class Generator(
         ) else generateBinaryExpression(statementContext, arrayType.internalType)
 
         return arrayDeps +
-            ForallStatement(identifier, IntegerLiteralAST(0), ArrayLengthAST(array), AssignmentAST(ArrayIndexAST(array, identifier), assignExpr))
+            ForallStatementAST(identifier, IntegerLiteralAST(0), ArrayLengthAST(array), AssignmentAST(ArrayIndexAST(array, identifier), assignExpr))
     }
 
     override fun generateWhileStatement(context: GenerationContext): List<StatementAST> {
