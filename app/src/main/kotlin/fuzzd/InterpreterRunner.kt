@@ -32,7 +32,6 @@ class InterpreterRunner(private val dir: File, private val logger: fuzzd.logging
         outputWriter.close()
 
         logger.log { "Completed interpreting Dafny AST. Output stored in ${dir.name}/$INTERPRET_FILENAME" }
-        logger.log { output.second }
 
         return output
     }
