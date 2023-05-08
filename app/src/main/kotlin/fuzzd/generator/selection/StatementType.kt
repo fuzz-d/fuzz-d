@@ -5,6 +5,7 @@ enum class StatementType {
     CLASS_INSTANTIATION,
     DECLARATION,
     FORALL,
+    FOR_LOOP,
     IF,
     MATCH,
     MAP_ASSIGN,

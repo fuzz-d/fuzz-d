@@ -59,6 +59,7 @@ import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
+import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
@@ -133,6 +134,7 @@ import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.CLASS_INSTANTIATION
 import fuzzd.generator.selection.StatementType.DECLARATION
 import fuzzd.generator.selection.StatementType.FORALL
+import fuzzd.generator.selection.StatementType.FOR_LOOP
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.MAP_ASSIGN
 import fuzzd.generator.selection.StatementType.METHOD_CALL
@@ -527,6 +529,7 @@ class Generator(
         CLASS_INSTANTIATION -> generateClassInstantiation(context)
         DECLARATION -> generateDeclarationStatement(context)
         FORALL -> generateForallStatement(context)
+        FOR_LOOP -> generateForLoopStatement(context)
         IF -> generateIfStatement(context)
         MAP_ASSIGN -> generateMapAssign(context)
         METHOD_CALL -> generateMethodCall(context)
@@ -571,8 +574,20 @@ class Generator(
         return conditionDeps + ifStatement
     }
 
+    override fun generateForLoopStatement(context: GenerationContext): List<StatementAST> {
+        val identifier = IdentifierAST(context.loopCounterGenerator.newValue(), IntType)
+        val (bottomRange, bottomRangeDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
+        val (topRange, topRangeDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
+
+        val statementContext = context.increaseStatementDepth()
+        statementContext.symbolTable.add(identifier)
+        val body = generateSequence(statementContext, selectionManager.forLoopBodyStatements())
+
+        return bottomRangeDeps + topRangeDeps + ForLoopAST(identifier, bottomRange, topRange, body)
+    }
+
     override fun generateForallStatement(context: GenerationContext): List<StatementAST> {
-        val identifier = IdentifierAST(context.identifierNameGenerator.newValue(), IntType)
+        val identifier = IdentifierAST(context.loopCounterGenerator.newValue(), IntType)
         val arrayType = selectionManager.selectArrayType(context.disableOnDemand(), 1)
         val (array, arrayDeps) = generateIdentifier(context, arrayType, mutableConstraint = true, initialisedConstraint = true)
 

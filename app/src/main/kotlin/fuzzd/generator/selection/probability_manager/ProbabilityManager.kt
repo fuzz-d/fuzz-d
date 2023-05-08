@@ -23,6 +23,8 @@ interface ProbabilityManager {
     // statements
     fun ifStatement(): Double
     fun matchStatement(): Double
+    fun forallStatement(): Double
+    fun forLoopStatement(): Double
     fun whileStatement(): Double
     fun methodCall(): Double
     fun mapAssign(): Double
@@ -66,6 +68,7 @@ interface ProbabilityManager {
     // additional data
     fun methodStatements(): Int
     fun ifBranchStatements(): Int
+    fun forLoopBodyStatements(): Int
     fun whileBodyStatements(): Int
     fun mainFunctionStatements(): Int
     fun matchStatements(): Int

@@ -425,6 +425,7 @@ class SelectionManager(
     fun methodStatements(): Int = probabilityManager.methodStatements()
     fun ifBranchStatements(): Int = probabilityManager.ifBranchStatements()
     fun whileBodyStatements(): Int = probabilityManager.whileBodyStatements()
+    fun forLoopBodyStatements(): Int = probabilityManager.forLoopBodyStatements()
     fun mainFunctionStatements(): Int = probabilityManager.mainFunctionStatements()
     fun matchStatements(): Int = probabilityManager.matchStatements()
 

@@ -47,6 +47,8 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun charType(): Double = getProbability(ProbabilityManager::charType)
     override fun ifStatement(): Double = getProbability(ProbabilityManager::ifStatement)
     override fun matchStatement(): Double = getProbability(ProbabilityManager::matchStatement)
+    override fun forallStatement(): Double = getProbability(ProbabilityManager::forallStatement)
+    override fun forLoopStatement(): Double = getProbability(ProbabilityManager::forLoopStatement)
     override fun whileStatement(): Double = getProbability(ProbabilityManager::whileStatement)
     override fun methodCall(): Double = getProbability(ProbabilityManager::methodCall)
     override fun mapAssign(): Double = getProbability(ProbabilityManager::mapAssign)
@@ -83,6 +85,7 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
 
     override fun methodStatements(): Int = getStatementCount(ProbabilityManager::methodStatements)
     override fun ifBranchStatements(): Int = getStatementCount(ProbabilityManager::ifBranchStatements)
+    override fun forLoopBodyStatements(): Int = getStatementCount(ProbabilityManager::forLoopBodyStatements)
     override fun whileBodyStatements(): Int = getStatementCount(ProbabilityManager::whileBodyStatements)
     override fun mainFunctionStatements(): Int = getStatementCount(ProbabilityManager::mainFunctionStatements) + 5 // adjust for smaller random #
     override fun matchStatements(): Int = getStatementCount(ProbabilityManager::matchStatements)
