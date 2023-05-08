@@ -28,6 +28,7 @@ import fuzzd.generator.ast.ExpressionAST.IndexAST
 import fuzzd.generator.ast.ExpressionAST.IndexAssignAST
 import fuzzd.generator.ast.ExpressionAST.IntRangeMapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.IntRangeSetComprehensionAST
+import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.LiteralAST
 import fuzzd.generator.ast.ExpressionAST.MapComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
@@ -87,12 +88,14 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
+import fuzzd.generator.ast.operators.BinaryOperator.UnionOperator
 import fuzzd.utils.ADVANCED_ABSOLUTE
 import fuzzd.utils.ADVANCED_RECONDITION_CLASS
 import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.foldPair
+import kotlin.io.path.ExperimentalPathApi
 
 class AdvancedReconditioner {
     private val classes = mutableMapOf<String, ClassAST>()
@@ -517,7 +520,7 @@ class AdvancedReconditioner {
         return Pair(ClassInstantiationAST(reconditionedClass, params), dependents)
     }
 
-    fun reconditionArrayInit(arrayInitAST: ArrayInitAST): Pair<ArrayInitAST, List<StatementAST>> = when (arrayInitAST) {
+    fun reconditionArrayInit(arrayInitAST: ArrayInitAST): Pair<ExpressionAST, List<StatementAST>> = when (arrayInitAST) {
         is ComprehensionInitialisedArrayInitAST -> reconditionComprehensionArrayInit(arrayInitAST)
         is ValueInitialisedArrayInitAST -> reconditionValueInitialisedArrayInit(arrayInitAST)
         else -> Pair(arrayInitAST, emptyList())
@@ -529,9 +532,19 @@ class AdvancedReconditioner {
         return Pair(ValueInitialisedArrayInitAST(arrayInit.length, exprs), exprDependents)
     }
 
-    private fun reconditionComprehensionArrayInit(arrayInit: ComprehensionInitialisedArrayInitAST): Pair<ArrayInitAST, List<StatementAST>> {
+    private fun reconditionComprehensionArrayInit(arrayInit: ComprehensionInitialisedArrayInitAST): Pair<ExpressionAST, List<StatementAST>> {
         val (expr, exprDependents) = reconditionExpression(arrayInit.expr)
-        return Pair(ComprehensionInitialisedArrayInitAST(arrayInit.length, arrayInit.identifier, expr), exprDependents)
+
+        return if (exprDependents.isEmpty()) {
+            Pair(ComprehensionInitialisedArrayInitAST(arrayInit.length, arrayInit.identifier, expr), emptyList())
+        } else {
+            val temp = IdentifierAST(tempGenerator.newValue(), arrayInit.type())
+            val tempDecl = DeclarationAST(temp, ArrayInitAST(arrayInit.length, arrayInit.type()))
+            val counter = arrayInit.identifier
+            val loop = ForLoopAST(counter, IntegerLiteralAST(0), ArrayLengthAST(temp), SequenceAST(exprDependents + AssignmentAST(ArrayIndexAST(temp, counter), expr)))
+
+            Pair(temp, listOf(tempDecl) + loop)
+        }
     }
 
     fun reconditionArrayLength(arrayLengthAST: ArrayLengthAST): Pair<ArrayLengthAST, List<StatementAST>> {
@@ -720,7 +733,17 @@ class AdvancedReconditioner {
         val (topRange, topRangeDependents) = reconditionExpression(setComprehensionAST.topRange)
         val (expr, exprDependents) = reconditionExpression(setComprehensionAST.expr)
 
-        return Pair(IntRangeSetComprehensionAST(setComprehensionAST.identifier, bottomRange, topRange, expr), bottomRangeDependents + topRangeDependents + exprDependents)
+        return if (exprDependents.isEmpty()) {
+            Pair(IntRangeSetComprehensionAST(setComprehensionAST.identifier, bottomRange, topRange, expr), bottomRangeDependents + topRangeDependents)
+        } else {
+            val temp = IdentifierAST(tempGenerator.newValue(), setComprehensionAST.type())
+            val tempDecl = DeclarationAST(temp, SetDisplayAST(emptyList(), false, setComprehensionAST.type().innerType))
+            val update = AssignmentAST(temp, BinaryExpressionAST(temp, UnionOperator, SetDisplayAST(listOf(expr), false)))
+            val counter = setComprehensionAST.identifier
+            val loop = ForLoopAST(counter, bottomRange, topRange, SequenceAST(exprDependents + update))
+
+            Pair(temp, bottomRangeDependents + topRangeDependents + tempDecl + loop)
+        }
     }
 
     private fun reconditionDataStructureSetComprehension(setComprehensionAST: DataStructureSetComprehensionAST): Pair<ExpressionAST, List<StatementAST>> {
@@ -756,10 +779,18 @@ class AdvancedReconditioner {
         val (key, keyDependents) = reconditionExpression(mapComprehensionAST.assign.first)
         val (value, valueDependents) = reconditionExpression(mapComprehensionAST.assign.second)
 
-        return Pair(
-            IntRangeMapComprehensionAST(mapComprehensionAST.identifier, bottomRange, topRange, Pair(key, value)),
-            bottomRangeDependents + topRangeDependents + keyDependents + valueDependents,
-        )
+        val internalDependents = keyDependents + valueDependents
+
+        return if (internalDependents.isEmpty()) {
+            Pair(IntRangeMapComprehensionAST(mapComprehensionAST.identifier, bottomRange, topRange, Pair(key, value)), bottomRangeDependents + topRangeDependents)
+        } else {
+            val temp = IdentifierAST(tempGenerator.newValue(), mapComprehensionAST.type())
+            val tempDecl = DeclarationAST(temp, MapConstructorAST(mapComprehensionAST.type().keyType, mapComprehensionAST.type().valueType))
+            val update = AssignmentAST(temp, IndexAssignAST(temp, key, value))
+            val counter = mapComprehensionAST.identifier
+            val loop = ForLoopAST(counter, bottomRange, topRange, SequenceAST(internalDependents + update))
+            Pair(temp, bottomRangeDependents + topRangeDependents + tempDecl + loop)
+        }
     }
 
     private fun reconditionDataStructureMapComprehension(mapComprehensionAST: DataStructureMapComprehensionAST): Pair<ExpressionAST, List<StatementAST>> {
@@ -780,15 +811,24 @@ class AdvancedReconditioner {
 
     fun reconditionSeqeunceComprehension(
         sequenceComprehensionAST: SequenceComprehensionAST,
-    ): Pair<SequenceComprehensionAST, List<StatementAST>> {
+    ): Pair<ExpressionAST, List<StatementAST>> {
         val temp = IdentifierAST(tempGenerator.newValue(), IntType)
         val safetyId = safetyIdGenerator.newValue()
         val methodCall = NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(sequenceComprehensionAST.size, state, StringLiteralAST(safetyId)))
         val tempDecl = DeclarationAST(temp, methodCall)
-
         val (expr, exprDependents) = reconditionExpression(sequenceComprehensionAST.expr)
 
-        return Pair(SequenceComprehensionAST(temp, sequenceComprehensionAST.identifier, expr), listOf(tempDecl) + exprDependents)
+        return if(exprDependents.isEmpty()) {
+            Pair(SequenceComprehensionAST(temp, sequenceComprehensionAST.identifier, expr), listOf(tempDecl))
+        } else {
+            val tempSeq = IdentifierAST(tempGenerator.newValue(), sequenceComprehensionAST.type())
+            val tempSeqDecl = DeclarationAST(tempSeq, SequenceDisplayAST(emptyList(), sequenceComprehensionAST.type().innerType))
+            val update = AssignmentAST(tempSeq, BinaryExpressionAST(tempSeq, UnionOperator, SequenceDisplayAST(listOf(expr))))
+            val counter = sequenceComprehensionAST.identifier
+            val loop = ForLoopAST(counter, IntegerLiteralAST(0), temp, SequenceAST(exprDependents + update))
+
+            Pair(tempSeq, listOf(tempDecl) + tempSeqDecl + loop)
+        }
     }
 
     fun reconditionType(type: Type): Type = when (type) {

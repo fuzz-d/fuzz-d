@@ -544,7 +544,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun requiresParenthesesWrap(): Boolean = true
 
-        override fun type(): Type = MapType(assign.first.type(), assign.second.type())
+        override fun type(): MapType = MapType(assign.first.type(), assign.second.type())
 
         override fun toString(): String = "map $identifier : ${identifier.type()} | $condition :: (${assign.first}) := (${assign.second})"
     }
@@ -584,7 +584,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun requiresParenthesesWrap(): Boolean = true
 
-        override fun type(): Type = SetType(expr.type())
+        override fun type(): SetType = SetType(expr.type())
 
         override fun toString(): String = "set $identifier : ${identifier.type()} | $condition :: ($expr)"
     }
@@ -609,7 +609,7 @@ sealed class ExpressionAST : ASTElement {
             this.innerType = innerType
         }
 
-        override fun type(): Type = SequenceType(innerType)
+        override fun type(): SequenceType = SequenceType(innerType)
 
         override fun toString(): String = "[${exprs.joinToString(", ")}]"
     }
@@ -623,7 +623,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun requiresParenthesesWrap(): Boolean = true
 
-        override fun type(): Type = SequenceType(expr.type())
+        override fun type(): SequenceType = SequenceType(expr.type())
 
         override fun toString(): String = "seq($size, $identifier => ($expr))"
     }
@@ -641,7 +641,7 @@ sealed class ExpressionAST : ASTElement {
     }
 
     open class ArrayInitAST(val length: Int, private val type: ArrayType) : ExpressionAST() {
-        override fun type(): Type = type
+        override fun type(): ArrayType = type
 
         override fun toString(): String = "new ${type.internalType}[$length]"
     }
@@ -652,7 +652,7 @@ sealed class ExpressionAST : ASTElement {
     ) : ArrayInitAST(length, ArrayType(values[0].type())) {
         private val innerType = values[0].type()
 
-        override fun type(): Type = ArrayType(innerType)
+        override fun type(): ArrayType = ArrayType(innerType)
 
         override fun toString(): String = "new $innerType[$length] [${values.joinToString(", ")}]"
     }
@@ -664,7 +664,7 @@ sealed class ExpressionAST : ASTElement {
     ) : ArrayInitAST(length, ArrayType(expr.type())) {
         private val innerType = expr.type()
 
-        override fun type(): Type = ArrayType(innerType)
+        override fun type(): ArrayType = ArrayType(innerType)
 
         override fun toString(): String = "new $innerType[$length]($identifier => $expr)"
     }
