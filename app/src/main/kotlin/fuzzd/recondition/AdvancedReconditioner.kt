@@ -277,6 +277,7 @@ class AdvancedReconditioner {
         is WhileLoopAST -> reconditionWhileLoop(statementAST)
         is PrintAST -> reconditionPrint(statementAST)
         is VoidMethodCallAST -> reconditionVoidMethodCall(statementAST)
+        else -> throw UnsupportedOperationException()
     }
 
     fun reconditionDataStructureMemberDeclaration(declaration: DataStructureMemberDeclarationAST): List<StatementAST> {

@@ -1,9 +1,12 @@
 package fuzzd.generator.ast
 
+import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.error.InvalidInputException
+import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.utils.indent
+import java.lang.reflect.Member
 
 sealed class StatementAST : ASTElement {
     class MatchStatementAST(
@@ -49,6 +52,13 @@ sealed class StatementAST : ASTElement {
             return sb.toString()
         }
     }
+
+    open class AssignSuchThatStatement(val identifier: IdentifierAST, val condition: ExpressionAST) : StatementAST() {
+        override fun toString(): String = "var $identifier :| $condition"
+    }
+
+    class DataStructureAssignSuchThatStatement(identifier: IdentifierAST, val dataStructure: ExpressionAST) :
+        AssignSuchThatStatement(identifier, BinaryExpressionAST(identifier, MembershipOperator, dataStructure))
 
     class ForLoopAST(
         val identifier: IdentifierAST,

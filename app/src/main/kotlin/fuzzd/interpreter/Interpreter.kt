@@ -50,8 +50,10 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
+import fuzzd.generator.ast.StatementAST.DataStructureAssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -240,6 +242,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                 doBreak = true
             }
 
+            is AssignSuchThatStatement -> interpretAssignSuchThatStatement(statement, context)
             is MatchStatementAST -> interpretMatchStatement(statement, context)
             is IfStatementAST -> interpretIfStatement(statement, context)
             is CounterLimitedWhileLoopAST -> interpretCounterLimitedWhileStatement(statement, context)
@@ -254,6 +257,14 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             else -> throw UnsupportedOperationException()
         }
     }
+
+    override fun interpretAssignSuchThatStatement(statement: AssignSuchThatStatement, context: InterpreterContext) =
+        if (statement is DataStructureAssignSuchThatStatement) {
+            val dataStructure = interpretExpression(statement.dataStructure, context) as DataStructureValue
+            context.fields.assign(statement.identifier, dataStructure.elements().first())
+        } else {
+            throw UnsupportedOperationException()
+        }
 
     override fun interpretMatchStatement(matchStatement: MatchStatementAST, context: InterpreterContext) {
         val datatypeValue = interpretExpression(matchStatement.match, context) as DatatypeValue
@@ -322,7 +333,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         val topRange = interpretExpression(forallStatement.topRange, context) as IntValue
 
         var i = bottomRange.value
-        while(i < topRange.value) {
+        while (i < topRange.value) {
             val assignContext = context.increaseDepth()
             assignContext.fields.declare(forallStatement.identifier, IntValue(i))
             interpretMultiAssign(forallStatement.assignment, assignContext)

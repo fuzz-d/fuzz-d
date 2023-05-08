@@ -154,6 +154,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is WhileLoopAST -> reconditionWhileLoopAST(statement)
         is PrintAST -> reconditionPrintAST(statement)
         is VoidMethodCallAST -> reconditionVoidMethodCall(statement)
+        else -> throw UnsupportedOperationException()
     }
 
     override fun reconditionDataStructureMemberDeclaration(declarationAST: DataStructureMemberDeclarationAST) =

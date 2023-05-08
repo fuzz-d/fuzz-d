@@ -31,6 +31,7 @@ import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
@@ -59,6 +60,8 @@ interface ASTInterpreter {
     /* ============================== STATEMENTS ============================= */
 
     fun interpretStatement(statement: StatementAST, context: InterpreterContext)
+
+    fun interpretAssignSuchThatStatement(statement: AssignSuchThatStatement, context: InterpreterContext)
 
     fun interpretMatchStatement(matchStatement: MatchStatementAST, context: InterpreterContext)
 
