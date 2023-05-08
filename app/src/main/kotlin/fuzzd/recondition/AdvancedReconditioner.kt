@@ -125,10 +125,10 @@ class AdvancedReconditioner {
 
         return DafnyAST(
             reconditionedDatatypes +
-                reconditionedTraits +
-                reconditionedClasses +
-                reconditionedMethods +
-                reconditionedMain,
+                    reconditionedTraits +
+                    reconditionedClasses +
+                    reconditionedMethods +
+                    reconditionedMain,
         )
     }
 
@@ -268,7 +268,7 @@ class AdvancedReconditioner {
         is MultiDeclarationAST -> reconditionMultiDeclaration(statementAST)
         is MatchStatementAST -> reconditionMatchStatement(statementAST)
         is IfStatementAST -> reconditionIfStatement(statementAST)
-        is ForLoopAST -> TODO()
+        is ForLoopAST -> reconditionForLoopStatement(statementAST)
         is ForallStatementAST -> reconditionForallStatement(statementAST)
         is CounterLimitedWhileLoopAST -> reconditionCounterLimitedWhileLoop(statementAST)
         is WhileLoopAST -> reconditionWhileLoop(statementAST)
@@ -280,7 +280,7 @@ class AdvancedReconditioner {
         val (reconditionedIdentifier, identifierDependents) = reconditionIdentifier(declaration.identifier)
         val (reconditionedDataStructure, dataStructureDependents) = reconditionIdentifier(declaration.dataStructure)
         return identifierDependents + dataStructureDependents +
-            DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
+                DataStructureMemberDeclarationAST(reconditionedIdentifier, reconditionedDataStructure)
     }
 
     fun reconditionMultiAssignment(multiAssignmentAST: MultiAssignmentAST): List<StatementAST> {
@@ -288,7 +288,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
         return identifierDependents + exprDependents +
-            MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMultiTypedDeclaration(multiTypedDeclarationAST: MultiTypedDeclarationAST): List<StatementAST> {
@@ -306,7 +306,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
 
         return identifierDependents + exprDependents +
-            MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMatchStatement(matchStatementAST: MatchStatementAST): List<StatementAST> {
@@ -328,6 +328,13 @@ class AdvancedReconditioner {
         )
     }
 
+    fun reconditionForLoopStatement(forLoopAST: ForLoopAST): List<StatementAST> {
+        val (bottomRange, bottomRangeDependents) = reconditionExpression(forLoopAST.bottomRange)
+        val (topRange, topRangeDependents) = reconditionExpression(forLoopAST.topRange)
+
+        return bottomRangeDependents + topRangeDependents + ForLoopAST(forLoopAST.identifier, bottomRange, topRange, reconditionSequence(forLoopAST.body))
+    }
+
     fun reconditionForallStatement(forallStatementAST: ForallStatementAST): List<StatementAST> {
         val (bottomRange, bottomRangeDependents) = reconditionExpression(forallStatementAST.bottomRange)
         val (topRange, topRangeDependents) = reconditionExpression(forallStatementAST.topRange)
@@ -338,7 +345,12 @@ class AdvancedReconditioner {
 
         // conversion to equivalent for-loop due to possible method calls (not allowed in forall statement)
         return bottomRangeDependents + topRangeDependents + arrayDependents +
-            ForLoopAST(forallStatementAST.identifier, bottomRange, topRange, SequenceAST(assignExprDependents + AssignmentAST(ArrayIndexAST(array, arrayIndex.index), assignExpr)))
+                ForLoopAST(
+                    forallStatementAST.identifier,
+                    bottomRange,
+                    topRange,
+                    SequenceAST(assignExprDependents + AssignmentAST(ArrayIndexAST(array, arrayIndex.index), assignExpr))
+                )
     }
 
     fun reconditionCounterLimitedWhileLoop(whileLoopAST: CounterLimitedWhileLoopAST): List<StatementAST> {

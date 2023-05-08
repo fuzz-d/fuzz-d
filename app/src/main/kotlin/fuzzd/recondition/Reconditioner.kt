@@ -149,7 +149,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is MultiDeclarationAST -> reconditionMultiDeclarationAST(statement) // covers DeclarationAST
         is MatchStatementAST -> reconditionMatchStatement(statement)
         is IfStatementAST -> reconditionIfStatement(statement)
-        is ForLoopAST -> TODO()
+        is ForLoopAST -> reconditionForLoopStatement(statement)
         is ForallStatementAST -> reconditionForallStatement(statement)
         is WhileLoopAST -> reconditionWhileLoopAST(statement)
         is PrintAST -> reconditionPrintAST(statement)
@@ -190,6 +190,13 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         reconditionSequence(ifStatementAST.ifBranch),
         ifStatementAST.elseBranch?.let(this::reconditionSequence),
     )
+
+    override fun reconditionForLoopStatement(forLoopAST: ForLoopAST): ForLoopAST = ForLoopAST(
+            forLoopAST.identifier,
+            reconditionExpression(forLoopAST.bottomRange),
+            reconditionExpression(forLoopAST.topRange),
+            reconditionSequence(forLoopAST.body)
+        )
 
     override fun reconditionForallStatement(forallStatementAST: ForallStatementAST): ForallStatementAST {
         val arrayIndex = forallStatementAST.assignment.identifier as ArrayIndexAST
