@@ -1,6 +1,7 @@
 package fuzzd.generator.ast
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.utils.indent
 
@@ -47,6 +48,25 @@ sealed class StatementAST : ASTElement {
             sb.append("\n")
             return sb.toString()
         }
+    }
+
+    class ForallStatement(
+        val identifier: IdentifierAST,
+        val bottomRange: ExpressionAST,
+        val topRange: ExpressionAST,
+        val assignment: AssignmentAST,
+    ) : StatementAST() {
+        init {
+            if (identifier.type() != IntType) {
+                throw InvalidInputException("Forall statement must iterate over int range")
+            }
+
+            if (bottomRange.type() != IntType || topRange.type() != IntType) {
+                throw InvalidInputException("Invalid int range provided to forall statement")
+            }
+        }
+
+        override fun toString(): String = "forall $identifier | $bottomRange <= $identifier < $topRange {\n${indent(assignment)}\n}"
     }
 
     open class WhileLoopAST(val condition: ExpressionAST, open val body: SequenceAST) : StatementAST() {
