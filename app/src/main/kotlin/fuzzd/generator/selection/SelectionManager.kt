@@ -52,6 +52,8 @@ import fuzzd.generator.selection.IndexType.SEQUENCE
 import fuzzd.generator.selection.IndexType.STRING
 import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.CLASS_INSTANTIATION
+import fuzzd.generator.selection.StatementType.FORALL
+import fuzzd.generator.selection.StatementType.FOR_LOOP
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.MAP_ASSIGN
 import fuzzd.generator.selection.StatementType.METHOD_CALL
@@ -222,6 +224,8 @@ class SelectionManager(
         val ifStatementProbability = if (context.statementDepth < MAX_STATEMENT_DEPTH) min(probabilityManager.ifStatement() / context.statementDepth, 0.3) else 0.0
         val matchProbability = if (context.statementDepth < MAX_STATEMENT_DEPTH) min(probabilityManager.matchStatement() / context.statementDepth, 0.3) else 0.0
         val whileStatementProbability = if (context.statementDepth == 1) probabilityManager.whileStatement() else 0.0
+        val forLoopProbability = if(context.statementDepth == 1) probabilityManager.forLoopStatement() else 0.0
+        val forallProbability = min(probabilityManager.forallStatement(), 0.2)
 
         val methodCallProbability = if (methodCalls) {
             val methodCallProbability = min(probabilityManager.methodCall(), 0.1)
@@ -232,6 +236,8 @@ class SelectionManager(
 
         val selection = listOf(
             IF to ifStatementProbability,
+            FOR_LOOP to forLoopProbability,
+            FORALL to forallProbability,
             WHILE to whileStatementProbability,
             METHOD_CALL to methodCallProbability,
             StatementType.MATCH to matchProbability,

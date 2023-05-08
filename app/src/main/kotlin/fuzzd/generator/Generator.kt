@@ -575,7 +575,7 @@ class Generator(
     }
 
     override fun generateForLoopStatement(context: GenerationContext): List<StatementAST> {
-        val identifier = IdentifierAST(context.loopCounterGenerator.newValue(), IntType)
+        val identifier = IdentifierAST(context.loopCounterGenerator.newValue(), IntType, mutable = false, initialised = true)
         val (bottomRange, bottomRangeDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
         val (topRange, topRangeDeps) = generateExpression(context.increaseExpressionDepth(), IntType)
 
@@ -597,7 +597,7 @@ class Generator(
             identifier,
             statementContext,
             arrayType.internalType
-        ) else generateBinaryExpression(statementContext, arrayType.internalType)
+        ) else generateExpression(statementContext, arrayType.internalType)
 
         return arrayDeps +
             ForallStatementAST(identifier, IntegerLiteralAST(0), ArrayLengthAST(array), AssignmentAST(ArrayIndexAST(array, identifier), assignExpr))
