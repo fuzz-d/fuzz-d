@@ -537,7 +537,7 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
-        override fun type(): Type = MapType(keyType, valueType)
+        override fun type(): MapType = MapType(keyType, valueType)
 
         override fun toString() = "map[${assignments.joinToString(", ") { "${it.first} := ${it.second}" }}]"
     }

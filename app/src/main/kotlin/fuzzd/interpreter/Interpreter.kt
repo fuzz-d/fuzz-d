@@ -998,7 +998,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             val value = interpretExpression(v, context)
             map[key] = value
         }
-        return MapValue(map)
+        return MapValue(mapConstructor.type(), map)
     }
 
     override fun interpretMapComprehension(mapComprehension: MapComprehensionAST, context: InterpreterContext): Value =
@@ -1027,7 +1027,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             i += ONE
         }
 
-        return MapValue(map)
+        return MapValue(mapComprehension.type(), map)
     }
 
     private fun interpretDataStructureMapComprehension(mapComprehension: DataStructureMapComprehensionAST, context: InterpreterContext): Value {
@@ -1044,7 +1044,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             map[key] = value
         }
 
-        return MapValue(map)
+        return MapValue(mapComprehension.type(), map)
     }
 
     override fun interpretArrayLength(arrayLength: ArrayLengthAST, context: InterpreterContext): Value {

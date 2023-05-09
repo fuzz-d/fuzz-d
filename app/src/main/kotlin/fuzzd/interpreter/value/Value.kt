@@ -12,6 +12,7 @@ import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
+import fuzzd.generator.ast.Type.DataStructureType.MapType
 import fuzzd.interpreter.InterpreterContext
 import fuzzd.utils.reduceLists
 import java.lang.Integer.min
@@ -155,24 +156,24 @@ sealed class Value {
         override fun toExpressionAST(): ExpressionAST = SequenceDisplayAST(seq.map { it.toExpressionAST() })
     }
 
-    data class MapValue(val map: Map<Value, Value>) : DataStructureValue() {
+    data class MapValue(val type: MapType, val map: Map<Value, Value>) : DataStructureValue() {
         override fun contains(item: Value): BoolValue = BoolValue(map.containsKey(item))
         override fun notContains(item: Value): BoolValue = BoolValue(!map.containsKey(item))
         override fun modulus(): IntValue = IntValue(valueOf(map.size.toLong()))
         override fun elements(): List<Value> = map.keys.toList()
-        fun union(other: MapValue): MapValue = MapValue(map + other.map)
-        fun difference(other: SetValue): MapValue = MapValue(map - other.set)
+        fun union(other: MapValue): MapValue = MapValue(type, map + other.map)
+        fun difference(other: SetValue): MapValue = MapValue(type, map - other.set)
 
         fun get(key: Value): Value = map[key] ?: throw UnsupportedOperationException("Map didn't contain key $key")
 
-        fun assign(key: Value, value: Value): MapValue = MapValue(map + mapOf(key to value))
+        fun assign(key: Value, value: Value): MapValue = MapValue(type, map + mapOf(key to value))
 
         override fun equals(other: Any?): Boolean = other is MapValue && map == other.map
         override fun hashCode(): Int = map.hashCode()
 
         override fun toExpressionAST(): ExpressionAST {
             val assignments = map.map { (k, v) -> Pair(k.toExpressionAST(), v.toExpressionAST()) }
-            return MapConstructorAST(assignments[0].first.type(), assignments[0].second.type(), assignments)
+            return MapConstructorAST(type.keyType, type.valueType, assignments)
         }
     }
 
