@@ -5,6 +5,7 @@ import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.probability_manager.BaseProbabilityManager
 import fuzzd.generator.selection.probability_manager.ProbabilityManager
 import fuzzd.generator.selection.probability_manager.RandomProbabilityManager
+import fuzzd.generator.selection.probability_manager.VerifierProbabilityManager
 import fuzzd.logging.Logger
 import fuzzd.logging.OutputWriter
 import fuzzd.utils.DAFNY_BODY
@@ -20,11 +21,12 @@ class FuzzRunner(private val dir: File, private val logger: Logger) {
     private val validator = OutputValidator()
     private val reconditionRunner = ReconditionRunner(dir, logger)
 
-    fun run(seed: Long, advanced: Boolean, instrument: Boolean, run: Boolean, swarm: Boolean) {
+    fun run(seed: Long, advanced: Boolean, instrument: Boolean, run: Boolean, swarm: Boolean, verifier: Boolean) {
+        val baseProbabilityManager = if (swarm) RandomProbabilityManager(seed, setOf(ProbabilityManager::charType, ProbabilityManager::multisetConversion)) else BaseProbabilityManager()
         val generator = Generator(
             SelectionManager(
                 Random(seed),
-                if (swarm) RandomProbabilityManager(seed, setOf(ProbabilityManager::charType, ProbabilityManager::multisetConversion)) else BaseProbabilityManager(),
+                if (verifier) VerifierProbabilityManager(baseProbabilityManager) else baseProbabilityManager,
             ),
             instrument,
         )
@@ -44,7 +46,11 @@ class FuzzRunner(private val dir: File, private val logger: Logger) {
             originalWriter.close()
 
             val output = reconditionRunner.run(ast, advanced)
-            
+
+            if (verifier) {
+                // TODO
+            }
+
             if (run) {
                 // differential testing; log results
                 val validationResult = validator.validateFile(dir, DAFNY_WRAPPERS, DAFNY_BODY, DAFNY_MAIN, output)

@@ -1,3 +1,4 @@
+
 package fuzzd
 
 import fuzzd.logging.Logger
@@ -12,6 +13,7 @@ import kotlin.random.Random
 @OptIn(ExperimentalCli::class)
 class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
     private val seed by option(ArgType.String, "seed", "s", "Generation Seed")
+    private val verifier by option(ArgType.Boolean, "verifier", "v", "Generate annotated programs for testing the Dafny verifier")
     private val advanced by option(
         ArgType.Boolean,
         "advanced",
@@ -55,6 +57,7 @@ class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
                 instrument == true,
                 noRun != true,
                 swarm == true,
+                verifier == true
             )
         } catch (e: Exception) {
             e.printStackTrace()
