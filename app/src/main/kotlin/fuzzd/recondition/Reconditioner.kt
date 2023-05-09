@@ -185,11 +185,11 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
     )
 
     override fun reconditionForLoopStatement(forLoopAST: ForLoopAST): ForLoopAST = ForLoopAST(
-            forLoopAST.identifier,
-            reconditionExpression(forLoopAST.bottomRange),
-            reconditionExpression(forLoopAST.topRange),
-            reconditionSequence(forLoopAST.body)
-        )
+        forLoopAST.identifier,
+        reconditionExpression(forLoopAST.bottomRange),
+        reconditionExpression(forLoopAST.topRange),
+        reconditionSequence(forLoopAST.body)
+    )
 
     override fun reconditionForallStatement(forallStatementAST: ForallStatementAST): ForallStatementAST {
         val arrayIndex = forallStatementAST.assignment.identifier as ArrayIndexAST
@@ -379,7 +379,6 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
             val safetyId = safetyIdGenerator.newValue()
             idsMap[safetyId] = indexAST
-
             if (requiresSafety(safetyId)) {
                 if (ids != null) {
                     logger.log { "$safetyId: Advanced reconditioning requires safety for array index $indexAST" }
@@ -410,7 +409,6 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             is MultisetType -> {
                 val safetyId = safetyIdGenerator.newValue()
                 idsMap[safetyId] = indexAssign
-
                 if (requiresSafety(safetyId)) {
                     if (ids != null) {
                         logger.log { "$safetyId: Advanced reconditioning requires safety for multiset index assign $indexAssign" }
@@ -425,7 +423,6 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             is SequenceType -> {
                 val safetyId = safetyIdGenerator.newValue()
                 idsMap[safetyId] = indexAssign
-
                 if (requiresSafety(safetyId)) {
                     if (ids != null) {
                         logger.log { "$safetyId: Advanced reconditioning requires safety for seqeunce index assign $indexAssign" }
@@ -544,10 +541,26 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
     override fun reconditionSequenceDisplay(sequenceDisplay: SequenceDisplayAST): SequenceDisplayAST =
         SequenceDisplayAST(sequenceDisplay.exprs.map(this::reconditionExpression))
 
-    override fun reconditionSequenceComprehension(sequenceComprehension: SequenceComprehensionAST): SequenceComprehensionAST =
-        SequenceComprehensionAST(
-            FunctionMethodCallAST(ABSOLUTE.signature, listOf(sequenceComprehension.size)),
-            sequenceComprehension.identifier,
-            reconditionExpression(sequenceComprehension.expr),
-        )
+    override fun reconditionSequenceComprehension(sequenceComprehension: SequenceComprehensionAST): SequenceComprehensionAST {
+        val safetyId = safetyIdGenerator.newValue()
+        idsMap[safetyId] = sequenceComprehension
+
+        return if (requiresSafety(safetyId)) {
+            if (ids != null) {
+                logger.log { "$safetyId: Advanced reconditioning requires safety for sequence comprehension size ${sequenceComprehension.size}" }
+            }
+
+            SequenceComprehensionAST(
+                FunctionMethodCallAST(ABSOLUTE.signature, listOf(sequenceComprehension.size)),
+                sequenceComprehension.identifier,
+                reconditionExpression(sequenceComprehension.expr),
+            )
+        } else {
+            SequenceComprehensionAST(
+                sequenceComprehension.size,
+                sequenceComprehension.identifier,
+                reconditionExpression(sequenceComprehension.expr),
+            )
+        }
+    }
 }

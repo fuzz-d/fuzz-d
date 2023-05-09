@@ -317,8 +317,8 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
-                clazz == other.clazz &&
-                name == other.name
+                    clazz == other.clazz &&
+                    name == other.name
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -339,8 +339,7 @@ sealed class ExpressionAST : ASTElement {
         override fun equals(other: Any?): Boolean = other is TopLevelDatatypeInstanceAST && other.name == name && other.datatype == datatype
 
         override fun hashCode(): Int {
-            var result = super.hashCode()
-            result = 31 * result + name.hashCode()
+            var result = name.hashCode()
             result = 31 * result + datatype.hashCode()
             return result
         }
@@ -351,7 +350,15 @@ sealed class ExpressionAST : ASTElement {
         override val datatype: DatatypeType,
         mutable: Boolean = true,
         initialised: Boolean = false,
-    ) : TopLevelDatatypeInstanceAST(name, datatype, mutable, initialised)
+    ) : TopLevelDatatypeInstanceAST(name, datatype, mutable, initialised) {
+        override fun equals(other: Any?): Boolean = other is TopLevelDatatypeInstanceAST && other.name == name && other.datatype == datatype
+
+        override fun hashCode(): Int {
+            var result = name.hashCode()
+            result = 31 * result + datatype.hashCode()
+            return result
+        }
+    }
 
     class ClassInstanceFieldAST(
         val classInstance: IdentifierAST,

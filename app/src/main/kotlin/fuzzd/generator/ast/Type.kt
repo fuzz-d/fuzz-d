@@ -35,7 +35,7 @@ sealed class Type : ASTElement {
         override fun toString(): String = datatype.name
 
         override fun hashCode(): Int {
-            var result = super.hashCode()
+            var result = datatype.hashCode()
             result = 31 * result + constructor.hashCode()
             return result
         }

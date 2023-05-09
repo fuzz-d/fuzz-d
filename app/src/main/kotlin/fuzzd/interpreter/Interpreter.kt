@@ -41,6 +41,7 @@ import fuzzd.generator.ast.ExpressionAST.SetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.TopLevelDatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ValueInitialisedArrayInitAST
 import fuzzd.generator.ast.FunctionMethodAST
@@ -409,10 +410,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
                 context.fields.declare(identifier, value)
             } else {
                 if (context.fields.has(identifier)) {
-                    context.fields.assign(
-                        identifier,
-                        value,
-                    )
+                    context.fields.assign(identifier, value)
                 } else {
                     context.classContext!!.fields.assign(identifier, value)
                 }

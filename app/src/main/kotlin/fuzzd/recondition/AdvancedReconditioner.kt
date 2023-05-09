@@ -46,6 +46,7 @@ import fuzzd.generator.ast.ExpressionAST.SetComprehensionAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
+import fuzzd.generator.ast.ExpressionAST.TopLevelDatatypeInstanceAST
 import fuzzd.generator.ast.ExpressionAST.TraitInstanceAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.ValueInitialisedArrayInitAST
@@ -85,6 +86,7 @@ import fuzzd.generator.ast.Type.DataStructureType.SetType
 import fuzzd.generator.ast.Type.DataStructureType.StringType
 import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
@@ -103,6 +105,7 @@ import fuzzd.utils.foldPair
 class AdvancedReconditioner {
     private val classes = mutableMapOf<String, ClassAST>()
     private val traits = mutableMapOf<String, TraitAST>()
+    private val datatypes = mutableMapOf<String, DatatypeAST>()
 
     private val methodSignatures = mutableMapOf<String, MethodSignatureAST>()
     private val tempGenerator = TemporaryNameGenerator()
@@ -180,7 +183,20 @@ class AdvancedReconditioner {
     }
 
     fun reconditionDatatype(datatypeAST: DatatypeAST): DatatypeAST =
-        DatatypeAST(datatypeAST.name, datatypeAST.constructors.map(this::reconditionDatatypeConstructor).toMutableList())
+        if (datatypes.containsKey(datatypeAST.name)) {
+            datatypes[datatypeAST.name]!!
+        } else {
+            val inductiveConstructors = datatypeAST.constructors.filter { it.fields.any { f -> f.type() == TopLevelDatatypeType(datatypeAST) } }
+            val constructors = datatypeAST.constructors.filter { it !in inductiveConstructors }.map(this::reconditionDatatypeConstructor).toMutableList()
+            val datatype = DatatypeAST(datatypeAST.name, constructors)
+            datatype.constructors.addAll(inductiveConstructors.map { c ->
+                DatatypeConstructorAST(
+                    c.name,
+                    c.fields.map { TopLevelDatatypeInstanceAST(it.name, TopLevelDatatypeType(datatype), it.mutable, it.initialised()) })
+            })
+            datatypes[datatypeAST.name] = datatype
+            datatype
+        }
 
     fun reconditionDatatypeConstructor(datatypeConstructorAST: DatatypeConstructorAST): DatatypeConstructorAST = DatatypeConstructorAST(
         datatypeConstructorAST.name,
@@ -201,19 +217,19 @@ class AdvancedReconditioner {
         getReconditionedMethodSignature(signature)
 
     // convert to MethodAST then let reconditioning of method do the rest
-    fun reconditionFunctionMethod(functionMethodAST: FunctionMethodAST): MethodAST = reconditionMethod(
-        MethodAST(
-            reconditionFunctionMethodSignature(functionMethodAST.signature),
-            SequenceAST(
-                listOf(
-                    AssignmentAST(
-                        IdentifierAST(FM_RETURNS, functionMethodAST.returnType()),
-                        functionMethodAST.body,
-                    ),
-                ),
+    fun reconditionFunctionMethod(functionMethodAST: FunctionMethodAST): MethodAST {
+        val returnIdentifier = when (val returnType = functionMethodAST.returnType()) {
+            is TopLevelDatatypeType -> TopLevelDatatypeInstanceAST(FM_RETURNS, returnType)
+            else -> IdentifierAST(FM_RETURNS, returnType)
+        }
+
+        return reconditionMethod(
+            MethodAST(
+                reconditionFunctionMethodSignature(functionMethodAST.signature),
+                SequenceAST(listOf(AssignmentAST(returnIdentifier, functionMethodAST.body))),
             ),
-        ),
-    )
+        )
+    }
 
     fun reconditionFunctionMethodSignature(signature: FunctionMethodSignatureAST): MethodSignatureAST =
         getReconditionedFunctionMethodSignature(signature)
@@ -254,10 +270,15 @@ class AdvancedReconditioner {
 
     private fun getReconditionedFunctionMethodSignature(signature: FunctionMethodSignatureAST): MethodSignatureAST {
         if (!methodSignatures.containsKey(signature.name)) {
+            val returns = when (signature.returnType) {
+                is TopLevelDatatypeType -> TopLevelDatatypeInstanceAST(FM_RETURNS, signature.returnType)
+                else -> IdentifierAST(FM_RETURNS, signature.returnType)
+            }
+
             methodSignatures[signature.name] = MethodSignatureAST(
                 signature.name,
                 (signature.params + additionalParams).map { reconditionIdentifier(it).first },
-                listOf(IdentifierAST(FM_RETURNS, signature.returnType)),
+                listOf(returns),
             )
         }
 
@@ -469,7 +490,6 @@ class AdvancedReconditioner {
 
                 val safetyId = safetyIdGenerator.newValue()
                 idsMap[safetyId] = binaryExpressionAST
-
                 val methodCall = NonVoidMethodCallAST(
                     if (binaryExpressionAST.operator == DivisionOperator) ADVANCED_SAFE_DIV_INT.signature else ADVANCED_SAFE_MODULO_INT.signature,
                     listOf(rexpr1, rexpr2, state, StringLiteralAST(safetyId)),
@@ -557,7 +577,6 @@ class AdvancedReconditioner {
                 val temp = IdentifierAST(tempGenerator.newValue(), IntType)
                 val safetyId = safetyIdGenerator.newValue()
                 idsMap[safetyId] = identifierAST
-
                 val methodCall = NonVoidMethodCallAST(
                     ADVANCED_SAFE_ARRAY_INDEX.signature,
                     listOf(rexpr, ArrayLengthAST(arr), state, StringLiteralAST(safetyId)),
@@ -580,11 +599,21 @@ class AdvancedReconditioner {
             is DatatypeInstanceAST -> Pair(
                 DatatypeInstanceAST(
                     identifierAST.name,
-                    DatatypeType(reconditionDatatype(identifierAST.datatype.datatype), reconditionDatatypeConstructor(identifierAST.datatype.constructor)),
+                    identifierAST.datatype,
                     identifierAST.mutable,
                     identifierAST.initialised(),
                 ),
                 emptyList(),
+            )
+
+            is TopLevelDatatypeInstanceAST -> Pair(
+                TopLevelDatatypeInstanceAST(
+                    identifierAST.name,
+                    identifierAST.datatype,
+                    identifierAST.mutable,
+                    identifierAST.initialised()
+                ),
+                emptyList()
             )
 
             is ClassInstanceFieldAST -> {
@@ -621,7 +650,6 @@ class AdvancedReconditioner {
             val temp = IdentifierAST(tempGenerator.newValue(), IntType)
             val safetyId = safetyIdGenerator.newValue()
             idsMap[safetyId] = indexAST
-
             val methodCall = NonVoidMethodCallAST(
                 ADVANCED_SAFE_ARRAY_INDEX.signature,
                 listOf(rexpr, ModulusExpressionAST(seq), state, StringLiteralAST(safetyId)),
@@ -644,7 +672,6 @@ class AdvancedReconditioner {
                 val temp = IdentifierAST(tempGenerator.newValue(), IntType)
                 val safetyId = safetyIdGenerator.newValue()
                 idsMap[safetyId] = indexAssignAST
-
                 val methodCall =
                     NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(value, state, StringLiteralAST(safetyId)))
                 val decl = DeclarationAST(temp, methodCall)
@@ -655,7 +682,6 @@ class AdvancedReconditioner {
                 val temp = IdentifierAST(tempGenerator.newValue(), IntType)
                 val safetyId = safetyIdGenerator.newValue()
                 idsMap[safetyId] = indexAssignAST
-
                 val methodCall = NonVoidMethodCallAST(
                     ADVANCED_SAFE_ARRAY_INDEX.signature,
                     listOf(key, ModulusExpressionAST(ident), state, StringLiteralAST(safetyId)),
@@ -689,7 +715,10 @@ class AdvancedReconditioner {
         if (functionMethodCallAST.function is ClassInstanceFunctionMethodSignatureAST) {
             reconditionClassInstanceFunctionMethodCall(functionMethodCallAST)
         } else {
-            val temp = IdentifierAST(tempGenerator.newValue(), functionMethodCallAST.type())
+            val temp = when (val functionType = functionMethodCallAST.type()) {
+                is TopLevelDatatypeType -> TopLevelDatatypeInstanceAST(tempGenerator.newValue(), functionType)
+                else -> IdentifierAST(tempGenerator.newValue(), functionType)
+            }
             val reconditionedMethod = getReconditionedFunctionMethodSignature(functionMethodCallAST.function)
             val (params, dependents) = reconditionExpressionList(functionMethodCallAST.params)
 
@@ -707,7 +736,10 @@ class AdvancedReconditioner {
         val reconditionedMethod = methodCandidates.first { signature.name == it.name }
 
         val (params, dependents) = reconditionExpressionList(functionMethodCallAST.params)
-        val temp = IdentifierAST(tempGenerator.newValue(), functionMethodCallAST.type())
+        val temp = when (val functionType = functionMethodCallAST.type()) {
+            is TopLevelDatatypeType -> TopLevelDatatypeInstanceAST(tempGenerator.newValue(), functionType)
+            else -> IdentifierAST(tempGenerator.newValue(), functionType)
+        }
 
         return Pair(temp, instanceDeps + dependents + DeclarationAST(temp, NonVoidMethodCallAST(reconditionedMethod, params + state)))
     }
@@ -841,8 +873,10 @@ class AdvancedReconditioner {
             val tempUpdate = AssignmentAST(temp, IndexAssignAST(temp, key, value))
             val dataStructureUpdate =
                 AssignmentAST(dataStructureTemp, BinaryExpressionAST(dataStructureTemp, DifferenceOperator, SetDisplayAST(listOf(mapComprehensionAST.identifier), false)))
-            val loop = WhileLoopAST(BinaryExpressionAST(ModulusExpressionAST(dataStructureTemp), NotEqualsOperator, IntegerLiteralAST(0)),
-                SequenceAST(listOf(assignSuchThat) + internalDependents + tempUpdate + dataStructureUpdate))
+            val loop = WhileLoopAST(
+                BinaryExpressionAST(ModulusExpressionAST(dataStructureTemp), NotEqualsOperator, IntegerLiteralAST(0)),
+                SequenceAST(listOf(assignSuchThat) + internalDependents + tempUpdate + dataStructureUpdate)
+            )
 
             Pair(temp, dataStructureDependents + tempDecl + dataStructureDecl + loop)
         }
@@ -858,6 +892,7 @@ class AdvancedReconditioner {
     ): Pair<ExpressionAST, List<StatementAST>> {
         val temp = IdentifierAST(tempGenerator.newValue(), IntType)
         val safetyId = safetyIdGenerator.newValue()
+        idsMap[safetyId] = sequenceComprehensionAST
         val methodCall = NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(sequenceComprehensionAST.size, state, StringLiteralAST(safetyId)))
         val tempDecl = DeclarationAST(temp, methodCall)
         val (expr, exprDependents) = reconditionExpression(sequenceComprehensionAST.expr)
@@ -899,7 +934,7 @@ class AdvancedReconditioner {
         private val STATE_MAP_TYPE = MapType(StringType, BoolType)
         private val STATE_TYPE = ClassType(ADVANCED_RECONDITION_CLASS)
 
-        private val state = IdentifierAST(STATE_NAME, STATE_TYPE)
+        private val state = ClassInstanceAST(ADVANCED_RECONDITION_CLASS, STATE_NAME)
 
         private val additionalParams = listOf(state)
     }
