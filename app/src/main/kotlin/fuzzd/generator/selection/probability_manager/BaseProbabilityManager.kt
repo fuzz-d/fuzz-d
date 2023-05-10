@@ -22,12 +22,11 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun charType() = 0.0
 
     // statements
+    override fun assertStatement(): Double = 0.15
     override fun ifStatement() = 0.13
     override fun matchStatement() = 0.05
     override fun forallStatement(): Double = 0.05
-
     override fun forLoopStatement(): Double = 0.1
-
     override fun whileStatement() = 0.12
     override fun methodCall() = 0.05
     override fun mapAssign() = 0.05

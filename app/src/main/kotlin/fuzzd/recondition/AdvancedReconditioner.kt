@@ -57,6 +57,7 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
@@ -295,6 +296,7 @@ class AdvancedReconditioner {
     /* ==================================== STATEMENTS ======================================== */
 
     fun reconditionStatement(statementAST: StatementAST): List<StatementAST> = when (statementAST) {
+        is AssertStatementAST -> reconditionAssertStatement(statementAST)
         is BreakAST -> listOf(statementAST)
         is MultiAssignmentAST -> reconditionMultiAssignment(statementAST)
         is MultiTypedDeclarationAST -> reconditionMultiTypedDeclaration(statementAST)
@@ -308,6 +310,11 @@ class AdvancedReconditioner {
         is PrintAST -> reconditionPrint(statementAST)
         is VoidMethodCallAST -> reconditionVoidMethodCall(statementAST)
         else -> throw UnsupportedOperationException()
+    }
+
+    fun reconditionAssertStatement(assertStatementAST: AssertStatementAST): List<StatementAST> {
+        val (reconditionedExpr, exprDependents) = reconditionExpression(assertStatementAST.expr)
+        return exprDependents + AssertStatementAST(reconditionedExpr)
     }
 
     fun reconditionMultiAssignment(multiAssignmentAST: MultiAssignmentAST): List<StatementAST> {

@@ -58,6 +58,7 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
@@ -455,6 +456,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     /* ============================================ STATEMENTS ========================================= */
 
     override fun visitStatement(ctx: StatementContext): StatementAST = super.visitStatement(ctx) as StatementAST
+
+    override fun visitAssertStatement(ctx: AssertStatementContext): AssertStatementAST = AssertStatementAST(visitExpression(ctx.expression()))
 
     override fun visitBreakStatement(ctx: BreakStatementContext): BreakAST = BreakAST
 

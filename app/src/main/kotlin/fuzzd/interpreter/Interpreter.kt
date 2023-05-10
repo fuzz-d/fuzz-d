@@ -50,6 +50,7 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
@@ -254,7 +255,14 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is MultiDeclarationAST -> interpretMultiDeclaration(statement, context)
             is MultiAssignmentAST -> interpretMultiAssign(statement, context)
             is PrintAST -> interpretPrint(statement, context)
+            is AssertStatementAST -> interpretAssertStatement(statement, context)
         }
+    }
+
+    override fun interpretAssertStatement(assertStatement: AssertStatementAST, context: InterpreterContext) {
+        val identifier = (assertStatement.expr as BinaryExpressionAST).expr1
+        val identifierValue = interpretExpression(identifier, context).toExpressionAST()
+        assertStatement.expr = BinaryExpressionAST(identifier, EqualsOperator, identifierValue)
     }
 
     override fun interpretAssignSuchThatStatement(statement: AssignSuchThatStatement, context: InterpreterContext) =

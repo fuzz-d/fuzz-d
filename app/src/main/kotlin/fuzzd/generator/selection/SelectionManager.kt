@@ -161,58 +161,57 @@ class SelectionManager(
     }
 
     // selects operator, returning the operator and a selected input type for inner expressions
-    fun selectBinaryOperator(context: GenerationContext, targetType: Type): Pair<BinaryOperator, Pair<Type, Type>> =
-        when (targetType) {
-            BoolType -> {
-                val subclasses = BinaryOperator::class.sealedSubclasses
-                val subclassInstances = subclasses.map { it.sealedSubclasses }.unionAll()
-                    .mapNotNull { it.objectInstance }
-                    .filter { it.outputType(targetType, targetType) == BoolType }
-                val selectedIndex = random.nextInt(subclassInstances.size)
+    fun selectBinaryOperator(context: GenerationContext, targetType: Type): Pair<BinaryOperator, Pair<Type, Type>> = when (targetType) {
+        BoolType -> {
+            val subclasses = BinaryOperator::class.sealedSubclasses
+            val subclassInstances = subclasses.map { it.sealedSubclasses }.unionAll()
+                .mapNotNull { it.objectInstance }
+                .filter { it.outputType(targetType, targetType) == BoolType }
+            val selectedIndex = random.nextInt(subclassInstances.size)
 
-                when (val selectedSubclass = subclassInstances[selectedIndex]) {
-                    is BooleanBinaryOperator -> Pair(selectedSubclass, Pair(BoolType, BoolType))
-                    is ComparisonBinaryOperator -> Pair(selectedSubclass, Pair(IntType, IntType))
-                    is DataStructureMembershipOperator -> {
-                        val dataStructureType = selectDataStructureType(context, 1)
-                        val keyType = when (dataStructureType) {
-                            is SetType -> dataStructureType.innerType
-                            is MultisetType -> dataStructureType.innerType
-                            is SequenceType -> dataStructureType.innerType
-                            is MapType -> dataStructureType.keyType
-                        }
-
-                        Pair(selectedSubclass, Pair(keyType, dataStructureType))
+            when (val selectedSubclass = subclassInstances[selectedIndex]) {
+                is BooleanBinaryOperator -> Pair(selectedSubclass, Pair(BoolType, BoolType))
+                is ComparisonBinaryOperator -> Pair(selectedSubclass, Pair(IntType, IntType))
+                is DataStructureMembershipOperator -> {
+                    val dataStructureType = selectDataStructureType(context, 1)
+                    val keyType = when (dataStructureType) {
+                        is SetType -> dataStructureType.innerType
+                        is MultisetType -> dataStructureType.innerType
+                        is SequenceType -> dataStructureType.innerType
+                        is MapType -> dataStructureType.keyType
                     }
 
-                    is DataStructureBinaryOperator -> {
-                        val dataStructureType = selectDataStructureType(context, 1)
-                        Pair(selectedSubclass, Pair(dataStructureType, dataStructureType))
-                    }
-
-                    else -> throw UnsupportedOperationException("$selectedSubclass not a valid boolean-type binary operator")
+                    Pair(selectedSubclass, Pair(keyType, dataStructureType))
                 }
+
+                is DataStructureBinaryOperator -> {
+                    val dataStructureType = selectDataStructureType(context, 1)
+                    Pair(selectedSubclass, Pair(dataStructureType, dataStructureType))
+                }
+
+                else -> throw UnsupportedOperationException("$selectedSubclass not a valid boolean-type binary operator")
             }
-
-            is SetType, is MultisetType -> {
-                val subclassInstances = BinaryOperator.DataStructureMathematicalOperator::class.sealedSubclasses
-                    .mapNotNull { it.objectInstance }
-                val selectedIndex = random.nextInt(subclassInstances.size)
-                Pair(subclassInstances[selectedIndex], Pair(targetType, targetType))
-            }
-
-            is MapType, is SequenceType -> Pair(UnionOperator, Pair(targetType, targetType))
-
-            IntType -> {
-                val subclassInstances = BinaryOperator.MathematicalBinaryOperator::class.sealedSubclasses
-                    .mapNotNull { it.objectInstance }
-                    .filter { it.supportsInput(targetType, targetType) }
-                val selectedIndex = random.nextInt(subclassInstances.size)
-                Pair(subclassInstances[selectedIndex], Pair(targetType, targetType))
-            }
-
-            else -> throw UnsupportedOperationException("Target type $targetType not supported for binary operations")
         }
+
+        is SetType, is MultisetType -> {
+            val subclassInstances = BinaryOperator.DataStructureMathematicalOperator::class.sealedSubclasses
+                .mapNotNull { it.objectInstance }
+            val selectedIndex = random.nextInt(subclassInstances.size)
+            Pair(subclassInstances[selectedIndex], Pair(targetType, targetType))
+        }
+
+        is MapType, is SequenceType -> Pair(UnionOperator, Pair(targetType, targetType))
+
+        IntType -> {
+            val subclassInstances = BinaryOperator.MathematicalBinaryOperator::class.sealedSubclasses
+                .mapNotNull { it.objectInstance }
+                .filter { it.supportsInput(targetType, targetType) }
+            val selectedIndex = random.nextInt(subclassInstances.size)
+            Pair(subclassInstances[selectedIndex], Pair(targetType, targetType))
+        }
+
+        else -> throw UnsupportedOperationException("Target type $targetType not supported for binary operations")
+    }
 
     fun selectUnaryOperator(targetType: Type): UnaryOperator =
         when (targetType) {

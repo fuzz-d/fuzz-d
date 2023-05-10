@@ -8,7 +8,7 @@ import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.utils.indent
 
 sealed class StatementAST : ASTElement {
-    class AssertStatementAST(val expr: ExpressionAST) : StatementAST() {
+    class AssertStatementAST(var expr: ExpressionAST) : StatementAST() {
         override fun toString(): String = "assert($expr);"
     }
 

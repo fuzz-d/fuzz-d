@@ -46,6 +46,7 @@ import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
@@ -141,6 +142,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         SequenceAST(sequence.statements.map(this::reconditionStatement))
 
     override fun reconditionStatement(statement: StatementAST) = when (statement) {
+        is AssertStatementAST -> reconditionAssertStatement(statement)
         is BreakAST -> statement
         is MultiAssignmentAST -> reconditionMultiAssignmentAST(statement) // covers AssignmentAST
         is MultiTypedDeclarationAST -> reconditionMultiTypedDeclarationAST(statement)
@@ -154,6 +156,8 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is VoidMethodCallAST -> reconditionVoidMethodCall(statement)
         else -> throw UnsupportedOperationException()
     }
+
+    override fun reconditionAssertStatement(assertStatement: AssertStatementAST): AssertStatementAST = AssertStatementAST(reconditionExpression(assertStatement.expr))
 
     override fun reconditionMultiAssignmentAST(multiAssignmentAST: MultiAssignmentAST) = MultiAssignmentAST(
         multiAssignmentAST.identifiers.map(this::reconditionIdentifier),

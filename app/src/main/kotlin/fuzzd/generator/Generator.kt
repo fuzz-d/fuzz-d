@@ -731,7 +731,7 @@ class Generator(
 
         val (expr, exprDeps) = generateExpression(context, targetType)
 
-        return identDeps + exprDeps + AssignmentAST(identifier, expr)
+        return identDeps + exprDeps + AssignmentAST(identifier, expr) + generateStatement(context)
     }
 
     override fun generateClassInstantiation(context: GenerationContext): List<StatementAST> {
@@ -1050,7 +1050,7 @@ class Generator(
 
         val exprContext = context.withSymbolTable(SymbolTable()).disableOnDemand()
         exprContext.symbolTable.add(identifier)
-        val (expr, _) = if (isBinaryType(targetType.innerType)) {
+        val (expr, _) = if (isBinaryType(targetType.innerType, targetType.innerType)) {
             generateBinaryExpressionWithIdentifier(identifier, exprContext, targetType.innerType)
         } else {
             Pair(
@@ -1140,13 +1140,10 @@ class Generator(
 
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
-        val (keyExpr, _) = if (isBinaryType(targetType.keyType)) {
+        val (keyExpr, _) = if (isBinaryType(targetType.keyType, targetType.keyType)) {
             generateBinaryExpressionWithIdentifier(identifier, exprContext, targetType.keyType)
         } else {
-            Pair(
-                identifier,
-                emptyList(),
-            )
+            Pair(identifier, emptyList())
         }
         val (valueExpr, _) = generateExpression(exprContext, targetType.valueType)
 
