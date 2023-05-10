@@ -37,7 +37,7 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
 
     override fun forLoopStatement(): Double = probabilityManager.forLoopStatement()
 
-    override fun whileStatement(): Double = probabilityManager.whileStatement()
+    override fun whileStatement(): Double = probabilityManager.whileStatement() / 3
 
     override fun methodCall(): Double = probabilityManager.methodCall()
 
