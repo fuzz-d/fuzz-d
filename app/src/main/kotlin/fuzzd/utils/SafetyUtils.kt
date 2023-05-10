@@ -28,6 +28,7 @@ val ABSOLUTE = FunctionMethodAST(
     "abs",
     IntType,
     listOf(INT_IDENTIFIER),
+    emptyList(),
     TernaryExpressionAST(
         BinaryExpressionAST(
             INT_IDENTIFIER,
@@ -47,6 +48,7 @@ val SAFE_ARRAY_INDEX = FunctionMethodAST(
     "safeArrayIndex",
     IntType,
     listOf(INT_IDENTIFIER, LENGTH),
+    emptyList(),
     TernaryExpressionAST(
         BinaryExpressionAST(INT_IDENTIFIER, LessThanOperator, IntegerLiteralAST(0)),
         IntegerLiteralAST(0),
@@ -65,6 +67,7 @@ val SAFE_DIVISION_INT = FunctionMethodAST(
     "safeDivisionInt",
     IntType,
     listOf(INT_IDENTIFIER_1, INT_IDENTIFIER_2),
+    emptyList(),
     TernaryExpressionAST(
         BinaryExpressionAST(INT_IDENTIFIER_2, EqualsOperator, IntegerLiteralAST("0")),
         INT_IDENTIFIER_1,
@@ -77,6 +80,7 @@ val SAFE_MODULO_INT = FunctionMethodAST(
     "safeModuloInt",
     IntType,
     listOf(INT_IDENTIFIER_1, INT_IDENTIFIER_2),
+    emptyList(),
     TernaryExpressionAST(
         BinaryExpressionAST(INT_IDENTIFIER_2, EqualsOperator, IntegerLiteralAST("0")),
         INT_IDENTIFIER_1,
