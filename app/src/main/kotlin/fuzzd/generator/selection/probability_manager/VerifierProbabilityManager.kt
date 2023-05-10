@@ -111,4 +111,5 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
 
     override fun comprehensionIdentifiers(): Int = probabilityManager.comprehensionIdentifiers()
 
+    override fun numberOfTraits(): Int = 0
 }

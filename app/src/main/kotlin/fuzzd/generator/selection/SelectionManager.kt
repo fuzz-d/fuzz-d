@@ -257,16 +257,16 @@ class SelectionManager(
                     AssignType.IDENTIFIER to probabilityManager.assignIdentifier(),
                     ARRAY_INDEX to probabilityManager.assignArrayIndex(),
                 ),
-            )
+            ),
         )
 
     private fun isBinaryType(targetType: Type): Boolean =
         targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType &&
-                targetType !is TopLevelDatatypeType && targetType != CharType
+            targetType !is TopLevelDatatypeType && targetType != CharType
 
     private fun isAssignType(targetType: Type): Boolean =
         targetType is MapType || targetType is MultisetType || targetType is SequenceType ||
-                (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
+            (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability =
@@ -416,7 +416,7 @@ class SelectionManager(
 
     fun selectNumberOfMethods() = random.nextInt(0, MAX_METHODS)
 
-    fun selectNumberOfTraits() = random.nextInt(0, MAX_TRAITS)
+    fun selectNumberOfTraits() = probabilityManager.numberOfTraits()
 
     fun selectNumberOfTraitInherits() = random.nextInt(0, MAX_TRAIT_INHERITS)
 
@@ -450,7 +450,6 @@ class SelectionManager(
         private const val MAX_GLOBAL_FIELDS = 20
         private const val MAX_FUNCTION_METHODS = 3
         private const val MAX_METHODS = 3
-        private const val MAX_TRAITS = 3
         private const val MAX_TRAIT_INHERITS = 2
 
         private val LITERAL_TYPES = listOf(IntType, BoolType, CharType)

@@ -73,4 +73,6 @@ interface ProbabilityManager {
     fun mainFunctionStatements(): Int
     fun matchStatements(): Int
     fun comprehensionIdentifiers(): Int
+
+    fun numberOfTraits(): Int
 }

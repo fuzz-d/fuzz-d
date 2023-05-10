@@ -77,4 +77,6 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun mainFunctionStatements(): Int = 18
     override fun matchStatements(): Int = 5
     override fun comprehensionIdentifiers(): Int = 3
+
+    override fun numberOfTraits(): Int = 3
 }

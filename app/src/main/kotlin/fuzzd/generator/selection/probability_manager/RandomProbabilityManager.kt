@@ -90,4 +90,6 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun mainFunctionStatements(): Int = getStatementCount(ProbabilityManager::mainFunctionStatements) + 5 // adjust for smaller random #
     override fun matchStatements(): Int = getStatementCount(ProbabilityManager::matchStatements)
     override fun comprehensionIdentifiers(): Int = min(getStatementCount(ProbabilityManager::comprehensionIdentifiers), 4)
+
+    override fun numberOfTraits(): Int = getStatementCount(ProbabilityManager::numberOfTraits)
 }
