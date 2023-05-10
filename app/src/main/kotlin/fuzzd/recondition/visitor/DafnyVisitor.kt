@@ -1007,13 +1007,14 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val size = visitExpression(ctx.expression(0))
         val identifierName = visitIdentifierName(ctx.identifier())
         val identifier = IdentifierAST(identifierName, IntType)
+        val annotations = ctx.verifierAnnotation().map(this::visitVerifierAnnotation)
 
         identifiersTable = identifiersTable.increaseDepth()
         identifiersTable.addEntry(identifierName, identifier)
         val expr = visitExpression(ctx.expression(1))
         identifiersTable = identifiersTable.decreaseDepth()
 
-        return SequenceComprehensionAST(size, identifier, expr)
+        return SequenceComprehensionAST(size, identifier, annotations, expr)
     }
 
     override fun visitMapConstructor(ctx: MapConstructorContext): MapConstructorAST {

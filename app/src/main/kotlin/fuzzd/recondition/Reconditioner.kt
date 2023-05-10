@@ -555,12 +555,14 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             SequenceComprehensionAST(
                 FunctionMethodCallAST(ABSOLUTE.signature, listOf(sequenceComprehension.size)),
                 sequenceComprehension.identifier,
+                sequenceComprehension.annotations,
                 reconditionExpression(sequenceComprehension.expr),
             )
         } else {
             SequenceComprehensionAST(
                 sequenceComprehension.size,
                 sequenceComprehension.identifier,
+                sequenceComprehension.annotations,
                 reconditionExpression(sequenceComprehension.expr),
             )
         }

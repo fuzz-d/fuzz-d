@@ -913,7 +913,7 @@ class AdvancedReconditioner {
         val (expr, exprDependents) = reconditionExpression(sequenceComprehensionAST.expr)
 
         return if (exprDependents.isEmpty()) {
-            Pair(SequenceComprehensionAST(temp, sequenceComprehensionAST.identifier, expr), listOf(tempDecl))
+            Pair(SequenceComprehensionAST(temp, sequenceComprehensionAST.identifier, sequenceComprehensionAST.annotations, expr), listOf(tempDecl))
         } else {
             val tempSeq = IdentifierAST(tempGenerator.newValue(), sequenceComprehensionAST.type())
             val tempSeqDecl = DeclarationAST(tempSeq, SequenceDisplayAST(emptyList(), sequenceComprehensionAST.type().innerType))

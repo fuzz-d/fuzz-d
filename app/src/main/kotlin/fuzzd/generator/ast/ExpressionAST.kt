@@ -621,7 +621,12 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "[${exprs.joinToString(", ")}]"
     }
 
-    class SequenceComprehensionAST(val size: ExpressionAST, val identifier: IdentifierAST, val expr: ExpressionAST) : ExpressionAST() {
+    class SequenceComprehensionAST(
+        val size: ExpressionAST,
+        val identifier: IdentifierAST,
+        val annotations: List<VerifierAnnotationAST>,
+        val expr: ExpressionAST,
+    ) : ExpressionAST() {
         init {
             if (size.type() != IntType) {
                 throw InvalidInputException("Size of sequence comprehension must be an int expression")
@@ -632,7 +637,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): SequenceType = SequenceType(expr.type())
 
-        override fun toString(): String = "seq($size, $identifier => ($expr))"
+        override fun toString(): String = "seq($size, $identifier ${annotations.joinToString(" ")} => ($expr))"
     }
 
     class ArrayLengthAST(val array: IdentifierAST) : ExpressionAST() {

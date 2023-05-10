@@ -1051,8 +1051,9 @@ class Generator(
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
         val (expr, exprDeps) = generateExpression(exprContext, targetType.innerType)
+        val readsAnnotation = ReadsAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))
 
-        return Pair(SequenceComprehensionAST(length, identifier, expr), exprDeps)
+        return Pair(SequenceComprehensionAST(length, identifier, listOf(readsAnnotation), expr), exprDeps)
     }
 
     override fun generateMapConstructor(
