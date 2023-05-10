@@ -88,6 +88,7 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.VerifierAnnotationAST.DecreasesAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.ModifiesAnnotation
 import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.DifferenceOperator
@@ -265,6 +266,7 @@ class AdvancedReconditioner {
                     signature.name,
                     (signature.params + additionalParams).map { reconditionIdentifier(it).first },
                     signature.returns.map { reconditionIdentifier(it).first },
+                    signature.annotations + additionalParams.map { ModifiesAnnotation(it) },
                 )
         }
 
@@ -282,6 +284,7 @@ class AdvancedReconditioner {
                 signature.name,
                 (signature.params + additionalParams).map { reconditionIdentifier(it).first },
                 listOf(returns),
+                signature.annotations + additionalParams.map { ModifiesAnnotation(it) },
             )
         }
 
