@@ -84,6 +84,7 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
+import fuzzd.generator.ast.VerifierAnnotationAST.DecreasesAnnotation
 import fuzzd.generator.ast.error.IdentifierOnDemandException
 import fuzzd.generator.ast.error.MethodOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator
@@ -102,6 +103,7 @@ import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.Companion.isBinaryType
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
+import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.context.GenerationContext
 import fuzzd.generator.selection.ArrayInitType
 import fuzzd.generator.selection.ArrayInitType.DEFAULT
@@ -611,13 +613,7 @@ class Generator(
         val (condition, conditionDeps) = generateExpression(context, BoolType)
 
         val counterTerminationCheck = IfStatementAST(
-            BinaryExpressionAST(
-                counterIdentifier,
-                GreaterThanEqualOperator,
-                IntegerLiteralAST(
-                    DAFNY_MAX_LOOP_COUNTER,
-                ),
-            ),
+            BinaryExpressionAST(counterIdentifier, GreaterThanEqualOperator, IntegerLiteralAST(DAFNY_MAX_LOOP_COUNTER)),
             SequenceAST(listOf(BreakAST)),
             null,
         )
@@ -633,6 +629,7 @@ class Generator(
             counterTerminationCheck,
             counterUpdate,
             condition,
+            listOf(DecreasesAnnotation(BinaryExpressionAST(IntegerLiteralAST(DAFNY_MAX_LOOP_COUNTER), SubtractionOperator, counterIdentifier))),
             whileBody,
         )
         return conditionDeps + whileLoop

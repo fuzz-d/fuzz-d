@@ -6,7 +6,6 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.utils.indent
-import java.lang.reflect.Member
 
 sealed class StatementAST : ASTElement {
     class MatchStatementAST(
@@ -98,7 +97,7 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "forall $identifier | $bottomRange <= $identifier < $topRange {\n${indent(assignment)}\n}"
     }
 
-    open class WhileLoopAST(val condition: ExpressionAST, open val body: SequenceAST) : StatementAST() {
+    open class WhileLoopAST(val condition: ExpressionAST, val annotations: List<VerifierAnnotationAST>, open val body: SequenceAST) : StatementAST() {
         init {
             if (condition.type() != Type.BoolType) {
                 throw InvalidInputException("If statement condition not bool type")
@@ -107,7 +106,11 @@ sealed class StatementAST : ASTElement {
 
         open fun body(): SequenceAST = body
 
-        override fun toString(): String = "while ($condition) {\n${body()}\n}"
+        override fun toString(): String = if (annotations.isEmpty()) {
+            "while ($condition) {\n${body()}\n}"
+        } else {
+            "while ($condition)\n ${indent(annotations.joinToString("\n"))} \n {\n${body()} \n}"
+        }
     }
 
     class CounterLimitedWhileLoopAST(
@@ -115,8 +118,9 @@ sealed class StatementAST : ASTElement {
         val terminationCheck: IfStatementAST,
         val counterUpdate: AssignmentAST,
         condition: ExpressionAST,
+        annotations: List<VerifierAnnotationAST>,
         override val body: SequenceAST,
-    ) : WhileLoopAST(condition, SequenceAST(listOf(terminationCheck, counterUpdate) + body.statements)) {
+    ) : WhileLoopAST(condition, annotations, SequenceAST(listOf(terminationCheck, counterUpdate) + body.statements)) {
         override fun body(): SequenceAST = SequenceAST(listOf(terminationCheck, counterUpdate) + body.statements)
 
         override fun toString(): String = "$counterInitialisation\n${super.toString()}"
