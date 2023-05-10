@@ -88,6 +88,12 @@ import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
+import fuzzd.generator.ast.VerifierAnnotationAST
+import fuzzd.generator.ast.VerifierAnnotationAST.DecreasesAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.EnsuresAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.ModifiesAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.ReadsAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.RequiresAnnotation
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
@@ -604,7 +610,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val sequence = visitSequence(ctx.sequence())
         identifiersTable = identifiersTable.decreaseDepth()
 
-        return WhileLoopAST(whileCondition, sequence)
+        val annotations = ctx.verifierAnnotation().map(this::visitVerifierAnnotation)
+
+        return WhileLoopAST(whileCondition, annotations, sequence)
     }
 
     override fun visitVoidMethodCall(ctx: VoidMethodCallContext): VoidMethodCallAST {
@@ -614,6 +622,20 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         return VoidMethodCallAST(method, params)
     }
+
+    /* ============================================ VERIFIER ANNOTATIONS ================================== */
+
+    override fun visitVerifierAnnotation(ctx: VerifierAnnotationContext): VerifierAnnotationAST = super.visitVerifierAnnotation(ctx) as VerifierAnnotationAST
+
+    override fun visitDecreases(ctx: DecreasesContext): DecreasesAnnotation = DecreasesAnnotation(visitExpression(ctx.expression()))
+
+    override fun visitEnsures(ctx: EnsuresContext): EnsuresAnnotation = EnsuresAnnotation(visitExpression(ctx.expression()))
+
+    override fun visitModifies(ctx: ModifiesContext): ModifiesAnnotation = ModifiesAnnotation(visitIdentifier(ctx.identifier()))
+
+    override fun visitReads(ctx: ReadsContext): ReadsAnnotation = ReadsAnnotation(visitIdentifier(ctx.identifier()))
+
+    override fun visitRequires(ctx: RequiresContext): RequiresAnnotation = RequiresAnnotation(visitExpression(ctx.expression()))
 
     /* ============================================= EXPRESSION ======================================== */
 
