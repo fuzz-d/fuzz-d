@@ -8,10 +8,12 @@ import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.VerifierAnnotationAST.RequiresAnnotation
 import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
+import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MultiplicationOperator
@@ -48,7 +50,7 @@ val SAFE_ARRAY_INDEX = FunctionMethodAST(
     "safeArrayIndex",
     IntType,
     listOf(INT_IDENTIFIER, LENGTH),
-    emptyList(),
+    listOf(RequiresAnnotation(BinaryExpressionAST(LENGTH, GreaterThanOperator, IntegerLiteralAST(0)))),
     TernaryExpressionAST(
         BinaryExpressionAST(INT_IDENTIFIER, LessThanOperator, IntegerLiteralAST(0)),
         IntegerLiteralAST(0),
