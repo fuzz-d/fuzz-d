@@ -57,7 +57,6 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
-import fuzzd.generator.ast.StatementAST.AssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
@@ -88,6 +87,7 @@ import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
+import fuzzd.generator.ast.VerifierAnnotationAST.DecreasesAnnotation
 import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TemporaryNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.DifferenceOperator
@@ -134,10 +134,10 @@ class AdvancedReconditioner {
 
         return DafnyAST(
             reconditionedDatatypes +
-                    reconditionedTraits +
-                    reconditionedClasses +
-                    reconditionedMethods +
-                    reconditionedMain,
+                reconditionedTraits +
+                reconditionedClasses +
+                reconditionedMethods +
+                reconditionedMain,
         )
     }
 
@@ -189,11 +189,14 @@ class AdvancedReconditioner {
             val inductiveConstructors = datatypeAST.constructors.filter { it.fields.any { f -> f.type() == TopLevelDatatypeType(datatypeAST) } }
             val constructors = datatypeAST.constructors.filter { it !in inductiveConstructors }.map(this::reconditionDatatypeConstructor).toMutableList()
             val datatype = DatatypeAST(datatypeAST.name, constructors)
-            datatype.constructors.addAll(inductiveConstructors.map { c ->
-                DatatypeConstructorAST(
-                    c.name,
-                    c.fields.map { TopLevelDatatypeInstanceAST(it.name, TopLevelDatatypeType(datatype), it.mutable, it.initialised()) })
-            })
+            datatype.constructors.addAll(
+                inductiveConstructors.map { c ->
+                    DatatypeConstructorAST(
+                        c.name,
+                        c.fields.map { TopLevelDatatypeInstanceAST(it.name, TopLevelDatatypeType(datatype), it.mutable, it.initialised()) },
+                    )
+                },
+            )
             datatypes[datatypeAST.name] = datatype
             datatype
         }
@@ -308,7 +311,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
         return identifierDependents + exprDependents +
-                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+            MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMultiTypedDeclaration(multiTypedDeclarationAST: MultiTypedDeclarationAST): List<StatementAST> {
@@ -326,7 +329,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
 
         return identifierDependents + exprDependents +
-                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+            MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMatchStatement(matchStatementAST: MatchStatementAST): List<StatementAST> {
@@ -365,12 +368,12 @@ class AdvancedReconditioner {
 
         // conversion to equivalent for-loop due to possible method calls (not allowed in forall statement)
         return bottomRangeDependents + topRangeDependents + arrayDependents +
-                ForLoopAST(
-                    forallStatementAST.identifier,
-                    bottomRange,
-                    topRange,
-                    SequenceAST(assignExprDependents + AssignmentAST(ArrayIndexAST(array, arrayIndex.index), assignExpr))
-                )
+            ForLoopAST(
+                forallStatementAST.identifier,
+                bottomRange,
+                topRange,
+                SequenceAST(assignExprDependents + AssignmentAST(ArrayIndexAST(array, arrayIndex.index), assignExpr)),
+            )
     }
 
     fun reconditionCounterLimitedWhileLoop(whileLoopAST: CounterLimitedWhileLoopAST): List<StatementAST> {
@@ -382,6 +385,7 @@ class AdvancedReconditioner {
             whileLoopAST.terminationCheck,
             whileLoopAST.counterUpdate,
             newCondition,
+            whileLoopAST.annotations,
             SequenceAST(reconditionedBody.statements + dependents),
         )
     }
@@ -390,7 +394,7 @@ class AdvancedReconditioner {
         val (newCondition, dependents) = reconditionExpression(whileLoopAST.condition)
         val reconditionedBody = reconditionSequence(whileLoopAST.body)
 
-        return dependents + WhileLoopAST(newCondition, SequenceAST(reconditionedBody.statements + dependents))
+        return dependents + WhileLoopAST(newCondition, whileLoopAST.annotations, SequenceAST(reconditionedBody.statements + dependents))
     }
 
     fun reconditionPrint(printAST: PrintAST): List<StatementAST> {
@@ -611,9 +615,9 @@ class AdvancedReconditioner {
                     identifierAST.name,
                     identifierAST.datatype,
                     identifierAST.mutable,
-                    identifierAST.initialised()
+                    identifierAST.initialised(),
                 ),
-                emptyList()
+                emptyList(),
             )
 
             is ClassInstanceFieldAST -> {
@@ -788,19 +792,23 @@ class AdvancedReconditioner {
                 val counter = IdentifierAST(tempGenerator.newValue(), (dataStructure.type() as DataStructureType).innerType)
                 Pair(
                     IdentifierAST(tempGenerator.newValue(), SetType(dataStructureType.innerType)),
-                    DataStructureSetComprehensionAST(counter, dataStructure, counter)
+                    DataStructureSetComprehensionAST(counter, dataStructure, counter),
                 )
-            } else Pair(IdentifierAST(tempGenerator.newValue(), dataStructureType), dataStructure)
+            } else {
+                Pair(IdentifierAST(tempGenerator.newValue(), dataStructureType), dataStructure)
+            }
 
             val dataStructureDecl = DeclarationAST(dataStructureTemp, dataStructureExpr)
             val assignSuchThat = DataStructureAssignSuchThatStatement(setComprehensionAST.identifier, dataStructureTemp)
             val tempUpdate = AssignmentAST(temp, BinaryExpressionAST(temp, UnionOperator, setComprehensionAST.identifier))
             val dataStructureUpdate = AssignmentAST(
-                dataStructureTemp, BinaryExpressionAST(dataStructureTemp, DifferenceOperator, SetDisplayAST(listOf(setComprehensionAST.identifier), false))
+                dataStructureTemp,
+                BinaryExpressionAST(dataStructureTemp, DifferenceOperator, SetDisplayAST(listOf(setComprehensionAST.identifier), false)),
             )
             val loop = WhileLoopAST(
                 BinaryExpressionAST(ModulusExpressionAST(dataStructureTemp), NotEqualsOperator, IntegerLiteralAST(0)),
-                SequenceAST(listOf(assignSuchThat) + exprDependents + tempUpdate + dataStructureUpdate)
+                listOf(DecreasesAnnotation(ModulusExpressionAST(dataStructureTemp))),
+                SequenceAST(listOf(assignSuchThat) + exprDependents + tempUpdate + dataStructureUpdate),
             )
 
             Pair(temp, dataStructureDependents + tempDecl + dataStructureDecl + loop)
@@ -864,9 +872,11 @@ class AdvancedReconditioner {
                 val counter = IdentifierAST(tempGenerator.newValue(), (dataStructure.type() as DataStructureType).innerType)
                 Pair(
                     IdentifierAST(tempGenerator.newValue(), SetType(dataStructureType.innerType)),
-                    DataStructureSetComprehensionAST(counter, dataStructure, counter)
+                    DataStructureSetComprehensionAST(counter, dataStructure, counter),
                 )
-            } else Pair(IdentifierAST(tempGenerator.newValue(), dataStructureType), dataStructure)
+            } else {
+                Pair(IdentifierAST(tempGenerator.newValue(), dataStructureType), dataStructure)
+            }
 
             val dataStructureDecl = DeclarationAST(dataStructureTemp, dataStructureExpr)
             val assignSuchThat = DataStructureAssignSuchThatStatement(mapComprehensionAST.identifier, dataStructureTemp)
@@ -875,7 +885,8 @@ class AdvancedReconditioner {
                 AssignmentAST(dataStructureTemp, BinaryExpressionAST(dataStructureTemp, DifferenceOperator, SetDisplayAST(listOf(mapComprehensionAST.identifier), false)))
             val loop = WhileLoopAST(
                 BinaryExpressionAST(ModulusExpressionAST(dataStructureTemp), NotEqualsOperator, IntegerLiteralAST(0)),
-                SequenceAST(listOf(assignSuchThat) + internalDependents + tempUpdate + dataStructureUpdate)
+                listOf(DecreasesAnnotation(ModulusExpressionAST(dataStructureTemp))),
+                SequenceAST(listOf(assignSuchThat) + internalDependents + tempUpdate + dataStructureUpdate),
             )
 
             Pair(temp, dataStructureDependents + tempDecl + dataStructureDecl + loop)

@@ -91,11 +91,11 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
         return DafnyAST(
             reconditionedDatatypes +
-                    reconditionedTraits +
-                    reconditionedClasses +
-                    reconditionedFunctionMethods +
-                    reconditionedMethods +
-                    reconditionedMain,
+                reconditionedTraits +
+                reconditionedClasses +
+                reconditionedFunctionMethods +
+                reconditionedMethods +
+                reconditionedMain,
         )
     }
 
@@ -188,7 +188,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         forLoopAST.identifier,
         reconditionExpression(forLoopAST.bottomRange),
         reconditionExpression(forLoopAST.topRange),
-        reconditionSequence(forLoopAST.body)
+        reconditionSequence(forLoopAST.body),
     )
 
     override fun reconditionForallStatement(forallStatementAST: ForallStatementAST): ForallStatementAST {
@@ -200,7 +200,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             AssignmentAST(
                 ArrayIndexAST(reconditionIdentifier(arrayIndex.array), arrayIndex.index),
                 reconditionExpression(forallStatementAST.assignment.expr),
-            )
+            ),
         )
     }
 
@@ -210,11 +210,13 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             whileLoopAST.terminationCheck,
             whileLoopAST.counterUpdate,
             reconditionExpression(whileLoopAST.condition),
+            whileLoopAST.annotations,
             reconditionSequence(whileLoopAST.body),
         )
 
         else -> WhileLoopAST(
             reconditionExpression(whileLoopAST.condition),
+            whileLoopAST.annotations,
             reconditionSequence(whileLoopAST.body),
         )
     }
