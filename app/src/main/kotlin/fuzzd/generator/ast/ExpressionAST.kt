@@ -317,8 +317,8 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
-                    clazz == other.clazz &&
-                    name == other.name
+                clazz == other.clazz &&
+                name == other.name
 
         override fun hashCode(): Int {
             var result = super.hashCode()
