@@ -84,9 +84,11 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
+import fuzzd.generator.ast.VerifierAnnotationAST
 import fuzzd.generator.ast.VerifierAnnotationAST.DecreasesAnnotation
 import fuzzd.generator.ast.VerifierAnnotationAST.ModifiesAnnotation
 import fuzzd.generator.ast.VerifierAnnotationAST.ReadsAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.RequiresAnnotation
 import fuzzd.generator.ast.error.IdentifierOnDemandException
 import fuzzd.generator.ast.error.MethodOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator
@@ -104,6 +106,7 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.TraitNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.Companion.isBinaryType
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
+import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.context.GenerationContext
@@ -375,6 +378,20 @@ class Generator(
         return functionMethodAST
     }
 
+    private fun generateAnnotationsFromParameters(parameters: List<IdentifierAST>): List<VerifierAnnotationAST> = parameters.mapNotNull {
+        if (it.type() is SequenceType) {
+            RequiresAnnotation(
+                BinaryExpressionAST(
+                    ModulusExpressionAST(it),
+                    GreaterThanOperator,
+                    IntegerLiteralAST(0),
+                ),
+            )
+        } else {
+            null
+        }
+    }
+
     override fun generateFunctionMethodSignature(
         context: GenerationContext,
         targetType: Type?,
@@ -393,11 +410,13 @@ class Generator(
             )
         }
 
+        val annotations = listOf(ReadsAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) + generateAnnotationsFromParameters(parameters)
+
         return FunctionMethodSignatureAST(
             name,
             returnType,
             parameters + listOf(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE)),
-            listOf(ReadsAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))),
+            annotations,
         )
     }
 
@@ -490,11 +509,13 @@ class Generator(
             paramIdentifierFromType(type, parameterNameGenerator, mutable = false, initialised = true)
         }
 
+        val annotations = listOf(ModifiesAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) + generateAnnotationsFromParameters(parameters)
+
         return MethodSignatureAST(
             name,
             parameters + listOf(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE)),
             returns,
-            listOf(ModifiesAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))),
+            annotations,
         )
     }
 
