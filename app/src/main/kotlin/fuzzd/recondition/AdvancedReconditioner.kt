@@ -803,7 +803,7 @@ class AdvancedReconditioner {
 
             val dataStructureDecl = DeclarationAST(dataStructureTemp, dataStructureExpr)
             val assignSuchThat = DataStructureAssignSuchThatStatement(setComprehensionAST.identifier, dataStructureTemp)
-            val tempUpdate = AssignmentAST(temp, BinaryExpressionAST(temp, UnionOperator, setComprehensionAST.identifier))
+            val tempUpdate = AssignmentAST(temp, BinaryExpressionAST(temp, UnionOperator, SetDisplayAST(listOf(setComprehensionAST.identifier), false)))
             val dataStructureUpdate = AssignmentAST(
                 dataStructureTemp,
                 BinaryExpressionAST(dataStructureTemp, DifferenceOperator, SetDisplayAST(listOf(setComprehensionAST.identifier), false)),
