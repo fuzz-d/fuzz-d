@@ -109,7 +109,7 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = if (annotations.isEmpty()) {
             "while ($condition) {\n${body()}\n}"
         } else {
-            "while ($condition)\n ${indent(annotations.joinToString("\n"))} \n {\n${body()} \n}"
+            "while ($condition)\n${indent(annotations.joinToString("\n"))}\n{\n${body()}\n}"
         }
     }
 

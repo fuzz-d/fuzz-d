@@ -16,7 +16,7 @@ open class FunctionMethodAST(
 
     fun returnType(): Type = signature.returnType
 
-    override fun toString(): String = "$signature {\n${indent(body)}\n}"
+    override fun toString(): String = "$signature{\n${indent(body)}\n}"
 
     override fun equals(other: Any?): Boolean =
         other is FunctionMethodAST && other.signature == signature && other.body == body
@@ -36,7 +36,7 @@ open class FunctionMethodSignatureAST(
 ) : ASTElement {
     override fun toString(): String {
         val sb = StringBuilder()
-        sb.append("function $name(${params.joinToString(", ") { param -> "${param.name}: ${param.type()}" }}): $returnType")
+        sb.append("function $name(${params.joinToString(", ") { param -> "${param.name}: ${param.type()}" }}): $returnType ")
 
         if (annotations.isNotEmpty()) {
             sb.append("\n")

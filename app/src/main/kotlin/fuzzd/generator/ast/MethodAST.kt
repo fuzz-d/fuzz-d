@@ -32,7 +32,7 @@ class MethodAST(
         this.body = body
     }
 
-    override fun toString(): String = "$signature {\n$body\n}"
+    override fun toString(): String = "$signature{\n$body\n}"
 
     override fun equals(other: Any?): Boolean = other is MethodAST && other.signature == signature && other.body == body
 }
@@ -48,7 +48,7 @@ open class MethodSignatureAST(
         sb.append("method $name(${params.joinToString(", ") { p -> "$p: ${p.type()}" }}) ")
 
         if (returns.isNotEmpty()) {
-            sb.append("returns (${returns.joinToString(", ") { p -> "$p: ${p.type()}" }})")
+            sb.append("returns (${returns.joinToString(", ") { p -> "$p: ${p.type()}" }}) ")
         }
 
         if (annotations.isNotEmpty()) {
