@@ -8,6 +8,10 @@ import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.utils.indent
 
 sealed class StatementAST : ASTElement {
+    class AssertStatementAST(val expr: ExpressionAST) : StatementAST() {
+        override fun toString(): String = "assert($expr);"
+    }
+
     class MatchStatementAST(
         val match: ExpressionAST,
         val cases: List<Pair<ExpressionAST, SequenceAST>>,

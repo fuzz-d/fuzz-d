@@ -50,6 +50,7 @@ import fuzzd.generator.selection.IndexType.MAP
 import fuzzd.generator.selection.IndexType.MULTISET
 import fuzzd.generator.selection.IndexType.SEQUENCE
 import fuzzd.generator.selection.IndexType.STRING
+import fuzzd.generator.selection.StatementType.ASSERT
 import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.CLASS_INSTANTIATION
 import fuzzd.generator.selection.StatementType.FORALL
@@ -235,6 +236,7 @@ class SelectionManager(
         }
 
         val selection = listOf(
+            ASSERT to probabilityManager.assertStatement(),
             IF to ifStatementProbability,
             FOR_LOOP to forLoopProbability,
             FORALL to forallProbability,

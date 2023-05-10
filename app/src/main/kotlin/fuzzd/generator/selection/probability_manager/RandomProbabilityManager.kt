@@ -45,6 +45,8 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun intType(): Double = getProbability(ProbabilityManager::intType)
     override fun boolType(): Double = getProbability(ProbabilityManager::boolType)
     override fun charType(): Double = getProbability(ProbabilityManager::charType)
+
+    override fun assertStatement(): Double = getProbability(ProbabilityManager::assertStatement)
     override fun ifStatement(): Double = getProbability(ProbabilityManager::ifStatement)
     override fun matchStatement(): Double = getProbability(ProbabilityManager::matchStatement)
     override fun forallStatement(): Double = getProbability(ProbabilityManager::forallStatement)
@@ -54,6 +56,7 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun mapAssign(): Double = getProbability(ProbabilityManager::mapAssign)
     override fun assignStatement(): Double = getProbability(ProbabilityManager::assignStatement)
     override fun classInstantiation(): Double = getProbability(ProbabilityManager::classInstantiation)
+
     override fun assignIdentifier(): Double = getProbability(ProbabilityManager::assignIdentifier)
     override fun assignArrayIndex(): Double = getProbability(ProbabilityManager::assignArrayIndex)
     override fun binaryExpression(): Double = getProbability(ProbabilityManager::binaryExpression)

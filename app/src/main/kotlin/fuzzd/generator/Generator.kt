@@ -13,6 +13,7 @@ import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.ComprehensionInitialisedArrayInitAST
 import fuzzd.generator.ast.ExpressionAST.DataStructureMapComprehensionAST
@@ -55,6 +56,7 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
@@ -105,6 +107,7 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.ReturnsNameGenerat
 import fuzzd.generator.ast.identifier_generator.NameGenerator.TraitNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.Companion.isBinaryType
+import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
@@ -137,6 +140,7 @@ import fuzzd.generator.selection.IndexType.SEQUENCE
 import fuzzd.generator.selection.IndexType.STRING
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.StatementType
+import fuzzd.generator.selection.StatementType.ASSERT
 import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.CLASS_INSTANTIATION
 import fuzzd.generator.selection.StatementType.DECLARATION
@@ -548,10 +552,18 @@ class Generator(
         generateStatementFromType(type, context)
     }
 
+    override fun generateAssertStatement(context: GenerationContext): List<StatementAST> {
+        val type = generateType(context)
+        val (identifier, identifierDeps) = generateIdentifier(context, type, classInstances = false)
+
+        return identifierDeps + AssertStatementAST(BinaryExpressionAST(identifier, EqualsOperator, identifier))
+    }
+
     private fun generateStatementFromType(
         type: StatementType,
         context: GenerationContext,
     ): List<StatementAST> = when (type) {
+        ASSERT -> generateAssertStatement(context)
         ASSIGN -> generateAssignmentStatement(context)
         CLASS_INSTANTIATION -> generateClassInstantiation(context)
         DECLARATION -> generateDeclarationStatement(context)
@@ -944,12 +956,15 @@ class Generator(
     override fun generateIdentifier(
         context: GenerationContext,
         targetType: Type,
+        classInstances: Boolean,
         mutableConstraint: Boolean,
         initialisedConstraint: Boolean,
     ): Pair<IdentifierAST, List<StatementAST>> {
-        val withType = context.symbolTable.withType(targetType).filter {
-            (!mutableConstraint || it.mutable) && (!initialisedConstraint || it.initialised())
-        }
+        val withType = context.symbolTable.withType(targetType)
+            .filter { classInstances || it !is ClassInstanceFieldAST }
+            .filter {
+                (!mutableConstraint || it.mutable) && (!initialisedConstraint || it.initialised())
+            }
 
         val deps = mutableListOf<StatementAST>()
 
