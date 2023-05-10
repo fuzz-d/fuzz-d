@@ -1,6 +1,7 @@
 package fuzzd.generator.ast
 
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
+import fuzzd.utils.indent
 
 class MethodAST(
     val signature: MethodSignatureAST,
@@ -9,11 +10,11 @@ class MethodAST(
         setBody(body)
     }
 
-    constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>) :
-        this(MethodSignatureAST(name, params, returns))
+    constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>, annotations: List<VerifierAnnotationAST>) :
+        this(MethodSignatureAST(name, params, returns, annotations))
 
-    constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>, body: SequenceAST) :
-        this(MethodSignatureAST(name, params, returns)) {
+    constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>, annotations: List<VerifierAnnotationAST>, body: SequenceAST) :
+        this(MethodSignatureAST(name, params, returns, annotations)) {
         setBody(body)
     }
 
@@ -40,6 +41,7 @@ open class MethodSignatureAST(
     val name: String,
     val params: List<IdentifierAST>,
     val returns: List<IdentifierAST>,
+    val annotations: List<VerifierAnnotationAST>,
 ) : ASTElement {
     override fun toString(): String {
         val sb = StringBuilder()
@@ -48,6 +50,12 @@ open class MethodSignatureAST(
         if (returns.isNotEmpty()) {
             sb.append("returns (${returns.joinToString(", ") { p -> "$p: ${p.type()}" }})")
         }
+
+        if (annotations.isNotEmpty()) {
+            sb.append("\n")
+            annotations.forEach { sb.appendLine(indent(it)) }
+        }
+
         return sb.toString()
     }
 
@@ -63,4 +71,4 @@ open class MethodSignatureAST(
 }
 
 class ClassInstanceMethodSignatureAST(val classInstance: IdentifierAST, val signature: MethodSignatureAST) :
-    MethodSignatureAST("$classInstance.${signature.name}", signature.params, signature.returns)
+    MethodSignatureAST("$classInstance.${signature.name}", signature.params, signature.returns, signature.annotations)

@@ -85,6 +85,8 @@ import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.VerifierAnnotationAST.DecreasesAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.ModifiesAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.ReadsAnnotation
 import fuzzd.generator.ast.error.IdentifierOnDemandException
 import fuzzd.generator.ast.error.MethodOnDemandException
 import fuzzd.generator.ast.identifier_generator.NameGenerator
@@ -395,6 +397,7 @@ class Generator(
             name,
             returnType,
             parameters + listOf(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE)),
+            listOf(ReadsAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))),
         )
     }
 
@@ -491,6 +494,7 @@ class Generator(
             name,
             parameters + listOf(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE)),
             returns,
+            listOf(ModifiesAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))),
         )
     }
 
@@ -595,11 +599,15 @@ class Generator(
 
         val statementContext = context.increaseStatementDepth().disableOnDemand()
         statementContext.symbolTable.add(identifier)
-        val (assignExpr, _) = if (arrayType.internalType == IntType) generateBinaryExpressionWithIdentifier(
-            identifier,
-            statementContext,
-            arrayType.internalType
-        ) else generateExpression(statementContext, arrayType.internalType)
+        val (assignExpr, _) = if (arrayType.internalType == IntType) {
+            generateBinaryExpressionWithIdentifier(
+                identifier,
+                statementContext,
+                arrayType.internalType,
+            )
+        } else {
+            generateExpression(statementContext, arrayType.internalType)
+        }
 
         return arrayDeps +
             ForallStatementAST(identifier, IntegerLiteralAST(0), ArrayLengthAST(array), AssignmentAST(ArrayIndexAST(array, identifier), assignExpr))
@@ -717,16 +725,16 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-                context.functionSymbolTable.methods().map { it.signature } +
-                        context.symbolTable.classInstances().map { it.methods() }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.methods() }.unionAll()
-                )
+            context.functionSymbolTable.methods().map { it.signature } +
+                context.symbolTable.classInstances().map { it.methods() }.unionAll() +
+                context.symbolTable.traitInstances().map { it.methods() }.unionAll()
+            )
             .filter { method ->
                 context.methodContext == null ||
-                        method is ClassInstanceMethodSignatureAST &&
-                        methodCallTable.canUseDependency(context.methodContext, method.signature) ||
-                        method !is ClassInstanceMethodSignatureAST &&
-                        methodCallTable.canUseDependency(context.methodContext, method)
+                    method is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method.signature) ||
+                    method !is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method)
             }
 
         // no support for on demand method generation within methods
@@ -905,10 +913,10 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (
-                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                        context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
-                )
+            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
+                context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
+            )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
