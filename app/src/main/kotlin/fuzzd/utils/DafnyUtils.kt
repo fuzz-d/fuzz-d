@@ -27,6 +27,11 @@ fun compileDafny(targetLanguage: String, fileDir: String, fileName: String, time
     return runCommand(command)
 }
 
+fun verifyDafny(fileDir: String, fileName: String, timeout: Long): Process {
+    val command = "timeout $timeout dafny /compile:0 $fileDir/$fileName.dfy"
+    return runCommand(command)
+}
+
 fun Process.readInputStream(): String = String(inputStream.readAllBytes())
 
 fun Process.readErrorStream(): String = String(errorStream.readAllBytes())

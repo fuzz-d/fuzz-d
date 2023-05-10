@@ -22,7 +22,8 @@ class FuzzRunner(private val dir: File, private val logger: Logger) {
     private val reconditionRunner = ReconditionRunner(dir, logger)
 
     fun run(seed: Long, advanced: Boolean, instrument: Boolean, run: Boolean, swarm: Boolean, verifier: Boolean) {
-        val baseProbabilityManager = if (swarm) RandomProbabilityManager(seed, setOf(ProbabilityManager::charType, ProbabilityManager::multisetConversion)) else BaseProbabilityManager()
+        val baseProbabilityManager =
+            if (swarm) RandomProbabilityManager(seed, setOf(ProbabilityManager::charType, ProbabilityManager::multisetConversion)) else BaseProbabilityManager()
         val generator = Generator(
             SelectionManager(
                 Random(seed),
@@ -53,7 +54,7 @@ class FuzzRunner(private val dir: File, private val logger: Logger) {
 
             if (run) {
                 // differential testing; log results
-                val validationResult = validator.validateFile(dir, DAFNY_WRAPPERS, DAFNY_BODY, DAFNY_MAIN, output)
+                val validationResult = validator.validateFile(dir, DAFNY_WRAPPERS, DAFNY_BODY, DAFNY_MAIN, output, verifier)
                 logger.log { validationResult }
             }
         } catch (e: Exception) {

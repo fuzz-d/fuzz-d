@@ -2,27 +2,21 @@ package fuzzd.validator
 
 import fuzzd.logging.OutputWriter
 import fuzzd.validator.executor.execution_handler.CsExecutionHandler
-import fuzzd.validator.executor.execution_handler.ExecutionHandler
 import fuzzd.validator.executor.execution_handler.GoExecutionHandler
 import fuzzd.validator.executor.execution_handler.JavaExecutionHandler
 import fuzzd.validator.executor.execution_handler.JsExecutionHandler
 import fuzzd.validator.executor.execution_handler.PyExecutionHandler
+import fuzzd.validator.executor.execution_handler.VerificationHandler
 import java.io.File
 
 class OutputValidator {
-    /**
-     * Runs the given file using supported target languages, and evaluates the outputs against each other
-     * @param fileDir - the directory in which the file is located
-     * @param wrapperFileName - the filename of the file containing the wrappers
-     * @param bodyFileName - the filename of the file containing the body of the dafny code
-     * @param mainFileName - the filename of the file the wrapper and body files should be combined into
-     */
     fun validateFile(
         fileDir: File,
         wrapperFileName: String,
         bodyFileName: String,
         mainFileName: String,
-        targetOutput: String?
+        targetOutput: String?,
+        verifier: Boolean,
     ): ValidationResult {
         val writer = OutputWriter(fileDir, "$mainFileName.dfy")
         val fileDirPath = fileDir.path
@@ -32,7 +26,7 @@ class OutputValidator {
 
         writer.close()
 
-        val handlers = listOf(
+        val executionHandlers = listOf(
             CsExecutionHandler(fileDirPath, mainFileName),
             JsExecutionHandler(fileDirPath, mainFileName),
             PyExecutionHandler(fileDirPath, mainFileName),
@@ -40,20 +34,21 @@ class OutputValidator {
             GoExecutionHandler(fileDirPath, mainFileName),
         )
 
-        handlers.map { Thread(it) }
-            .map { t -> t.start(); t }
-            .map { t -> t.join() }
+        return if (verifier) {
+            val verificationHandler = VerificationHandler(fileDirPath, mainFileName)
+            execute(executionHandlers + verificationHandler)
 
-        return ValidationResult(handlers, targetOutput)
+            ValidationResult(executionHandlers, verificationHandler, targetOutput)
+        } else {
+            execute(executionHandlers)
+
+            ValidationResult(executionHandlers, null, targetOutput)
+        }
     }
 
-    fun collectOutput(handler: ExecutionHandler): String? {
-        handler.run()
-        return if (handler.executeResult().terminated) {
-            println(ValidationResult(listOf(handler), null))
-            handler.executeResult().stdOut
-        } else {
-            null
-        }
+    private fun execute(runnables: List<Runnable>) {
+        runnables.map { Thread(it) }
+            .map { t -> t.start(); t }
+            .map { t -> t.join() }
     }
 }

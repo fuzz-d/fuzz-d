@@ -3,8 +3,9 @@ package fuzzd.validator
 import fuzzd.utils.indent
 import fuzzd.validator.executor.execution_handler.ExecutionHandler
 import fuzzd.validator.executor.execution_handler.JavaExecutionHandler
+import fuzzd.validator.executor.execution_handler.VerificationHandler
 
-class ValidationResult(handlers: List<ExecutionHandler>, val targetOutput: String?) {
+class ValidationResult(handlers: List<ExecutionHandler>,val verificationHandler: VerificationHandler?, val targetOutput: String?) {
     private val succeededCompile: List<ExecutionHandler>
     private val failedCompile: List<ExecutionHandler>
     private val succeededExecute: List<ExecutionHandler>
@@ -35,6 +36,11 @@ class ValidationResult(handlers: List<ExecutionHandler>, val targetOutput: Strin
 
     override fun toString(): String {
         val sb = StringBuilder()
+
+        if (verificationHandler != null) {
+            sb.appendLine("--------------------------------- VERIFICATION -------------------------------")
+            sb.appendLine("${verificationHandler.verificationResult()}")
+        }
 
         sb.appendLine("--------------------------------- COMPILE FAILED -------------------------------")
         failedCompile.forEach { h -> sb.append("${h.getCompileTarget()}:\n${indent(h.compileResult())} \n") }
