@@ -55,6 +55,7 @@ import fuzzd.generator.ast.StatementAST.AssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DataStructureAssignSuchThatStatement
+import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -255,7 +256,30 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is MultiDeclarationAST -> interpretMultiDeclaration(statement, context)
             is MultiAssignmentAST -> interpretMultiAssign(statement, context)
             is PrintAST -> interpretPrint(statement, context)
+            is DisjunctiveAssertStatementAST -> interpretDisjunctiveAssertStatement(statement, context)
             is AssertStatementAST -> interpretAssertStatement(statement, context)
+        }
+    }
+
+    // specific function for handling assertions in methods where parameters may/may not have an influence on the assertion outcome.
+    // if they do, it generates an assertion for the current parameter values (<p1> == ... && <p2> == ... && ... ==> <assertion>)
+    override fun interpretDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST, context: InterpreterContext) {
+        val baseExpr = (assertStatement.baseExpr as BinaryExpressionAST).expr1
+        val baseExprValue = interpretExpression(baseExpr, context).toExpressionAST()
+
+        val params = context.methodContext!!.params
+        if (params.isNotEmpty()) {
+            val paramValues = params.map { Pair(it, interpretIdentifier(it, context)) }
+            val paramCondition = paramValues
+                .map { (identifier, value) -> BinaryExpressionAST(identifier, EqualsOperator, value.toExpressionAST()) }
+                .reduce { l, r -> BinaryExpressionAST(l, ConjunctionOperator, r) }
+            val condition = BinaryExpressionAST(paramCondition, ImplicationOperator, BinaryExpressionAST(baseExpr, EqualsOperator, baseExprValue))
+            assertStatement.exprs.add(condition)
+        } else {
+            if (assertStatement.exprs.isEmpty()) {
+                // We don't need to do a disjunction since the assertion will be the same for all method invocations
+                assertStatement.exprs.add(BinaryExpressionAST(baseExpr, EqualsOperator, baseExprValue))
+            }
         }
     }
 
@@ -668,6 +692,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             context.functions,
             context.methods,
             classValue.classContext,
+            methodSignature.signature,
         )
 
         setParams(methodSignature.params, params, methodContext.fields, context)
@@ -687,17 +712,12 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     } else {
         val (methodContext, body) = if (context.methods.has(methodSignature)) {
             Pair(
-                InterpreterContext(ValueTable(), context.functions, context.methods, null),
+                InterpreterContext(ValueTable(), context.functions, context.methods, null, methodSignature),
                 context.methods.get(methodSignature),
             )
         } else {
             Pair(
-                InterpreterContext(
-                    ValueTable(context.classContext!!.fields),
-                    context.functions,
-                    context.methods,
-                    context.classContext,
-                ),
+                InterpreterContext(ValueTable(context.classContext!!.fields), context.functions, context.methods, context.classContext, methodSignature),
                 context.classContext.methods.get(methodSignature),
             )
         }

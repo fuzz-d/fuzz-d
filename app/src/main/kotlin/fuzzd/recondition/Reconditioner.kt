@@ -50,6 +50,7 @@ import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
+import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -142,6 +143,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         SequenceAST(sequence.statements.map(this::reconditionStatement))
 
     override fun reconditionStatement(statement: StatementAST) = when (statement) {
+        is DisjunctiveAssertStatementAST -> reconditionDisjunctiveAssertStatement(statement)
         is AssertStatementAST -> reconditionAssertStatement(statement)
         is BreakAST -> statement
         is MultiAssignmentAST -> reconditionMultiAssignmentAST(statement) // covers AssignmentAST
@@ -156,6 +158,11 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is VoidMethodCallAST -> reconditionVoidMethodCall(statement)
         else -> throw UnsupportedOperationException()
     }
+
+    override fun reconditionDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST): DisjunctiveAssertStatementAST = DisjunctiveAssertStatementAST(
+        reconditionExpression(assertStatement.baseExpr),
+        assertStatement.exprs.map(this::reconditionExpression).toMutableList(),
+    )
 
     override fun reconditionAssertStatement(assertStatement: AssertStatementAST): AssertStatementAST = AssertStatementAST(reconditionExpression(assertStatement.expr))
 

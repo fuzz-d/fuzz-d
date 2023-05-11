@@ -34,6 +34,7 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
+import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -63,6 +64,8 @@ interface ASTInterpreter {
     fun interpretStatement(statement: StatementAST, context: InterpreterContext)
 
     fun interpretAssertStatement(assertStatement: AssertStatementAST, context: InterpreterContext)
+
+    fun interpretDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST, context: InterpreterContext)
 
     fun interpretAssignSuchThatStatement(statement: AssignSuchThatStatement, context: InterpreterContext)
 

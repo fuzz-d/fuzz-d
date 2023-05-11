@@ -61,6 +61,7 @@ import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
+import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -587,7 +588,10 @@ class Generator(
         val (identifier, identifierDeps) = generateIdentifier(context, type, classInstances = false)
         val (expr, exprDeps) = if (identifier.type() is LiteralType) generateBinaryExpressionWithIdentifier(identifier, context, type) else Pair(identifier, emptyList())
 
-        return identifierDeps + exprDeps + AssertStatementAST(BinaryExpressionAST(expr, EqualsOperator, expr)) + generateStatement(context)
+        val assertExpr = BinaryExpressionAST(expr, EqualsOperator, expr)
+        val assertStatement = if (context.methodContext != null) DisjunctiveAssertStatementAST(assertExpr, mutableListOf()) else AssertStatementAST(assertExpr)
+
+        return identifierDeps + exprDeps + assertStatement + generateStatement(context)
     }
 
     private fun generateStatementFromType(
