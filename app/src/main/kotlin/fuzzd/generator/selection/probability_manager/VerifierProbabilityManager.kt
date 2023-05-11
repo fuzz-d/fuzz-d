@@ -66,12 +66,12 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun arrayInitValues(): Double = 0.0
 
     // Other info
-    override fun methodStatements(): Int = probabilityManager.methodStatements()
-    override fun ifBranchStatements(): Int = probabilityManager.ifBranchStatements()
-    override fun forLoopBodyStatements(): Int = probabilityManager.forLoopBodyStatements()
-    override fun whileBodyStatements(): Int = probabilityManager.whileBodyStatements()
-    override fun mainFunctionStatements(): Int = probabilityManager.mainFunctionStatements()
-    override fun matchStatements(): Int = probabilityManager.matchStatements()
+    override fun methodStatements(): Int = 5
+    override fun ifBranchStatements(): Int = 5
+    override fun forLoopBodyStatements(): Int = 4
+    override fun whileBodyStatements(): Int = 4
+    override fun mainFunctionStatements(): Int = 5
+    override fun matchStatements(): Int = 3
     override fun comprehensionIdentifiers(): Int = probabilityManager.comprehensionIdentifiers()
     override fun numberOfTraits(): Int = 0
 }
