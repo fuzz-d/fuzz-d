@@ -73,7 +73,7 @@ val ADVANCED_SAFE_DIV_INT = MethodAST(
     "advancedSafeDivInt",
     params = listOf(INT_PARAM_1, INT_PARAM_2, ADVANCED_STATE, ID),
     returns = listOf(INT_RETURNS),
-    annotations = listOf(ModifiesAnnotation(ADVANCED_STATE)),
+    annotations = mutableListOf(ModifiesAnnotation(ADVANCED_STATE)),
     body = SequenceAST(
         listOf(
             IfStatementAST(
@@ -101,7 +101,7 @@ val ADVANCED_SAFE_MODULO_INT = MethodAST(
     "advancedSafeModInt",
     params = listOf(INT_PARAM_1, INT_PARAM_2, ADVANCED_STATE, ID),
     returns = listOf(INT_RETURNS),
-    annotations = listOf(ModifiesAnnotation(ADVANCED_STATE)),
+    annotations = mutableListOf(ModifiesAnnotation(ADVANCED_STATE)),
     body = SequenceAST(
         listOf(
             IfStatementAST(
@@ -129,7 +129,7 @@ val ADVANCED_ABSOLUTE = MethodAST(
     "advancedAbsolute",
     params = listOf(INT_PARAM_1, ADVANCED_STATE, ID),
     returns = listOf(INT_RETURNS),
-    annotations = listOf(ModifiesAnnotation(ADVANCED_STATE)),
+    annotations = mutableListOf(ModifiesAnnotation(ADVANCED_STATE)),
     body = SequenceAST(
         listOf(
             IfStatementAST(
@@ -157,7 +157,7 @@ val ADVANCED_SAFE_ARRAY_INDEX = MethodAST(
     "advancedSafeArrayIndex",
     params = listOf(INT_PARAM_1, INT_PARAM_2, ADVANCED_STATE, ID),
     returns = listOf(INT_RETURNS),
-    annotations = listOf(ModifiesAnnotation(ADVANCED_STATE)),
+    annotations = mutableListOf(ModifiesAnnotation(ADVANCED_STATE)),
     body = SequenceAST(
         listOf(
             MultiDeclarationAST(

@@ -411,7 +411,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val returns = if (ctx.parameters().size > 1) visitReturnsList(ctx.parameters(1)) else emptyList()
         val annotations = ctx.verifierAnnotation().map(this::visitVerifierAnnotation)
 
-        val signature = MethodSignatureAST(name, params, returns, annotations)
+        val signature = MethodSignatureAST(name, params, returns, annotations.toMutableList())
         methodsTable.addEntry(name, signature)
         return signature
     }

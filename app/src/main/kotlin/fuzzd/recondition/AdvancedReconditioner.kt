@@ -263,12 +263,13 @@ class AdvancedReconditioner {
 
     private fun getReconditionedMethodSignature(signature: MethodSignatureAST): MethodSignatureAST {
         if (!methodSignatures.containsKey(signature.name)) {
+            val annotations = signature.annotations + additionalParams.map { ModifiesAnnotation(it) }
             methodSignatures[signature.name] =
                 MethodSignatureAST(
                     signature.name,
                     (signature.params + additionalParams).map { reconditionIdentifier(it).first },
                     signature.returns.map { reconditionIdentifier(it).first },
-                    signature.annotations + additionalParams.map { ModifiesAnnotation(it) },
+                    annotations.toMutableList(),
                 )
         }
 
@@ -282,11 +283,15 @@ class AdvancedReconditioner {
                 else -> IdentifierAST(FM_RETURNS, signature.returnType)
             }
 
+            val annotations = signature.annotations.map {
+                if (it is ReadsAnnotation) ModifiesAnnotation(it.identifier) else it
+            } + additionalParams.map { ModifiesAnnotation(it) }
+
             methodSignatures[signature.name] = MethodSignatureAST(
                 signature.name,
                 (signature.params + additionalParams).map { reconditionIdentifier(it).first },
                 listOf(returns),
-                signature.annotations.map { if (it is ReadsAnnotation) ModifiesAnnotation(it.identifier) else it } + additionalParams.map { ModifiesAnnotation(it) },
+                annotations.toMutableList(),
             )
         }
 

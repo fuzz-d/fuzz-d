@@ -547,7 +547,7 @@ class Generator(
             name,
             parameters + additionalParameters(context),
             returns,
-            annotations,
+            annotations.toMutableList(),
         )
     }
 

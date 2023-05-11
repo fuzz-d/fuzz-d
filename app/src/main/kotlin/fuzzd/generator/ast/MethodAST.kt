@@ -10,10 +10,10 @@ class MethodAST(
         setBody(body)
     }
 
-    constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>, annotations: List<VerifierAnnotationAST>) :
+    constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>, annotations: MutableList<VerifierAnnotationAST>) :
         this(MethodSignatureAST(name, params, returns, annotations))
 
-    constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>, annotations: List<VerifierAnnotationAST>, body: SequenceAST) :
+    constructor(name: String, params: List<IdentifierAST>, returns: List<IdentifierAST>, annotations: MutableList<VerifierAnnotationAST>, body: SequenceAST) :
         this(MethodSignatureAST(name, params, returns, annotations)) {
         setBody(body)
     }
@@ -41,7 +41,7 @@ open class MethodSignatureAST(
     val name: String,
     val params: List<IdentifierAST>,
     val returns: List<IdentifierAST>,
-    val annotations: List<VerifierAnnotationAST>,
+    val annotations: MutableList<VerifierAnnotationAST>,
 ) : ASTElement {
     override fun toString(): String {
         val sb = StringBuilder()
