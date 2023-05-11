@@ -29,6 +29,8 @@ import fuzzd.utils.indent
 
 fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, context: String) {
     if (expected.size != actual.size) {
+        println(expected)
+        println(actual)
         throw InvalidInputException("Number of parameters for context {$context} doesn't match. Expected ${expected.size}, got ${actual.size}")
     }
 

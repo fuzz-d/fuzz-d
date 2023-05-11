@@ -419,7 +419,7 @@ class SelectionManager(
 
     fun selectNumberOfMethods() = random.nextInt(0, MAX_METHODS)
 
-    fun selectNumberOfTraits() = probabilityManager.numberOfTraits()
+    fun selectNumberOfTraits() = random.nextInt(0, probabilityManager.numberOfTraits())
 
     fun selectNumberOfTraitInherits() = random.nextInt(0, MAX_TRAIT_INHERITS)
 

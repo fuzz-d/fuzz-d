@@ -27,7 +27,7 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun forallStatement(): Double = 0.0
     override fun forLoopStatement(): Double = 0.0
     override fun whileStatement(): Double = 0.0
-    override fun methodCall(): Double = 0.0
+    override fun methodCall(): Double = probabilityManager.methodCall()
     override fun mapAssign(): Double = probabilityManager.mapAssign()
     override fun assignStatement(): Double = probabilityManager.assignStatement()
     override fun classInstantiation(): Double = 0.0
@@ -41,7 +41,7 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun unaryExpression(): Double = probabilityManager.unaryExpression()
     override fun modulusExpression(): Double = probabilityManager.modulusExpression()
     override fun multisetConversion(): Double = probabilityManager.multisetConversion()
-    override fun functionCall(): Double = 0.0
+    override fun functionCall(): Double = probabilityManager.functionCall()
     override fun ternary(): Double = probabilityManager.ternary()
     override fun matchExpression(): Double = probabilityManager.matchExpression()
     override fun assignExpression(): Double = probabilityManager.assignExpression()

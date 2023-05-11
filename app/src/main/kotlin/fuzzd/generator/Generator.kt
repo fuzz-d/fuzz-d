@@ -163,6 +163,7 @@ import java.lang.Integer.max
 class Generator(
     private val selectionManager: SelectionManager,
     private val globalState: Boolean,
+    private val verifier: Boolean,
     private val instrument: Boolean = false,
 ) : ASTGenerator {
     private val classNameGenerator = ClassNameGenerator()
@@ -205,7 +206,10 @@ class Generator(
             val functionContext = GenerationContext(
                 context.functionSymbolTable,
                 methodContext = method.signature,
-            ).setGlobalState(context.globalState())
+            )
+            if (globalState) {
+                functionContext.setGlobalState(context.globalState())
+            }
             val body = generateMethodBody(functionContext, method)
             method.setBody(body)
 
@@ -378,7 +382,10 @@ class Generator(
         val functionContext = GenerationContext(
             context.functionSymbolTable,
             onDemandIdentifiers = false,
-        ).setGlobalState(context.globalState())
+        )
+        if (globalState) {
+            functionContext.setGlobalState(context.globalState())
+        }
         signature.params.forEach { param -> functionContext.symbolTable.add(param) }
 
         val (body, _) = generateExpression(functionContext, signature.returnType)
@@ -424,8 +431,8 @@ class Generator(
             )
         }
 
-        val annotations = (if (globalState) listOf(ReadsAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) else emptyList()) +
-                generateAnnotationsFromParameters(parameters)
+        val annotations = if (verifier) (if (globalState) listOf(ReadsAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) else emptyList()) +
+                generateAnnotationsFromParameters(parameters) else emptyList()
 
         return FunctionMethodSignatureAST(
             name,
@@ -524,8 +531,8 @@ class Generator(
             paramIdentifierFromType(type, parameterNameGenerator, mutable = false, initialised = true)
         }
 
-        val annotations = (if (globalState) listOf(ModifiesAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) else emptyList()) +
-                generateAnnotationsFromParameters(parameters)
+        val annotations = if (verifier) (if (globalState) listOf(ModifiesAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) else emptyList()) +
+                generateAnnotationsFromParameters(parameters) else emptyList()
 
         return MethodSignatureAST(
             name,
@@ -571,7 +578,7 @@ class Generator(
         val (identifier, identifierDeps) = generateIdentifier(context, type, classInstances = false)
         val (expr, exprDeps) = if (identifier.type() is LiteralType) generateBinaryExpressionWithIdentifier(identifier, context, type) else Pair(identifier, emptyList())
 
-        return identifierDeps + exprDeps + AssertStatementAST(BinaryExpressionAST(expr, EqualsOperator, expr))
+        return identifierDeps + exprDeps + AssertStatementAST(BinaryExpressionAST(expr, EqualsOperator, expr)) + generateStatement(context)
     }
 
     private fun generateStatementFromType(
@@ -746,10 +753,10 @@ class Generator(
 
         val (expr, exprDeps) = generateExpression(context, targetType)
 
-        return identDeps + exprDeps + AssignmentAST(identifier, expr) + generateStatement(context)
+        return identDeps + exprDeps + AssignmentAST(identifier, expr)
     }
 
-    override fun generateClassInstantiation(context: GenerationContext): List<StatementAST> {
+    override fun  generateClassInstantiation(context: GenerationContext): List<StatementAST> {
         // on demand create class if one doesn't exist
         if (!context.functionSymbolTable.hasClasses()) {
             generateClass(context)
@@ -797,8 +804,8 @@ class Generator(
             selectionManager.randomSelection(methods)
         }
 
-        val (params, paramDeps) = method.params.subList(0, method.params.size - 1)
-            .map { param -> generateExpression(context.increaseExpressionDepth(), param.type()) }.foldPair()
+        val paramsToGenerate = if (globalState) method.params.subList(0, method.params.size - 1) else method.params
+        val (params, paramDeps) = paramsToGenerate.map { param -> generateExpression(context.increaseExpressionDepth(), param.type()) }.foldPair()
 
         // add call for method context
         if (context.methodContext != null) {
@@ -940,7 +947,8 @@ class Generator(
             selectionManager.randomSelection(callable)
         }
 
-        val (arguments, deps) = functionMethod.params.subList(0, functionMethod.params.size - 1).map { param ->
+        val paramsToGenerate = if (globalState) functionMethod.params.subList(0, functionMethod.params.size - 1) else functionMethod.params
+        val (arguments, deps) = paramsToGenerate.map { param ->
             generateExpression(context.increaseExpressionDepth(), param.type())
         }.foldPair()
 
@@ -1038,11 +1046,11 @@ class Generator(
     ): Pair<BinaryExpressionAST, List<StatementAST>> {
         var binaryOperator: BinaryOperator
         var types: Pair<Type, Type>
-        do{
+        do {
             val result = selectionManager.selectBinaryOperator(context, targetType)
             binaryOperator = result.first
             types = result.second
-        } while(types.first != identifier.type())
+        } while (types.first != identifier.type())
         val (expr, exprDeps) = generateExpression(context.increaseExpressionDepth(), types.second)
 
         return Pair(BinaryExpressionAST(identifier, binaryOperator, expr), exprDeps)
@@ -1111,7 +1119,7 @@ class Generator(
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
         val (expr, exprDeps) = generateExpression(exprContext, targetType.innerType)
-        val annotations = if (globalState) {
+        val annotations = if (globalState && verifier) {
             listOf(ReadsAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE)))
         } else emptyList()
         return Pair(SequenceComprehensionAST(length, identifier, annotations, expr), exprDeps)
