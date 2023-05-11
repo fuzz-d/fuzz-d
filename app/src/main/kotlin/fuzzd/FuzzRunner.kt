@@ -29,6 +29,7 @@ class FuzzRunner(private val dir: File, private val logger: Logger) {
                 Random(seed),
                 if (verifier) VerifierProbabilityManager(baseProbabilityManager) else baseProbabilityManager,
             ),
+            globalState = !verifier,
             instrument,
         )
 

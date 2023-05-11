@@ -22,7 +22,7 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun charType() = 0.0
 
     // statements
-    override fun assertStatement(): Double = 0.15
+    override fun assertStatement(): Double = 0.0
     override fun ifStatement() = 0.13
     override fun matchStatement() = 0.05
     override fun forallStatement(): Double = 0.05

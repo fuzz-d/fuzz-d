@@ -19,11 +19,11 @@ data class GenerationContext(
     val onDemandIdentifiers: Boolean = true,
     val functionCalls: Boolean = true,
 ) {
-    private lateinit var globalState: ClassAST
+    private var globalState: ClassAST? = null
 
-    fun globalState() = globalState
+    fun globalState(): ClassAST = globalState!!
 
-    fun setGlobalState(globalState: ClassAST): GenerationContext {
+    fun setGlobalState(globalState: ClassAST?): GenerationContext {
         this.globalState = globalState
         return this
     }

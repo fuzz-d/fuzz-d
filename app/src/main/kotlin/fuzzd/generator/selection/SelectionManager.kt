@@ -144,7 +144,7 @@ class SelectionManager(
         ArrayType(selectType(context, depth + 1))
 
     @Suppress("UNUSED_PARAMETER")
-    private fun selectLiteralType(context: GenerationContext, depth: Int): LiteralType =
+    fun selectLiteralType(context: GenerationContext, depth: Int): LiteralType =
         randomWeightedSelection(
             normaliseWeights(
                 listOf(
@@ -383,6 +383,8 @@ class SelectionManager(
     }
 
     fun withProbability(probability: Double): Boolean = random.nextFloat() < probability
+
+    fun selectAssertStatementDatastructureType(): Boolean = withProbability(probabilityManager.datatstructureType())
 
     fun selectNumberOfParameters(): Int = random.nextInt(0, MAX_PARAMETERS)
 
