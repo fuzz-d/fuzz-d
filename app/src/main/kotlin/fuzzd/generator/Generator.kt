@@ -242,8 +242,9 @@ class Generator(
                 DeclarationAST(globalStateIdentifier, ClassInstantiationAST(context.globalState(), globalStateParams))
             context.symbolTable.add(globalStateIdentifier)
             globalStateDeps + globalStateDecl
-        } else emptyList()
-
+        } else {
+            emptyList()
+        }
 
         val body = generateSequence(context, selectionManager.mainFunctionStatements())
         return MainFunctionAST(SequenceAST(globalStateDependents + body.statements /*+ prints*/))
@@ -431,8 +432,12 @@ class Generator(
             )
         }
 
-        val annotations = if (verifier) (if (globalState) listOf(ReadsAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) else emptyList()) +
-                generateAnnotationsFromParameters(parameters) else emptyList()
+        val annotations = if (verifier) {
+            (if (globalState) listOf(ReadsAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) else emptyList()) +
+                generateAnnotationsFromParameters(parameters)
+        } else {
+            emptyList()
+        }
 
         return FunctionMethodSignatureAST(
             name,
@@ -531,8 +536,12 @@ class Generator(
             paramIdentifierFromType(type, parameterNameGenerator, mutable = false, initialised = true)
         }
 
-        val annotations = if (verifier) (if (globalState) listOf(ModifiesAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) else emptyList()) +
-                generateAnnotationsFromParameters(parameters) else emptyList()
+        val annotations = if (verifier) {
+            (if (globalState) listOf(ModifiesAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) else emptyList()) +
+                generateAnnotationsFromParameters(parameters)
+        } else {
+            emptyList()
+        }
 
         return MethodSignatureAST(
             name,
@@ -665,7 +674,7 @@ class Generator(
         }
 
         return arrayDeps +
-                ForallStatementAST(identifier, IntegerLiteralAST(0), ArrayLengthAST(array), AssignmentAST(ArrayIndexAST(array, identifier), assignExpr))
+            ForallStatementAST(identifier, IntegerLiteralAST(0), ArrayLengthAST(array), AssignmentAST(ArrayIndexAST(array, identifier), assignExpr))
     }
 
     override fun generateWhileStatement(context: GenerationContext): List<StatementAST> {
@@ -756,7 +765,7 @@ class Generator(
         return identDeps + exprDeps + AssignmentAST(identifier, expr)
     }
 
-    override fun  generateClassInstantiation(context: GenerationContext): List<StatementAST> {
+    override fun generateClassInstantiation(context: GenerationContext): List<StatementAST> {
         // on demand create class if one doesn't exist
         if (!context.functionSymbolTable.hasClasses()) {
             generateClass(context)
@@ -780,16 +789,16 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-                context.functionSymbolTable.methods().map { it.signature } +
-                        context.symbolTable.classInstances().map { it.methods() }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.methods() }.unionAll()
-                )
+            context.functionSymbolTable.methods().map { it.signature } +
+                context.symbolTable.classInstances().map { it.methods() }.unionAll() +
+                context.symbolTable.traitInstances().map { it.methods() }.unionAll()
+            )
             .filter { method ->
                 context.methodContext == null ||
-                        method is ClassInstanceMethodSignatureAST &&
-                        methodCallTable.canUseDependency(context.methodContext, method.signature) ||
-                        method !is ClassInstanceMethodSignatureAST &&
-                        methodCallTable.canUseDependency(context.methodContext, method)
+                    method is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method.signature) ||
+                    method !is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method)
             }
 
         // no support for on demand method generation within methods
@@ -971,10 +980,10 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (
-                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                        context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
-                )
+            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
+                context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
+            )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
@@ -1121,7 +1130,9 @@ class Generator(
         val (expr, exprDeps) = generateExpression(exprContext, targetType.innerType)
         val annotations = if (globalState && verifier) {
             listOf(ReadsAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE)))
-        } else emptyList()
+        } else {
+            emptyList()
+        }
         return Pair(SequenceComprehensionAST(length, identifier, annotations, expr), exprDeps)
     }
 
