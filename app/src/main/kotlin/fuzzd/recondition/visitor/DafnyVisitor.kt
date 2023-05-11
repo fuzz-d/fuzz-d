@@ -92,6 +92,7 @@ import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.VerifierAnnotationAST
 import fuzzd.generator.ast.VerifierAnnotationAST.DecreasesAnnotation
 import fuzzd.generator.ast.VerifierAnnotationAST.EnsuresAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.InvariantAnnotation
 import fuzzd.generator.ast.VerifierAnnotationAST.ModifiesAnnotation
 import fuzzd.generator.ast.VerifierAnnotationAST.ReadsAnnotation
 import fuzzd.generator.ast.VerifierAnnotationAST.RequiresAnnotation
@@ -635,6 +636,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitDecreases(ctx: DecreasesContext): DecreasesAnnotation = DecreasesAnnotation(visitExpression(ctx.expression()))
 
     override fun visitEnsures(ctx: EnsuresContext): EnsuresAnnotation = EnsuresAnnotation(visitExpression(ctx.expression()))
+
+    override fun visitInvariant(ctx: InvariantContext): InvariantAnnotation = InvariantAnnotation(visitExpression(ctx.expression()))
 
     override fun visitModifies(ctx: ModifiesContext): ModifiesAnnotation = ModifiesAnnotation(visitIdentifier(ctx.identifier()))
 
