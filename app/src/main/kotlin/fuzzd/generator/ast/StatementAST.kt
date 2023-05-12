@@ -3,6 +3,8 @@ package fuzzd.generator.ast
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.VerifierAnnotationAST.DecreasesAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.InvariantAnnotation
 import fuzzd.generator.ast.error.InvalidInputException
 import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
@@ -122,7 +124,7 @@ sealed class StatementAST : ASTElement {
         }
     }
 
-    class CounterLimitedWhileLoopAST(
+    open class CounterLimitedWhileLoopAST(
         val counterInitialisation: DeclarationAST,
         val terminationCheck: IfStatementAST,
         val counterUpdate: AssignmentAST,
@@ -133,6 +135,32 @@ sealed class StatementAST : ASTElement {
         override fun body(): SequenceAST = SequenceAST(listOf(terminationCheck, counterUpdate) + body.statements)
 
         override fun toString(): String = "$counterInitialisation\n${super.toString()}"
+    }
+
+    class VerificationAwareWhileLoopAST(
+        val counter: IdentifierAST,
+        counterInitialisation: DeclarationAST,
+        terminationCheck: IfStatementAST,
+        counterUpdate: AssignmentAST,
+        condition: ExpressionAST,
+        val decreases: DecreasesAnnotation,
+        val invariants: List<InvariantAnnotation>,
+        body: SequenceAST,
+    ) : CounterLimitedWhileLoopAST(counterInitialisation, terminationCheck, counterUpdate, condition, listOf(decreases), body) {
+        override fun toString(): String {
+            val sb = StringBuilder()
+            sb.appendLine(counterInitialisation)
+            sb.appendLine("while($condition) ")
+            sb.appendLine(indent(decreases))
+            invariants.forEach { sb.appendLine(indent(it)) }
+            sb.appendLine("{")
+            sb.appendLine(indent(terminationCheck))
+            sb.appendLine(indent(counterUpdate))
+            sb.appendLine(body)
+            sb.appendLine("}")
+
+            return sb.toString()
+        }
     }
 
     open class MultiDeclarationAST(

@@ -249,6 +249,8 @@ sealed class ExpressionAST : ASTElement {
 
         open fun initialise(): IdentifierAST = if (initialised) this else IdentifierAST(name, type, mutable, true)
 
+        open fun cloneImmutable() = IdentifierAST(name, type, false, initialised)
+
         fun initialised(): Boolean = initialised
 
         override fun equals(other: Any?): Boolean =
@@ -286,6 +288,8 @@ sealed class ExpressionAST : ASTElement {
         override fun initialise(): IdentifierAST =
             if (initialised()) this else TraitInstanceAST(trait, name, mutable, true)
 
+        override fun cloneImmutable(): IdentifierAST = TraitInstanceAST(trait, name, false, initialised())
+
         override fun equals(other: Any?): Boolean = other is TraitInstanceAST && trait == other.trait && name == other.name
 
         override fun hashCode(): Int {
@@ -317,6 +321,8 @@ sealed class ExpressionAST : ASTElement {
         override fun initialise(): IdentifierAST =
             if (initialised()) this else ClassInstanceAST(clazz, name, mutable, true)
 
+        override fun cloneImmutable(): IdentifierAST = ClassInstanceAST(clazz, name, false, initialised())
+
         override fun equals(other: Any?): Boolean =
             other is ClassInstanceAST &&
                 clazz == other.clazz &&
@@ -340,6 +346,8 @@ sealed class ExpressionAST : ASTElement {
     ) : IdentifierAST(name, datatype, mutable, initialised) {
         override fun equals(other: Any?): Boolean = other is TopLevelDatatypeInstanceAST && other.name == name && other.datatype == datatype
 
+        override fun cloneImmutable(): IdentifierAST = TopLevelDatatypeInstanceAST(name, datatype, false, initialised())
+
         override fun hashCode(): Int {
             var result = name.hashCode()
             result = 31 * result + datatype.hashCode()
@@ -354,6 +362,8 @@ sealed class ExpressionAST : ASTElement {
         initialised: Boolean = false,
     ) : TopLevelDatatypeInstanceAST(name, datatype, mutable, initialised) {
         override fun equals(other: Any?): Boolean = other is TopLevelDatatypeInstanceAST && other.name == name && other.datatype == datatype
+
+        override fun cloneImmutable(): IdentifierAST = DatatypeInstanceAST(name, datatype, false, initialised())
 
         override fun hashCode(): Int {
             var result = name.hashCode()
@@ -382,6 +392,8 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
+        override fun cloneImmutable(): IdentifierAST = DatatypeDestructorAST(datatypeInstance, field.cloneImmutable())
+
         override fun equals(other: Any?): Boolean = other is DatatypeDestructorAST && other.datatypeInstance == datatypeInstance && other.field == field
 
         override fun hashCode(): Int {
@@ -395,12 +407,9 @@ sealed class ExpressionAST : ASTElement {
     class ArrayIndexAST(
         val array: IdentifierAST,
         val index: ExpressionAST,
+        mutable: Boolean = true,
         private val initialised: Boolean = false,
-    ) : IdentifierAST(
-        array.name,
-        (array.type() as ArrayType).internalType,
-        initialised,
-    ) {
+    ) : IdentifierAST(array.name, (array.type() as ArrayType).internalType, mutable, initialised) {
         init {
             if (array.type() !is ArrayType) {
                 throw InvalidInputException("Creating array index with identifier of type ${array.type()}")
@@ -410,6 +419,8 @@ sealed class ExpressionAST : ASTElement {
                 throw InvalidInputException("Creating array index with index of type ${index.type()}")
             }
         }
+
+        override fun cloneImmutable(): IdentifierAST = ArrayIndexAST(array, index, false, initialised)
 
         override fun initialise(): ArrayIndexAST = if (initialised()) this else ArrayIndexAST(array, index, initialised = true)
 

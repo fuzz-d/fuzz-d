@@ -69,6 +69,7 @@ import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.TypedDeclarationAST
+import fuzzd.generator.ast.StatementAST.VerificationAwareWhileLoopAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.TopLevelAST
 import fuzzd.generator.ast.TraitAST
@@ -89,6 +90,7 @@ import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
 import fuzzd.generator.ast.VerifierAnnotationAST
 import fuzzd.generator.ast.VerifierAnnotationAST.DecreasesAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.InvariantAnnotation
 import fuzzd.generator.ast.VerifierAnnotationAST.ModifiesAnnotation
 import fuzzd.generator.ast.VerifierAnnotationAST.ReadsAnnotation
 import fuzzd.generator.ast.VerifierAnnotationAST.RequiresAnnotation
@@ -109,9 +111,12 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.TraitNameGenerator
 import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.Companion.isBinaryType
+import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanOperator
+import fuzzd.generator.ast.operators.BinaryOperator.LessThanEqualOperator
+import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.context.GenerationContext
@@ -608,7 +613,7 @@ class Generator(
         MAP_ASSIGN -> generateMapAssign(context)
         METHOD_CALL -> generateMethodCall(context)
         PRINT -> generatePrintStatement(context)
-        WHILE -> generateWhileStatement(context)
+        WHILE -> if (verifier) generateVerificationAwareWhileStatement(context) else generateWhileStatement(context)
         StatementType.MATCH -> generateMatchStatement(context)
     }
 
@@ -679,6 +684,64 @@ class Generator(
 
         return arrayDeps +
             ForallStatementAST(identifier, IntegerLiteralAST(0), ArrayLengthAST(array), AssignmentAST(ArrayIndexAST(array, identifier), assignExpr))
+    }
+
+    private fun generateModsetType(context: GenerationContext): Type {
+        val literalType = selectionManager.selectLiteralType(context, 1)
+        return if (selectionManager.selectAssertStatementDatastructureType()) {
+            selectionManager.selectDataStructureTypeWithInnerType(literalType, context)
+        } else {
+            literalType
+        }
+    }
+
+    private fun generateVerifiedWhileLoopModset(context: GenerationContext, size: Int): Pair<List<IdentifierAST>, List<StatementAST>> =
+        (1..size).map { generateModsetType(context) }.map { generateIdentifier(context, it, mutableConstraint = true, initialisedConstraint = true) }.foldPair()
+
+    override fun generateVerificationAwareWhileStatement(context: GenerationContext): List<StatementAST> {
+        // uses heuristics to generate while loops in ways which can easily be annotated with variants for
+        // verification purposes
+
+        // counter setup
+        val counterIdentifierName = context.loopCounterGenerator.newValue()
+        val counterIdentifier = IdentifierAST(counterIdentifierName, IntType)
+        val counterInitialisation = DeclarationAST(counterIdentifier, IntegerLiteralAST(0))
+        val counterTerminationCheck = IfStatementAST(
+            BinaryExpressionAST(counterIdentifier, GreaterThanEqualOperator, IntegerLiteralAST(DAFNY_MAX_LOOP_COUNTER_VERIFICATION)),
+            SequenceAST(listOf(BreakAST)),
+            null,
+        )
+        val counterUpdate = AssignmentAST(counterIdentifier, BinaryExpressionAST(counterIdentifier, AdditionOperator, IntegerLiteralAST(1)))
+        // decreases MAX - i ; invariant 0 <= i && i < MAX
+        val decreasesAnnotation = DecreasesAnnotation(BinaryExpressionAST(IntegerLiteralAST(DAFNY_MAX_LOOP_COUNTER_VERIFICATION), SubtractionOperator, counterIdentifier))
+        val counterInvariant = InvariantAnnotation(
+            BinaryExpressionAST(
+                BinaryExpressionAST(IntegerLiteralAST(0), LessThanEqualOperator, counterIdentifier),
+                ConjunctionOperator,
+                BinaryExpressionAST(counterIdentifier, LessThanOperator, IntegerLiteralAST(DAFNY_MAX_LOOP_COUNTER_VERIFICATION)),
+            ),
+        )
+
+        // condition
+        val (condition, conditionDeps) = generateExpression(context, BoolType)
+
+        // modset setup
+        val (modset, modsetDeps) = generateVerifiedWhileLoopModset(context, VERIFIED_LOOP_MODSET_SIZE)
+        val immutableSymbolTable = context.symbolTable.cloneImmutable()
+        val whileBodyContext = context.withSymbolTable(immutableSymbolTable).increaseStatementDepth()
+        modset.forEach { whileBodyContext.symbolTable.add(it) } // add the modset to the symbol table as the only mutable values -- only they can change during the loop
+        val body = generateSequence(whileBodyContext, selectionManager.whileBodyStatements())
+
+        return modsetDeps + conditionDeps + VerificationAwareWhileLoopAST(
+            counterIdentifier,
+            counterInitialisation,
+            counterTerminationCheck,
+            counterUpdate,
+            condition,
+            decreasesAnnotation,
+            listOf(counterInvariant),
+            body,
+        )
     }
 
     override fun generateWhileStatement(context: GenerationContext): List<StatementAST> {
@@ -1562,6 +1625,8 @@ class Generator(
 
     companion object {
         private const val DAFNY_MAX_LOOP_COUNTER = 100
+        private const val DAFNY_MAX_LOOP_COUNTER_VERIFICATION = 5
+        private const val VERIFIED_LOOP_MODSET_SIZE = 4
         const val GLOBAL_STATE = "GlobalState"
         private const val PARAM_GLOBAL_STATE = "globalState"
     }

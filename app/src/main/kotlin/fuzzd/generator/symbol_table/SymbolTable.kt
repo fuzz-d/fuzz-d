@@ -13,6 +13,12 @@ class SymbolTable(private val parent: SymbolTable? = null) {
 
     fun has(identifier: IdentifierAST): Boolean = symbolTable[identifier] != null || parent?.has(identifier) ?: false
 
+    fun cloneImmutable(): SymbolTable {
+        val clone = SymbolTable(parent?.cloneImmutable())
+        symbolTable.keys.forEach { clone.add(it) }
+        return clone
+    }
+
     fun addAll(identifiers: Iterable<IdentifierAST>) {
         identifiers.forEach(this::add)
     }

@@ -84,6 +84,8 @@ interface ASTGenerator {
 
     fun generateWhileStatement(context: GenerationContext): List<StatementAST>
 
+    fun generateVerificationAwareWhileStatement(context: GenerationContext): List<StatementAST>
+
     fun generatePrintStatement(context: GenerationContext): List<StatementAST>
 
     fun generateDeclarationStatement(context: GenerationContext): List<StatementAST>
