@@ -70,6 +70,7 @@ import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.TraitType
+import fuzzd.generator.ast.VerifierAnnotationAST.EnsuresAnnotation
 import fuzzd.generator.ast.VerifierAnnotationAST.InvariantAnnotation
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
@@ -788,9 +789,19 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         }
 
         setParams(methodSignature.params, params, methodContext.fields, context)
+        val paramCondition = methodSignature.params
+            .map { Pair(it, interpretIdentifier(it, methodContext).toExpressionAST()) }
+            .map { BinaryExpressionAST(it.first, EqualsOperator, it.second) }
+            .conjunct()
         returns.forEach { methodContext.fields.create(it) }
 
         interpretSequence(body, methodContext)
+        val returnCondition = returns
+            .map { Pair(it, interpretIdentifier(it, methodContext).toExpressionAST()) }
+            .map { BinaryExpressionAST(it.first, EqualsOperator, it.second) }
+            .conjunct()
+
+        methodSignature.annotations.add(EnsuresAnnotation(BinaryExpressionAST(paramCondition, ImplicationOperator, returnCondition)))
         methodContext.fields
     }
 
