@@ -59,6 +59,7 @@ import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.VerificationAwareWhileLoopAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
@@ -216,6 +217,18 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
     }
 
     override fun reconditionWhileLoopAST(whileLoopAST: WhileLoopAST) = when (whileLoopAST) {
+        is VerificationAwareWhileLoopAST -> VerificationAwareWhileLoopAST(
+            whileLoopAST.counter,
+            whileLoopAST.modset,
+            whileLoopAST.counterInitialisation,
+            whileLoopAST.terminationCheck,
+            whileLoopAST.counterUpdate,
+            reconditionExpression(whileLoopAST.condition),
+            whileLoopAST.decreases,
+            whileLoopAST.invariants,
+            reconditionSequence(whileLoopAST.body),
+        )
+
         is CounterLimitedWhileLoopAST -> CounterLimitedWhileLoopAST(
             whileLoopAST.counterInitialisation,
             whileLoopAST.terminationCheck,

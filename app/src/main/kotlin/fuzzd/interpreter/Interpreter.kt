@@ -64,11 +64,13 @@ import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.VerificationAwareWhileLoopAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.TraitType
+import fuzzd.generator.ast.VerifierAnnotationAST.InvariantAnnotation
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
@@ -122,6 +124,7 @@ import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.SAFE_ARRAY_INDEX
 import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
+import fuzzd.utils.conjunct
 import fuzzd.utils.mapFirst
 import fuzzd.utils.reduceLists
 import fuzzd.utils.toMultiset
@@ -247,9 +250,10 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             is AssignSuchThatStatement -> interpretAssignSuchThatStatement(statement, context)
             is MatchStatementAST -> interpretMatchStatement(statement, context)
             is IfStatementAST -> interpretIfStatement(statement, context)
-            is CounterLimitedWhileLoopAST -> interpretCounterLimitedWhileStatement(statement, context)
             is ForallStatementAST -> interpretForallStatement(statement, context)
             is ForLoopAST -> interpretForLoopStatement(statement, context)
+            is VerificationAwareWhileLoopAST -> interpretVerificationAwareWhileStatement(statement, context)
+            is CounterLimitedWhileLoopAST -> interpretCounterLimitedWhileStatement(statement, context)
             is WhileLoopAST -> interpretWhileStatement(statement, context)
             is VoidMethodCallAST -> interpretVoidMethodCall(statement, context)
             is MultiTypedDeclarationAST -> interpretMultiTypedDeclaration(statement, context)
@@ -261,19 +265,18 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         }
     }
 
-    // specific function for handling assertions in methods where parameters may/may not have an influence on the assertion outcome.
+    // specific function for handling assertions in methods & while loops where parameters may/may not have an influence on the assertion outcome.
     // if they do, it generates an assertion for the current parameter values (<p1> == ... && <p2> == ... && ... ==> <assertion>)
     override fun interpretDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST, context: InterpreterContext) {
         val baseExpr = (assertStatement.baseExpr as BinaryExpressionAST).expr1
         val baseExprValue = interpretExpression(baseExpr, context).toExpressionAST()
 
-        val params = context.methodContext!!.params
-        if (params.isNotEmpty()) {
-            val paramValues = params.map { Pair(it, interpretIdentifier(it, context)) }
-            val paramCondition = paramValues
+        if (context.annotationIdentifiers.isNotEmpty()) {
+            val identifierValues = context.annotationIdentifiers.toSet().map { Pair(it, interpretIdentifier(it, context)) }
+            val identifierCondition = identifierValues
                 .map { (identifier, value) -> BinaryExpressionAST(identifier, EqualsOperator, value.toExpressionAST()) }
                 .reduce { l, r -> BinaryExpressionAST(l, ConjunctionOperator, r) }
-            val condition = BinaryExpressionAST(paramCondition, ImplicationOperator, BinaryExpressionAST(baseExpr, EqualsOperator, baseExprValue))
+            val condition = BinaryExpressionAST(identifierCondition, ImplicationOperator, BinaryExpressionAST(baseExpr, EqualsOperator, baseExprValue))
             assertStatement.exprs.add(condition)
         } else {
             if (assertStatement.exprs.isEmpty()) {
@@ -323,6 +326,62 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         } else {
             ifStatement.elseBranch?.let { interpretSequence(it, context.increaseDepth()) }
         }
+    }
+
+    private fun createInvariantForModset(
+        counter: IdentifierAST,
+        condition: ExpressionAST,
+        modset: Set<IdentifierAST>,
+        context: InterpreterContext,
+    ): InvariantAnnotation {
+        val counterValue = interpretIdentifier(counter, context) as IntValue
+        val conditionValue = interpretExpression(condition, context) as BoolValue
+        val modsetValues = modset.map { Pair(it, interpretExpression(it, context)) }
+
+        val identifierValues = context.annotationIdentifiers
+            .map { Pair(it, interpretIdentifier(it, context).toExpressionAST()) }
+            .map { BinaryExpressionAST(it.first, EqualsOperator, it.second) }
+        val counterCondition = BinaryExpressionAST(counter, EqualsOperator, counterValue.toExpressionAST())
+        val implicationCondition = if (identifierValues.isEmpty()) {
+            counterCondition
+        } else {
+            BinaryExpressionAST(counterCondition, ConjunctionOperator, identifierValues.conjunct())
+        }
+
+        val modsetConditions = modsetValues.map { (ident, value) -> BinaryExpressionAST(ident, EqualsOperator, value.toExpressionAST()) }
+        return InvariantAnnotation(
+            BinaryExpressionAST(
+                implicationCondition,
+                ImplicationOperator,
+                BinaryExpressionAST(
+                    BinaryExpressionAST(condition, EqualsOperator, conditionValue.toExpressionAST()),
+                    ConjunctionOperator,
+                    modsetConditions.conjunct(),
+                ),
+            ),
+        )
+    }
+
+    override fun interpretVerificationAwareWhileStatement(whileStatement: VerificationAwareWhileLoopAST, context: InterpreterContext) {
+        interpretStatement(whileStatement.counterInitialisation, context)
+        var condition = interpretExpression(whileStatement.condition, context)
+        val prevBreak = doBreak
+        doBreak = false
+        whileStatement.invariants.add(createInvariantForModset(whileStatement.counter, whileStatement.condition, whileStatement.modset.toSet(), context))
+        while ((condition as BoolValue).value && !doBreak) {
+            val innerContext = context.increaseDepth().withAnnotationIdentifiers(whileStatement.modset)
+            interpretStatement(whileStatement.terminationCheck, innerContext)
+            if (doBreak) {
+                break
+            }
+
+            interpretStatement(whileStatement.counterUpdate, innerContext)
+            interpretSequence(whileStatement.body, innerContext)
+            condition = interpretExpression(whileStatement.condition, context)
+            whileStatement.invariants.add(createInvariantForModset(whileStatement.counter, whileStatement.condition, whileStatement.modset.toSet(), context))
+        }
+
+        doBreak = prevBreak
     }
 
     override fun interpretCounterLimitedWhileStatement(
@@ -692,7 +751,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             context.functions,
             context.methods,
             classValue.classContext,
-            methodSignature.signature,
+            methodSignature.params.toMutableList(),
         )
 
         setParams(methodSignature.params, params, methodContext.fields, context)
@@ -712,12 +771,18 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     } else {
         val (methodContext, body) = if (context.methods.has(methodSignature)) {
             Pair(
-                InterpreterContext(ValueTable(), context.functions, context.methods, null, methodSignature),
+                InterpreterContext(ValueTable(), context.functions, context.methods, null, methodSignature.params),
                 context.methods.get(methodSignature),
             )
         } else {
             Pair(
-                InterpreterContext(ValueTable(context.classContext!!.fields), context.functions, context.methods, context.classContext, methodSignature),
+                InterpreterContext(
+                    ValueTable(context.classContext!!.fields),
+                    context.functions,
+                    context.methods,
+                    context.classContext,
+                    methodSignature.params,
+                ),
                 context.classContext.methods.get(methodSignature),
             )
         }
@@ -730,8 +795,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
     }
 
     override fun interpretNonVoidMethodCall(methodCall: NonVoidMethodCallAST, context: InterpreterContext): Value {
-        val methodFields =
-            interpretMethodCall(methodCall.method, methodCall.params, methodCall.method.returns, context)
+        val methodFields = interpretMethodCall(methodCall.method, methodCall.params, methodCall.method.returns, context)
         return MultiValue(methodCall.method.returns.map { r -> methodFields.get(r) })
     }
 

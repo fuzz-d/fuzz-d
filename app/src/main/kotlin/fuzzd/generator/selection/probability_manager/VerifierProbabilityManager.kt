@@ -21,12 +21,12 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun charType(): Double = probabilityManager.charType()
 
     // Statements
-    override fun assertStatement(): Double = 0.15
+    override fun assertStatement(): Double = 0.25
     override fun ifStatement(): Double = probabilityManager.ifStatement()
     override fun matchStatement(): Double = probabilityManager.matchStatement()
     override fun forallStatement(): Double = 0.0
     override fun forLoopStatement(): Double = 0.0
-    override fun whileStatement(): Double = 0.0
+    override fun whileStatement(): Double = probabilityManager.whileStatement() / 3
     override fun methodCall(): Double = probabilityManager.methodCall()
     override fun mapAssign(): Double = probabilityManager.mapAssign()
     override fun assignStatement(): Double = probabilityManager.assignStatement()

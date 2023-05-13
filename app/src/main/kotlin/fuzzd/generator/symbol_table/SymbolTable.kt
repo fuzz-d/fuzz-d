@@ -15,7 +15,7 @@ class SymbolTable(private val parent: SymbolTable? = null) {
 
     fun cloneImmutable(): SymbolTable {
         val clone = SymbolTable(parent?.cloneImmutable())
-        symbolTable.keys.forEach { clone.add(it) }
+        symbolTable.keys.forEach { clone.add(it.cloneImmutable()) }
         return clone
     }
 

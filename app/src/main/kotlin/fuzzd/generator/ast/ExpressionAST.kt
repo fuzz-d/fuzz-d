@@ -29,8 +29,6 @@ import fuzzd.utils.indent
 
 fun checkParams(expected: List<IdentifierAST>, actual: List<ExpressionAST>, context: String) {
     if (expected.size != actual.size) {
-        println(expected)
-        println(actual)
         throw InvalidInputException("Number of parameters for context {$context} doesn't match. Expected ${expected.size}, got ${actual.size}")
     }
 
@@ -259,7 +257,6 @@ sealed class ExpressionAST : ASTElement {
         override fun hashCode(): Int {
             var result = name.hashCode()
             result = 31 * result + type.hashCode()
-            result = 31 * result + mutable.hashCode()
             return result
         }
     }
@@ -323,10 +320,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun cloneImmutable(): IdentifierAST = ClassInstanceAST(clazz, name, false, initialised())
 
-        override fun equals(other: Any?): Boolean =
-            other is ClassInstanceAST &&
-                clazz == other.clazz &&
-                name == other.name
+        override fun equals(other: Any?): Boolean = other is ClassInstanceAST && clazz == other.clazz && name == other.name
 
         override fun hashCode(): Int {
             var result = super.hashCode()

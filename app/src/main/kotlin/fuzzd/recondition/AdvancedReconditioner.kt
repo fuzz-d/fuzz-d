@@ -72,6 +72,7 @@ import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.VerificationAwareWhileLoopAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TraitAST
@@ -312,6 +313,7 @@ class AdvancedReconditioner {
         is IfStatementAST -> reconditionIfStatement(statementAST)
         is ForLoopAST -> reconditionForLoopStatement(statementAST)
         is ForallStatementAST -> reconditionForallStatement(statementAST)
+        is VerificationAwareWhileLoopAST -> reconditionVerificationAwareWhileLoop(statementAST)
         is CounterLimitedWhileLoopAST -> reconditionCounterLimitedWhileLoop(statementAST)
         is WhileLoopAST -> reconditionWhileLoop(statementAST)
         is PrintAST -> reconditionPrint(statementAST)
@@ -399,6 +401,23 @@ class AdvancedReconditioner {
                 topRange,
                 SequenceAST(assignExprDependents + AssignmentAST(ArrayIndexAST(array, arrayIndex.index), assignExpr)),
             )
+    }
+
+    fun reconditionVerificationAwareWhileLoop(whileLoopAST: VerificationAwareWhileLoopAST): List<StatementAST> {
+        val (condition, conditionDependents) = reconditionExpression(whileLoopAST.condition)
+        val body = reconditionSequence(whileLoopAST.body)
+
+        return conditionDependents + VerificationAwareWhileLoopAST(
+            whileLoopAST.counter,
+            whileLoopAST.modset,
+            whileLoopAST.counterInitialisation,
+            whileLoopAST.terminationCheck,
+            whileLoopAST.counterUpdate,
+            condition,
+            whileLoopAST.decreases,
+            whileLoopAST.invariants,
+            body,
+        )
     }
 
     fun reconditionCounterLimitedWhileLoop(whileLoopAST: CounterLimitedWhileLoopAST): List<StatementAST> {

@@ -56,7 +56,6 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
-import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
@@ -116,7 +115,6 @@ import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.LessThanEqualOperator
-import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.SubtractionOperator
 import fuzzd.generator.context.GenerationContext
@@ -594,7 +592,7 @@ class Generator(
         val (expr, exprDeps) = if (identifier.type() is LiteralType) generateBinaryExpressionWithIdentifier(identifier, context, type) else Pair(identifier, emptyList())
 
         val assertExpr = BinaryExpressionAST(expr, EqualsOperator, expr)
-        val assertStatement = if (context.methodContext != null) DisjunctiveAssertStatementAST(assertExpr, mutableListOf()) else AssertStatementAST(assertExpr)
+        val assertStatement = DisjunctiveAssertStatementAST(assertExpr, mutableListOf())
 
         return identifierDeps + exprDeps + assertStatement + generateStatement(context)
     }
@@ -718,7 +716,7 @@ class Generator(
             BinaryExpressionAST(
                 BinaryExpressionAST(IntegerLiteralAST(0), LessThanEqualOperator, counterIdentifier),
                 ConjunctionOperator,
-                BinaryExpressionAST(counterIdentifier, LessThanOperator, IntegerLiteralAST(DAFNY_MAX_LOOP_COUNTER_VERIFICATION)),
+                BinaryExpressionAST(counterIdentifier, LessThanEqualOperator, IntegerLiteralAST(DAFNY_MAX_LOOP_COUNTER_VERIFICATION)),
             ),
         )
 
@@ -734,12 +732,13 @@ class Generator(
 
         return modsetDeps + conditionDeps + VerificationAwareWhileLoopAST(
             counterIdentifier,
+            modset,
             counterInitialisation,
             counterTerminationCheck,
             counterUpdate,
             condition,
             decreasesAnnotation,
-            listOf(counterInvariant),
+            mutableListOf(counterInvariant),
             body,
         )
     }
@@ -1151,7 +1150,10 @@ class Generator(
         return Pair(IntRangeSetComprehensionAST(identifier, bottomRange, topRange, expr), emptyList())
     }
 
-    private fun generateDataStructureSetComprehension(context: GenerationContext, targetType: SetType): Pair<DataStructureSetComprehensionAST, List<StatementAST>> {
+    private fun generateDataStructureSetComprehension(
+        context: GenerationContext,
+        targetType: SetType,
+    ): Pair<DataStructureSetComprehensionAST, List<StatementAST>> {
         val dataStructureType = selectionManager.selectDataStructureTypeWithInnerType(targetType.innerType, context.disableOnDemand())
         val (dataStructure, dataStructureDeps) = generateExpression(context.increaseExpressionDepth(), dataStructureType)
         val identifier = IdentifierAST(context.identifierNameGenerator.newValue(), dataStructureType.innerType)
@@ -1244,7 +1246,10 @@ class Generator(
         return Pair(IntRangeMapComprehensionAST(identifier, bottomRange, topRange, Pair(keyExpr, valueExpr)), emptyList())
     }
 
-    private fun generateMapComprehensionOverDataStructure(context: GenerationContext, targetType: MapType): Pair<MapComprehensionAST, List<StatementAST>> {
+    private fun generateMapComprehensionOverDataStructure(
+        context: GenerationContext,
+        targetType: MapType,
+    ): Pair<MapComprehensionAST, List<StatementAST>> {
         val dataStructureType = selectionManager.selectDataStructureTypeWithInnerType(targetType.innerType, context.disableOnDemand())
         val identifier = IdentifierAST(context.identifierNameGenerator.newValue(), dataStructureType.innerType)
         val (dataStructure, dataStructureDependencies) = generateExpression(context.increaseExpressionDepth(), dataStructureType)

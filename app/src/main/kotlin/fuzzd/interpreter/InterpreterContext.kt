@@ -13,9 +13,11 @@ class InterpreterContext(
     val functions: ValueTable<FunctionMethodSignatureAST, ExpressionAST> = ValueTable(),
     val methods: ValueTable<MethodSignatureAST, SequenceAST> = ValueTable(),
     val classContext: InterpreterContext? = null,
-    val methodContext: MethodSignatureAST? = null,
+    val annotationIdentifiers: List<IdentifierAST> = emptyList(),
 ) {
-    fun increaseDepth(): InterpreterContext = InterpreterContext(ValueTable(fields), functions, methods, classContext, methodContext)
+    fun increaseDepth(): InterpreterContext = InterpreterContext(ValueTable(fields), functions, methods, classContext, annotationIdentifiers)
 
-    fun withClassContext(classContext: InterpreterContext?) = InterpreterContext(fields, functions, methods, classContext, methodContext)
+    fun withClassContext(classContext: InterpreterContext?) = InterpreterContext(fields, functions, methods, classContext, annotationIdentifiers)
+
+    fun withAnnotationIdentifiers(identifiers: List<IdentifierAST>) = InterpreterContext(fields, functions, methods, classContext, annotationIdentifiers + identifiers)
 }

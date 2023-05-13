@@ -139,12 +139,13 @@ sealed class StatementAST : ASTElement {
 
     class VerificationAwareWhileLoopAST(
         val counter: IdentifierAST,
+        val modset: List<IdentifierAST>,
         counterInitialisation: DeclarationAST,
         terminationCheck: IfStatementAST,
         counterUpdate: AssignmentAST,
         condition: ExpressionAST,
         val decreases: DecreasesAnnotation,
-        val invariants: List<InvariantAnnotation>,
+        val invariants: MutableList<InvariantAnnotation>,
         body: SequenceAST,
     ) : CounterLimitedWhileLoopAST(counterInitialisation, terminationCheck, counterUpdate, condition, listOf(decreases), body) {
         override fun toString(): String {

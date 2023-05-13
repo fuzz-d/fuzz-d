@@ -9,7 +9,7 @@ class ValueTable<T, U>(private val parent: ValueTable<T, U>? = null) {
 
     fun topLevel(): ValueTable<T, U> = parent?.topLevel() ?: this
 
-    fun keys(): Set<T> = values.keys
+    fun keys(): Set<T> = (parent?.keys() ?: emptyList()) union values.keys
 
     fun withParent(parent: ValueTable<T, U>) = ValueTable(parent, values)
 

@@ -43,6 +43,7 @@ import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.VerificationAwareWhileLoopAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.interpreter.value.Value
@@ -72,6 +73,8 @@ interface ASTInterpreter {
     fun interpretMatchStatement(matchStatement: MatchStatementAST, context: InterpreterContext)
 
     fun interpretIfStatement(ifStatement: IfStatementAST, context: InterpreterContext)
+
+    fun interpretVerificationAwareWhileStatement(whileStatement: VerificationAwareWhileLoopAST, context: InterpreterContext)
 
     fun interpretCounterLimitedWhileStatement(whileStatement: CounterLimitedWhileLoopAST, context: InterpreterContext)
 
