@@ -49,7 +49,7 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun identifier(): Double = probabilityManager.identifier()
     override fun literal(): Double = probabilityManager.literal()
     override fun constructor(): Double = probabilityManager.constructor()
-    override fun comprehension(): Double = probabilityManager.comprehension()
+    override fun comprehension(): Double = 0.0
     override fun comprehensionConditionIntRange(): Double = probabilityManager.comprehensionConditionIntRange()
 
     // Index types
