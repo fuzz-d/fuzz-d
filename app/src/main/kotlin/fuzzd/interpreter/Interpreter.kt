@@ -789,10 +789,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         }
 
         setParams(methodSignature.params, params, methodContext.fields, context)
-        val paramCondition = methodSignature.params
-            .map { Pair(it, interpretIdentifier(it, methodContext).toExpressionAST()) }
-            .map { BinaryExpressionAST(it.first, EqualsOperator, it.second) }
-            .conjunct()
+
         returns.forEach { methodContext.fields.create(it) }
 
         interpretSequence(body, methodContext)
@@ -801,7 +798,17 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             .map { BinaryExpressionAST(it.first, EqualsOperator, it.second) }
             .conjunct()
 
-        methodSignature.annotations.add(EnsuresAnnotation(BinaryExpressionAST(paramCondition, ImplicationOperator, returnCondition)))
+        val ensuresCondition = if (params.isEmpty()) {
+            returnCondition
+        } else {
+            val paramCondition = methodSignature.params
+                .map { Pair(it, interpretIdentifier(it, methodContext).toExpressionAST()) }
+                .map { BinaryExpressionAST(it.first, EqualsOperator, it.second) }
+                .conjunct()
+            BinaryExpressionAST(paramCondition, ImplicationOperator, returnCondition)
+        }
+
+        methodSignature.annotations.add(EnsuresAnnotation(ensuresCondition))
         methodContext.fields
     }
 
