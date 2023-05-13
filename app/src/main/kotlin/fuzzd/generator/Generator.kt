@@ -1088,10 +1088,19 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): Pair<ArrayIndexAST, List<StatementAST>> {
-        val (identifier, deps) = generateIdentifier(context, ArrayType(targetType), initialisedConstraint = true)
-        val index = IntegerLiteralAST(generateDecimalLiteralValue(false), false)
+        val arrayIndexes = context.symbolTable.withType(targetType).filterIsInstance<ArrayIndexAST>()
 
-        return Pair(ArrayIndexAST(identifier, index), deps)
+        return if (arrayIndexes.isEmpty()) {
+            val (identifier, deps) = generateIdentifier(context, ArrayType(targetType), initialisedConstraint = true)
+            val index = IntegerLiteralAST(generateDecimalLiteralValue(false), false)
+            val arrayIndex = ArrayIndexAST(identifier, index)
+            val (assignmentExpr, assignmentExprDeps) = generateExpression(context.increaseExpressionDepth(), targetType)
+            val assignment = AssignmentAST(arrayIndex, assignmentExpr)
+
+            Pair(arrayIndex, deps + assignmentExprDeps + assignment)
+        } else {
+            Pair(selectionManager.randomSelection(arrayIndexes), emptyList())
+        }
     }
 
     override fun generateSetDisplay(
