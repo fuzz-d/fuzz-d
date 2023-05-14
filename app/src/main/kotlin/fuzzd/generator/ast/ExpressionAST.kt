@@ -200,7 +200,7 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
-        override fun type(): Type = MultisetType((expr.type() as SequenceType).innerType)
+        override fun type(): MultisetType = MultisetType((expr.type() as SequenceType).innerType)
 
         override fun toString(): String = "multiset($expr)"
     }
@@ -247,6 +247,8 @@ sealed class ExpressionAST : ASTElement {
 
         open fun initialise(): IdentifierAST = if (initialised) this else IdentifierAST(name, type, mutable, true)
 
+        open fun cloneImmutable() = IdentifierAST(name, type, false, initialised)
+
         fun initialised(): Boolean = initialised
 
         override fun equals(other: Any?): Boolean =
@@ -255,7 +257,6 @@ sealed class ExpressionAST : ASTElement {
         override fun hashCode(): Int {
             var result = name.hashCode()
             result = 31 * result + type.hashCode()
-            result = 31 * result + mutable.hashCode()
             return result
         }
     }
@@ -283,6 +284,8 @@ sealed class ExpressionAST : ASTElement {
 
         override fun initialise(): IdentifierAST =
             if (initialised()) this else TraitInstanceAST(trait, name, mutable, true)
+
+        override fun cloneImmutable(): IdentifierAST = TraitInstanceAST(trait, name, false, initialised())
 
         override fun equals(other: Any?): Boolean = other is TraitInstanceAST && trait == other.trait && name == other.name
 
@@ -315,10 +318,9 @@ sealed class ExpressionAST : ASTElement {
         override fun initialise(): IdentifierAST =
             if (initialised()) this else ClassInstanceAST(clazz, name, mutable, true)
 
-        override fun equals(other: Any?): Boolean =
-            other is ClassInstanceAST &&
-                    clazz == other.clazz &&
-                    name == other.name
+        override fun cloneImmutable(): IdentifierAST = ClassInstanceAST(clazz, name, false, initialised())
+
+        override fun equals(other: Any?): Boolean = other is ClassInstanceAST && clazz == other.clazz && name == other.name
 
         override fun hashCode(): Int {
             var result = super.hashCode()
@@ -338,6 +340,8 @@ sealed class ExpressionAST : ASTElement {
     ) : IdentifierAST(name, datatype, mutable, initialised) {
         override fun equals(other: Any?): Boolean = other is TopLevelDatatypeInstanceAST && other.name == name && other.datatype == datatype
 
+        override fun cloneImmutable(): IdentifierAST = TopLevelDatatypeInstanceAST(name, datatype, false, initialised())
+
         override fun hashCode(): Int {
             var result = name.hashCode()
             result = 31 * result + datatype.hashCode()
@@ -353,6 +357,8 @@ sealed class ExpressionAST : ASTElement {
     ) : TopLevelDatatypeInstanceAST(name, datatype, mutable, initialised) {
         override fun equals(other: Any?): Boolean = other is TopLevelDatatypeInstanceAST && other.name == name && other.datatype == datatype
 
+        override fun cloneImmutable(): IdentifierAST = DatatypeInstanceAST(name, datatype, false, initialised())
+
         override fun hashCode(): Int {
             var result = name.hashCode()
             result = 31 * result + datatype.hashCode()
@@ -363,7 +369,14 @@ sealed class ExpressionAST : ASTElement {
     class ClassInstanceFieldAST(
         val classInstance: IdentifierAST,
         val classField: IdentifierAST,
-    ) : IdentifierAST("$classInstance.$classField", classField.type(), mutable = true, initialised = true)
+    ) : IdentifierAST(
+        "$classInstance.$classField",
+        classField.type(),
+        mutable = classField.mutable,
+        initialised = classInstance.initialised() && classField.initialised(),
+    ) {
+        override fun initialise(): IdentifierAST = ClassInstanceFieldAST(classInstance, classField.initialise())
+    }
 
     class DatatypeDestructorAST(
         val datatypeInstance: ExpressionAST,
@@ -380,6 +393,8 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
+        override fun cloneImmutable(): IdentifierAST = DatatypeDestructorAST(datatypeInstance, field.cloneImmutable())
+
         override fun equals(other: Any?): Boolean = other is DatatypeDestructorAST && other.datatypeInstance == datatypeInstance && other.field == field
 
         override fun hashCode(): Int {
@@ -393,12 +408,9 @@ sealed class ExpressionAST : ASTElement {
     class ArrayIndexAST(
         val array: IdentifierAST,
         val index: ExpressionAST,
+        mutable: Boolean = true,
         private val initialised: Boolean = false,
-    ) : IdentifierAST(
-        array.name,
-        (array.type() as ArrayType).internalType,
-        initialised,
-    ) {
+    ) : IdentifierAST(array.name, (array.type() as ArrayType).internalType, mutable, initialised) {
         init {
             if (array.type() !is ArrayType) {
                 throw InvalidInputException("Creating array index with identifier of type ${array.type()}")
@@ -408,6 +420,8 @@ sealed class ExpressionAST : ASTElement {
                 throw InvalidInputException("Creating array index with index of type ${index.type()}")
             }
         }
+
+        override fun cloneImmutable(): IdentifierAST = ArrayIndexAST(array, index, false, initialised)
 
         override fun initialise(): ArrayIndexAST = if (initialised()) this else ArrayIndexAST(array, index, initialised = true)
 
@@ -570,13 +584,7 @@ sealed class ExpressionAST : ASTElement {
     class DataStructureMapComprehensionAST(identifier: IdentifierAST, val dataStructure: ExpressionAST, assign: Pair<ExpressionAST, ExpressionAST>) :
         MapComprehensionAST(identifier, BinaryExpressionAST(identifier, MembershipOperator, dataStructure), assign)
 
-    class SetDisplayAST(val exprs: List<ExpressionAST>, val isMultiset: Boolean) : ExpressionAST() {
-        private var innerType = if (exprs.isEmpty()) PlaceholderType else exprs[0].type()
-
-        constructor(exprs: List<ExpressionAST>, isMultiset: Boolean, innerType: Type) : this(exprs, isMultiset) {
-            this.innerType = innerType
-        }
-
+    class SetDisplayAST(val innerType: Type, val exprs: List<ExpressionAST>, val isMultiset: Boolean) : ExpressionAST() {
         override fun type(): Type = if (isMultiset) MultisetType(innerType) else SetType(innerType)
 
         override fun toString(): String = "${if (isMultiset) "multiset" else ""}{${exprs.joinToString(", ")}}"
@@ -621,7 +629,12 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "[${exprs.joinToString(", ")}]"
     }
 
-    class SequenceComprehensionAST(val size: ExpressionAST, val identifier: IdentifierAST, val expr: ExpressionAST) : ExpressionAST() {
+    class SequenceComprehensionAST(
+        val size: ExpressionAST,
+        val identifier: IdentifierAST,
+        val annotations: List<VerifierAnnotationAST>,
+        val expr: ExpressionAST,
+    ) : ExpressionAST() {
         init {
             if (size.type() != IntType) {
                 throw InvalidInputException("Size of sequence comprehension must be an int expression")
@@ -632,7 +645,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): SequenceType = SequenceType(expr.type())
 
-        override fun toString(): String = "seq($size, $identifier => ($expr))"
+        override fun toString(): String = "seq($size, $identifier ${annotations.joinToString(" ")} => ($expr))"
     }
 
     class ArrayLengthAST(val array: IdentifierAST) : ExpressionAST() {

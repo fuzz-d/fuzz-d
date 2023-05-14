@@ -1,6 +1,7 @@
 package fuzzd.generator.selection
 
 enum class StatementType {
+    ASSERT,
     ASSIGN,
     CLASS_INSTANTIATION,
     DECLARATION,
@@ -16,5 +17,5 @@ enum class StatementType {
 
 enum class AssignType {
     IDENTIFIER,
-    ARRAY_INDEX
+    ARRAY_INDEX,
 }

@@ -58,6 +58,7 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
@@ -88,6 +89,13 @@ import fuzzd.generator.ast.Type.MethodReturnType
 import fuzzd.generator.ast.Type.PlaceholderType
 import fuzzd.generator.ast.Type.TopLevelDatatypeType
 import fuzzd.generator.ast.Type.TraitType
+import fuzzd.generator.ast.VerifierAnnotationAST
+import fuzzd.generator.ast.VerifierAnnotationAST.DecreasesAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.EnsuresAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.InvariantAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.ModifiesAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.ReadsAnnotation
+import fuzzd.generator.ast.VerifierAnnotationAST.RequiresAnnotation
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.AntiMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
@@ -366,8 +374,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         val params = visitParametersList(ctx.parameters())
         val returnType = visitType(ctx.type())
+        val annotations = ctx.verifierAnnotation().map(this::visitVerifierAnnotation)
 
-        val signature = FunctionMethodSignatureAST(name, returnType, params)
+        val signature = FunctionMethodSignatureAST(name, returnType, params, annotations)
         functionMethodsTable.addEntry(name, signature)
         return signature
     }
@@ -401,8 +410,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         val params = visitParametersList(ctx.parameters(0))
         val returns = if (ctx.parameters().size > 1) visitReturnsList(ctx.parameters(1)) else emptyList()
+        val annotations = ctx.verifierAnnotation().map(this::visitVerifierAnnotation)
 
-        val signature = MethodSignatureAST(name, params, returns)
+        val signature = MethodSignatureAST(name, params, returns, annotations.toMutableList())
         methodsTable.addEntry(name, signature)
         return signature
     }
@@ -447,6 +457,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     /* ============================================ STATEMENTS ========================================= */
 
     override fun visitStatement(ctx: StatementContext): StatementAST = super.visitStatement(ctx) as StatementAST
+
+    override fun visitAssertStatement(ctx: AssertStatementContext): AssertStatementAST = AssertStatementAST(visitExpression(ctx.expression()))
 
     override fun visitBreakStatement(ctx: BreakStatementContext): BreakAST = BreakAST
 
@@ -604,7 +616,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val sequence = visitSequence(ctx.sequence())
         identifiersTable = identifiersTable.decreaseDepth()
 
-        return WhileLoopAST(whileCondition, sequence)
+        val annotations = ctx.verifierAnnotation().map(this::visitVerifierAnnotation)
+
+        return WhileLoopAST(whileCondition, annotations, sequence)
     }
 
     override fun visitVoidMethodCall(ctx: VoidMethodCallContext): VoidMethodCallAST {
@@ -614,6 +628,22 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         return VoidMethodCallAST(method, params)
     }
+
+    /* ============================================ VERIFIER ANNOTATIONS ================================== */
+
+    override fun visitVerifierAnnotation(ctx: VerifierAnnotationContext): VerifierAnnotationAST = super.visitVerifierAnnotation(ctx) as VerifierAnnotationAST
+
+    override fun visitDecreases(ctx: DecreasesContext): DecreasesAnnotation = DecreasesAnnotation(visitExpression(ctx.expression()))
+
+    override fun visitEnsures(ctx: EnsuresContext): EnsuresAnnotation = EnsuresAnnotation(visitExpression(ctx.expression()))
+
+    override fun visitInvariant(ctx: InvariantContext): InvariantAnnotation = InvariantAnnotation(visitExpression(ctx.expression()))
+
+    override fun visitModifies(ctx: ModifiesContext): ModifiesAnnotation = ModifiesAnnotation(visitIdentifier(ctx.identifier()))
+
+    override fun visitReads(ctx: ReadsContext): ReadsAnnotation = ReadsAnnotation(visitIdentifier(ctx.identifier()))
+
+    override fun visitRequires(ctx: RequiresContext): RequiresAnnotation = RequiresAnnotation(visitExpression(ctx.expression()))
 
     /* ============================================= EXPRESSION ======================================== */
 
@@ -936,7 +966,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitSetDisplay(ctx: SetDisplayContext): SetDisplayAST {
         val exprs = ctx.expression().map(this::visitExpression)
-        return SetDisplayAST(exprs, ctx.MULTISET() != null)
+        return SetDisplayAST(if (exprs.isEmpty()) PlaceholderType else exprs[0].type(), exprs, ctx.MULTISET() != null)
     }
 
     override fun visitSetComprehension(ctx: SetComprehensionContext): SetComprehensionAST {
@@ -983,13 +1013,14 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val size = visitExpression(ctx.expression(0))
         val identifierName = visitIdentifierName(ctx.identifier())
         val identifier = IdentifierAST(identifierName, IntType)
+        val annotations = ctx.verifierAnnotation().map(this::visitVerifierAnnotation)
 
         identifiersTable = identifiersTable.increaseDepth()
         identifiersTable.addEntry(identifierName, identifier)
         val expr = visitExpression(ctx.expression(1))
         identifiersTable = identifiersTable.decreaseDepth()
 
-        return SequenceComprehensionAST(size, identifier, expr)
+        return SequenceComprehensionAST(size, identifier, annotations, expr)
     }
 
     override fun visitMapConstructor(ctx: MapConstructorContext): MapConstructorAST {

@@ -8,10 +8,12 @@ import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.FunctionMethodAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.VerifierAnnotationAST.RequiresAnnotation
 import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DivisionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.EqualsOperator
 import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanEqualOperator
+import fuzzd.generator.ast.operators.BinaryOperator.GreaterThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.LessThanOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ModuloOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MultiplicationOperator
@@ -28,6 +30,7 @@ val ABSOLUTE = FunctionMethodAST(
     "abs",
     IntType,
     listOf(INT_IDENTIFIER),
+    emptyList(),
     TernaryExpressionAST(
         BinaryExpressionAST(
             INT_IDENTIFIER,
@@ -47,6 +50,7 @@ val SAFE_ARRAY_INDEX = FunctionMethodAST(
     "safeArrayIndex",
     IntType,
     listOf(INT_IDENTIFIER, LENGTH),
+    listOf(RequiresAnnotation(BinaryExpressionAST(LENGTH, GreaterThanOperator, IntegerLiteralAST(0)))),
     TernaryExpressionAST(
         BinaryExpressionAST(INT_IDENTIFIER, LessThanOperator, IntegerLiteralAST(0)),
         IntegerLiteralAST(0),
@@ -65,6 +69,7 @@ val SAFE_DIVISION_INT = FunctionMethodAST(
     "safeDivisionInt",
     IntType,
     listOf(INT_IDENTIFIER_1, INT_IDENTIFIER_2),
+    emptyList(),
     TernaryExpressionAST(
         BinaryExpressionAST(INT_IDENTIFIER_2, EqualsOperator, IntegerLiteralAST("0")),
         INT_IDENTIFIER_1,
@@ -77,6 +82,7 @@ val SAFE_MODULO_INT = FunctionMethodAST(
     "safeModuloInt",
     IntType,
     listOf(INT_IDENTIFIER_1, INT_IDENTIFIER_2),
+    emptyList(),
     TernaryExpressionAST(
         BinaryExpressionAST(INT_IDENTIFIER_2, EqualsOperator, IntegerLiteralAST("0")),
         INT_IDENTIFIER_1,

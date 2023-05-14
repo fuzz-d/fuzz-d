@@ -3,10 +3,8 @@ package fuzzd.utils
 import java.io.File
 import java.lang.ProcessBuilder.Redirect
 
-const val DAFNY_WRAPPERS = "wrappers"
 const val DAFNY_ADVANCED = "advanced"
 const val DAFNY_MAIN = "main"
-const val DAFNY_BODY = "body"
 const val DAFNY_TYPE = "dfy"
 const val DAFNY_GENERATED = "generated"
 
@@ -24,6 +22,11 @@ fun runCommandRedirect(command: List<String>, outputFile: File): Process =
 fun compileDafny(targetLanguage: String, fileDir: String, fileName: String, timeout: Long): Process {
     val command =
         "timeout $timeout dafny /compileVerbose:0 /noVerify /compile:2 /spillTargetCode:1 /compileTarget:$targetLanguage $fileDir/$fileName.dfy"
+    return runCommand(command)
+}
+
+fun verifyDafny(fileDir: String, fileName: String, timeout: Long): Process {
+    val command = "timeout $timeout dafny /compile:0 $fileDir/$fileName.dfy"
     return runCommand(command)
 }
 

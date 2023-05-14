@@ -50,6 +50,7 @@ import fuzzd.generator.selection.IndexType.MAP
 import fuzzd.generator.selection.IndexType.MULTISET
 import fuzzd.generator.selection.IndexType.SEQUENCE
 import fuzzd.generator.selection.IndexType.STRING
+import fuzzd.generator.selection.StatementType.ASSERT
 import fuzzd.generator.selection.StatementType.ASSIGN
 import fuzzd.generator.selection.StatementType.CLASS_INSTANTIATION
 import fuzzd.generator.selection.StatementType.FORALL
@@ -143,7 +144,7 @@ class SelectionManager(
         ArrayType(selectType(context, depth + 1))
 
     @Suppress("UNUSED_PARAMETER")
-    private fun selectLiteralType(context: GenerationContext, depth: Int): LiteralType =
+    fun selectLiteralType(context: GenerationContext, depth: Int): LiteralType =
         randomWeightedSelection(
             normaliseWeights(
                 listOf(
@@ -160,58 +161,57 @@ class SelectionManager(
     }
 
     // selects operator, returning the operator and a selected input type for inner expressions
-    fun selectBinaryOperator(context: GenerationContext, targetType: Type): Pair<BinaryOperator, Pair<Type, Type>> =
-        when (targetType) {
-            BoolType -> {
-                val subclasses = BinaryOperator::class.sealedSubclasses
-                val subclassInstances = subclasses.map { it.sealedSubclasses }.unionAll()
-                    .mapNotNull { it.objectInstance }
-                    .filter { it.outputType(targetType, targetType) == BoolType }
-                val selectedIndex = random.nextInt(subclassInstances.size)
+    fun selectBinaryOperator(context: GenerationContext, targetType: Type): Pair<BinaryOperator, Pair<Type, Type>> = when (targetType) {
+        BoolType -> {
+            val subclasses = BinaryOperator::class.sealedSubclasses
+            val subclassInstances = subclasses.map { it.sealedSubclasses }.unionAll()
+                .mapNotNull { it.objectInstance }
+                .filter { it.outputType(targetType, targetType) == BoolType }
+            val selectedIndex = random.nextInt(subclassInstances.size)
 
-                when (val selectedSubclass = subclassInstances[selectedIndex]) {
-                    is BooleanBinaryOperator -> Pair(selectedSubclass, Pair(BoolType, BoolType))
-                    is ComparisonBinaryOperator -> Pair(selectedSubclass, Pair(IntType, IntType))
-                    is DataStructureMembershipOperator -> {
-                        val dataStructureType = selectDataStructureType(context, 1)
-                        val keyType = when (dataStructureType) {
-                            is SetType -> dataStructureType.innerType
-                            is MultisetType -> dataStructureType.innerType
-                            is SequenceType -> dataStructureType.innerType
-                            is MapType -> dataStructureType.keyType
-                        }
-
-                        Pair(selectedSubclass, Pair(keyType, dataStructureType))
+            when (val selectedSubclass = subclassInstances[selectedIndex]) {
+                is BooleanBinaryOperator -> Pair(selectedSubclass, Pair(BoolType, BoolType))
+                is ComparisonBinaryOperator -> Pair(selectedSubclass, Pair(IntType, IntType))
+                is DataStructureMembershipOperator -> {
+                    val dataStructureType = selectDataStructureType(context, 1)
+                    val keyType = when (dataStructureType) {
+                        is SetType -> dataStructureType.innerType
+                        is MultisetType -> dataStructureType.innerType
+                        is SequenceType -> dataStructureType.innerType
+                        is MapType -> dataStructureType.keyType
                     }
 
-                    is DataStructureBinaryOperator -> {
-                        val dataStructureType = selectDataStructureType(context, 1)
-                        Pair(selectedSubclass, Pair(dataStructureType, dataStructureType))
-                    }
-
-                    else -> throw UnsupportedOperationException("$selectedSubclass not a valid boolean-type binary operator")
+                    Pair(selectedSubclass, Pair(keyType, dataStructureType))
                 }
+
+                is DataStructureBinaryOperator -> {
+                    val dataStructureType = selectDataStructureType(context, 1)
+                    Pair(selectedSubclass, Pair(dataStructureType, dataStructureType))
+                }
+
+                else -> throw UnsupportedOperationException("$selectedSubclass not a valid boolean-type binary operator")
             }
-
-            is SetType, is MultisetType -> {
-                val subclassInstances = BinaryOperator.DataStructureMathematicalOperator::class.sealedSubclasses
-                    .mapNotNull { it.objectInstance }
-                val selectedIndex = random.nextInt(subclassInstances.size)
-                Pair(subclassInstances[selectedIndex], Pair(targetType, targetType))
-            }
-
-            is MapType, is SequenceType -> Pair(UnionOperator, Pair(targetType, targetType))
-
-            IntType -> {
-                val subclassInstances = BinaryOperator.MathematicalBinaryOperator::class.sealedSubclasses
-                    .mapNotNull { it.objectInstance }
-                    .filter { it.supportsInput(targetType, targetType) }
-                val selectedIndex = random.nextInt(subclassInstances.size)
-                Pair(subclassInstances[selectedIndex], Pair(targetType, targetType))
-            }
-
-            else -> throw UnsupportedOperationException("Target type $targetType not supported for binary operations")
         }
+
+        is SetType, is MultisetType -> {
+            val subclassInstances = BinaryOperator.DataStructureMathematicalOperator::class.sealedSubclasses
+                .mapNotNull { it.objectInstance }
+            val selectedIndex = random.nextInt(subclassInstances.size)
+            Pair(subclassInstances[selectedIndex], Pair(targetType, targetType))
+        }
+
+        is MapType, is SequenceType -> Pair(UnionOperator, Pair(targetType, targetType))
+
+        IntType -> {
+            val subclassInstances = BinaryOperator.MathematicalBinaryOperator::class.sealedSubclasses
+                .mapNotNull { it.objectInstance }
+                .filter { it.supportsInput(targetType, targetType) }
+            val selectedIndex = random.nextInt(subclassInstances.size)
+            Pair(subclassInstances[selectedIndex], Pair(targetType, targetType))
+        }
+
+        else -> throw UnsupportedOperationException("Target type $targetType not supported for binary operations")
+    }
 
     fun selectUnaryOperator(targetType: Type): UnaryOperator =
         when (targetType) {
@@ -224,8 +224,8 @@ class SelectionManager(
         val ifStatementProbability = if (context.statementDepth < MAX_STATEMENT_DEPTH) min(probabilityManager.ifStatement() / context.statementDepth, 0.3) else 0.0
         val matchProbability = if (context.statementDepth < MAX_STATEMENT_DEPTH) min(probabilityManager.matchStatement() / context.statementDepth, 0.3) else 0.0
         val whileStatementProbability = if (context.statementDepth == 1) probabilityManager.whileStatement() else 0.0
-        val forLoopProbability = if(context.statementDepth == 1) probabilityManager.forLoopStatement() else 0.0
-        val forallProbability = min(probabilityManager.forallStatement(), 0.2)
+        val forLoopProbability = if (context.statementDepth == 1) probabilityManager.forLoopStatement() else 0.0
+        val forallProbability = if (context.statementDepth == 1) min(probabilityManager.forallStatement(), 0.2) else 0.0 // if statement due to DAFNY#3969
 
         val methodCallProbability = if (methodCalls) {
             val methodCallProbability = min(probabilityManager.methodCall(), 0.1)
@@ -235,6 +235,7 @@ class SelectionManager(
         }
 
         val selection = listOf(
+            ASSERT to probabilityManager.assertStatement(),
             IF to ifStatementProbability,
             FOR_LOOP to forLoopProbability,
             FORALL to forallProbability,
@@ -252,9 +253,11 @@ class SelectionManager(
     @Suppress("UNUSED_PARAMETER")
     fun selectAssignType(context: GenerationContext): AssignType =
         randomWeightedSelection(
-            listOf(
-                AssignType.IDENTIFIER to probabilityManager.assignIdentifier(),
-                ARRAY_INDEX to probabilityManager.assignArrayIndex(),
+            normaliseWeights(
+                listOf(
+                    AssignType.IDENTIFIER to probabilityManager.assignIdentifier(),
+                    ARRAY_INDEX to probabilityManager.assignArrayIndex(),
+                ),
             ),
         )
 
@@ -381,6 +384,8 @@ class SelectionManager(
 
     fun withProbability(probability: Double): Boolean = random.nextFloat() < probability
 
+    fun selectAssertStatementDatastructureType(): Boolean = withProbability(probabilityManager.datatstructureType())
+
     fun selectNumberOfParameters(): Int = random.nextInt(0, MAX_PARAMETERS)
 
     fun selectArrayLength(): Int = random.nextInt(MIN_ARRAY_LENGTH, MAX_ARRAY_LENGTH)
@@ -414,7 +419,7 @@ class SelectionManager(
 
     fun selectNumberOfMethods() = random.nextInt(0, MAX_METHODS)
 
-    fun selectNumberOfTraits() = random.nextInt(0, MAX_TRAITS)
+    fun selectNumberOfTraits() = random.nextInt(0, probabilityManager.numberOfTraits())
 
     fun selectNumberOfTraitInherits() = random.nextInt(0, MAX_TRAIT_INHERITS)
 
@@ -427,6 +432,10 @@ class SelectionManager(
     fun selectBoolean(): Boolean = random.nextBoolean()
 
     fun selectInt(min: Int, max: Int): Int = if (min == max) min else random.nextInt(min, max)
+
+    fun selectMutateVerificationCondition(): Boolean = withProbability(probabilityManager.mutateVerificationCondition())
+
+    fun selectMutateAssertFalse(): Boolean = withProbability(probabilityManager.mutateAssertFalse())
 
     fun methodStatements(): Int = probabilityManager.methodStatements()
     fun ifBranchStatements(): Int = probabilityManager.ifBranchStatements()
@@ -448,7 +457,6 @@ class SelectionManager(
         private const val MAX_GLOBAL_FIELDS = 20
         private const val MAX_FUNCTION_METHODS = 3
         private const val MAX_METHODS = 3
-        private const val MAX_TRAITS = 3
         private const val MAX_TRAIT_INHERITS = 2
 
         private val LITERAL_TYPES = listOf(IntType, BoolType, CharType)

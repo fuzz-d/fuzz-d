@@ -6,7 +6,6 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.IdentifierNameGene
 import fuzzd.generator.ast.identifier_generator.NameGenerator.LoopCounterGenerator
 import fuzzd.generator.symbol_table.FunctionSymbolTable
 import fuzzd.generator.symbol_table.SymbolTable
-import kotlin.math.exp
 
 data class GenerationContext(
     val functionSymbolTable: FunctionSymbolTable,
@@ -19,11 +18,11 @@ data class GenerationContext(
     val onDemandIdentifiers: Boolean = true,
     val functionCalls: Boolean = true,
 ) {
-    private lateinit var globalState: ClassAST
+    private var globalState: ClassAST? = null
 
-    fun globalState() = globalState
+    fun globalState(): ClassAST = globalState!!
 
-    fun setGlobalState(globalState: ClassAST): GenerationContext {
+    fun setGlobalState(globalState: ClassAST?): GenerationContext {
         this.globalState = globalState
         return this
     }
@@ -102,6 +101,6 @@ data class GenerationContext(
             identifierNameGenerator,
             loopCounterGenerator,
             methodContext,
-            onDemandIdentifiers
+            onDemandIdentifiers,
         ).setGlobalState(globalState)
 }

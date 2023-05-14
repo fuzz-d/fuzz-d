@@ -31,8 +31,10 @@ import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
+import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -41,6 +43,7 @@ import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.VerificationAwareWhileLoopAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.interpreter.value.Value
@@ -61,11 +64,17 @@ interface ASTInterpreter {
 
     fun interpretStatement(statement: StatementAST, context: InterpreterContext)
 
+    fun interpretAssertStatement(assertStatement: AssertStatementAST, context: InterpreterContext)
+
+    fun interpretDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST, context: InterpreterContext)
+
     fun interpretAssignSuchThatStatement(statement: AssignSuchThatStatement, context: InterpreterContext)
 
     fun interpretMatchStatement(matchStatement: MatchStatementAST, context: InterpreterContext)
 
     fun interpretIfStatement(ifStatement: IfStatementAST, context: InterpreterContext)
+
+    fun interpretVerificationAwareWhileStatement(whileStatement: VerificationAwareWhileLoopAST, context: InterpreterContext)
 
     fun interpretCounterLimitedWhileStatement(whileStatement: CounterLimitedWhileLoopAST, context: InterpreterContext)
 

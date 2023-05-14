@@ -12,6 +12,7 @@ import kotlin.random.Random
 @OptIn(ExperimentalCli::class)
 class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
     private val seed by option(ArgType.String, "seed", "s", "Generation Seed")
+    private val verifier by option(ArgType.Boolean, "verifier", "v", "Generate annotated programs for testing the Dafny verifier")
     private val advanced by option(
         ArgType.Boolean,
         "advanced",
@@ -37,7 +38,7 @@ class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
     override fun execute() {
         val fileDir = if (outputFile != null) {
             val file = File(outputFile!!)
-            file.mkdir();
+            file.mkdir()
             file
         } else {
             val path = "output"
@@ -55,6 +56,7 @@ class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
                 instrument == true,
                 noRun != true,
                 swarm == true,
+                verifier == true,
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -78,7 +80,7 @@ class Recondition : Subcommand("recondition", "Recondition a reduced test case")
         val file = File(file)
         val logger = Logger(file.absoluteFile.parentFile, fileName = "recondition.log")
         try {
-            ReconditionRunner(file.absoluteFile.parentFile, logger).run(file, advanced == true)
+            ReconditionRunner(file.absoluteFile.parentFile, logger).run(file, advanced == true, false)
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
@@ -95,7 +97,44 @@ class Interpret : Subcommand("interpret", "Interpret a valid .dfy file") {
         val file = File(file)
         val logger = Logger(file.absoluteFile.parentFile, fileName = "interpret.log")
         try {
-            InterpreterRunner(file.absoluteFile.parentFile, logger).run(file)
+            InterpreterRunner(file.absoluteFile.parentFile, logger).run(file, false)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            logger.close()
+        }
+    }
+}
+
+@OptIn(ExperimentalCli::class)
+class VerifierFuzz : Subcommand("verifuzz", "Run fuzzing over the Dafny verifier") {
+    private val seed by option(ArgType.String, "seed", "s", "Generation Seed")
+
+    private val noRun by option(
+        ArgType.Boolean,
+        "noRun",
+        "n",
+        "Generate a program without running differential testing on it",
+    )
+
+    private val outputFile by option(ArgType.String, "output", "o", "Directory for output")
+
+    override fun execute() {
+        val fileDir = if (outputFile != null) {
+            val file = File(outputFile!!)
+            file.mkdir()
+            file
+        } else {
+            val path = "output"
+            val dir = UUID.randomUUID().toString()
+            File("$path/$dir")
+        }
+
+        val logger = Logger(fileDir)
+        val generationSeed = seed?.toLong() ?: Random.Default.nextLong()
+
+        try {
+            VerifierFuzzRunner(fileDir, logger).run(generationSeed, noRun != true)
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
@@ -110,7 +149,8 @@ fun createArgParser(): ArgParser {
     val fuzz = Fuzz()
     val recondition = Recondition()
     val interpret = Interpret()
-    parser.subcommands(fuzz, recondition, interpret)
+    val verifuzz = VerifierFuzz()
+    parser.subcommands(fuzz, recondition, interpret, verifuzz)
 
     return parser
 }

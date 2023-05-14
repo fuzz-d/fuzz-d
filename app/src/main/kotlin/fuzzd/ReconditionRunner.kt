@@ -15,26 +15,24 @@ import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.DAFNY_ADVANCED
-import fuzzd.utils.DAFNY_BODY
+import fuzzd.utils.DAFNY_MAIN
 import fuzzd.utils.DAFNY_TYPE
-import fuzzd.utils.DAFNY_WRAPPERS
 import fuzzd.utils.WRAPPER_FUNCTIONS
-import fuzzd.validator.OutputValidator
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import java.io.File
 
 class ReconditionRunner(private val dir: File, private val logger: Logger) {
-    fun run(file: File, advanced: Boolean): String? {
+    fun run(file: File, advanced: Boolean, verify: Boolean): Pair<String, DafnyAST> {
         val input = file.inputStream()
         val cs = CharStreams.fromStream(input)
         val tokens = CommonTokenStream(dafnyLexer(cs))
 
         val ast = DafnyVisitor().visitProgram(dafnyParser(tokens).program())
-        return run(ast, advanced)
+        return run(ast, advanced, verify)
     }
 
-    fun run(ast: DafnyAST, advanced: Boolean): String? {
+    fun run(ast: DafnyAST, advanced: Boolean, verify: Boolean): Pair<String, DafnyAST> {
         val advancedReconditioner = AdvancedReconditioner()
         val interpreterRunner = InterpreterRunner(dir, logger)
         try {
@@ -52,7 +50,7 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
                 writer.write { advancedAST }
                 writer.close()
 
-                val output = interpreterRunner.run(advancedAST, false)
+                val output = interpreterRunner.run(advancedAST, false, verify)
 
                 val safetyRegex = Regex("safety[0-9]+\\n")
                 val ids = safetyRegex.findAll(output.first, 0)
@@ -69,27 +67,23 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
             val reconditionedAST = reconditioner.recondition(ast)
 
             val output: Pair<String, List<StatementAST>> = runCatching {
-                interpreterRunner.run(reconditionedAST, true)
+                interpreterRunner.run(reconditionedAST, true, verify)
             }.onFailure {
                 it.printStackTrace()
             }.getOrThrow()
 
             val withPrints = reconditionedAST.addPrintStatements(output.second)
-            val reconditionedWriter = OutputWriter(dir, "$DAFNY_BODY.$DAFNY_TYPE")
+
+            val reconditionedWriter = OutputWriter(dir, "$DAFNY_MAIN.$DAFNY_TYPE")
+            WRAPPER_FUNCTIONS.forEach { wrapper -> reconditionedWriter.write { "$wrapper\n" } }
             reconditionedWriter.write { withPrints }
             reconditionedWriter.close()
 
-            val wrappersWriter = OutputWriter(dir, "$DAFNY_WRAPPERS.$DAFNY_TYPE")
-            WRAPPER_FUNCTIONS.forEach { wrapper -> wrappersWriter.write { "$wrapper\n" } }
-            wrappersWriter.close()
-
-            return output.first
+            return Pair(output.first, withPrints)
         } catch (e: Exception) {
             logger.log { "Reconditioning threw error" }
             logger.log { "===================================" }
-            logger.log { e.stackTraceToString() }
-            e.printStackTrace()
-            return null
+            throw e
         }
     }
 }

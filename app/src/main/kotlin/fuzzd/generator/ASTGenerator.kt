@@ -35,10 +35,10 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.TraitAST
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.ConstructorType.ArrayType
-import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.ast.Type.DataStructureType.MapType
 import fuzzd.generator.ast.Type.DataStructureType.SequenceType
 import fuzzd.generator.ast.Type.DataStructureType.SetType
+import fuzzd.generator.ast.Type.DatatypeType
 import fuzzd.generator.context.GenerationContext
 
 interface ASTGenerator {
@@ -72,6 +72,8 @@ interface ASTGenerator {
 
     fun generateStatement(context: GenerationContext): List<StatementAST>
 
+    fun generateAssertStatement(context: GenerationContext): List<StatementAST>
+
     fun generateMatchStatement(context: GenerationContext): List<StatementAST>
 
     fun generateIfStatement(context: GenerationContext): List<StatementAST>
@@ -81,6 +83,8 @@ interface ASTGenerator {
     fun generateForallStatement(context: GenerationContext): List<StatementAST>
 
     fun generateWhileStatement(context: GenerationContext): List<StatementAST>
+
+    fun generateVerificationAwareWhileStatement(context: GenerationContext): List<StatementAST>
 
     fun generatePrintStatement(context: GenerationContext): List<StatementAST>
 
@@ -116,6 +120,7 @@ interface ASTGenerator {
     fun generateIdentifier(
         context: GenerationContext,
         targetType: Type,
+        classInstances: Boolean = true,
         mutableConstraint: Boolean = false,
         initialisedConstraint: Boolean = true,
     ): Pair<IdentifierAST, List<StatementAST>>

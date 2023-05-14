@@ -21,6 +21,7 @@ interface ProbabilityManager {
     fun charType(): Double
 
     // statements
+    fun assertStatement(): Double
     fun ifStatement(): Double
     fun matchStatement(): Double
     fun forallStatement(): Double
@@ -73,4 +74,10 @@ interface ProbabilityManager {
     fun mainFunctionStatements(): Int
     fun matchStatements(): Int
     fun comprehensionIdentifiers(): Int
+
+    fun numberOfTraits(): Int
+
+    // verification mutation
+    fun mutateVerificationCondition(): Double
+    fun mutateAssertFalse(): Double
 }

@@ -3,12 +3,12 @@ package fuzzd.generator.ast.operators
 import fuzzd.generator.ast.ASTElement
 import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.BoolType
-import fuzzd.generator.ast.Type.IntType
-import fuzzd.generator.ast.Type.LiteralType
 import fuzzd.generator.ast.Type.DataStructureType.MapType
 import fuzzd.generator.ast.Type.DataStructureType.MultisetType
 import fuzzd.generator.ast.Type.DataStructureType.SequenceType
 import fuzzd.generator.ast.Type.DataStructureType.SetType
+import fuzzd.generator.ast.Type.IntType
+import fuzzd.generator.ast.Type.LiteralType
 
 /**
  * Supported operators with associated precedences taken from documentation
@@ -49,8 +49,14 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
     object LessThanEqualOperator : ComparisonBinaryOperator("<=")
     object GreaterThanOperator : ComparisonBinaryOperator(">")
     object GreaterThanEqualOperator : ComparisonBinaryOperator(">=")
-    object EqualsOperator : ComparisonBinaryOperator("==")
-    object NotEqualsOperator : ComparisonBinaryOperator("!=")
+
+    object EqualsOperator : ComparisonBinaryOperator("==") {
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2
+    }
+
+    object NotEqualsOperator : ComparisonBinaryOperator("!=") {
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2
+    }
 
     /* -------------------------------- NUMERICAL (& LIST) OPERATORS --------------------------------- */
 
@@ -131,6 +137,16 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
                 .any { opType ->
                     opType.sealedSubclasses.any { op ->
                         op.objectInstance?.supportsInput(type, type) ?: false
+                    }
+                }
+        }
+
+        fun isBinaryType(type: Type, outputType: Type): Boolean {
+            return BinaryOperator::class.sealedSubclasses
+                .any { opType ->
+                    opType.sealedSubclasses.any { op ->
+                        (op.objectInstance?.supportsInput(type, type) ?: false) &&
+                            (op.objectInstance?.outputType(type, type) == outputType)
                     }
                 }
         }

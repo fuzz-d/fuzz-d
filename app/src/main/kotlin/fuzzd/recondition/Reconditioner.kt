@@ -46,9 +46,11 @@ import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
+import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
+import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -57,6 +59,7 @@ import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.VerificationAwareWhileLoopAST
 import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.StatementAST.WhileLoopAST
 import fuzzd.generator.ast.TopLevelAST
@@ -91,11 +94,11 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
         return DafnyAST(
             reconditionedDatatypes +
-                    reconditionedTraits +
-                    reconditionedClasses +
-                    reconditionedFunctionMethods +
-                    reconditionedMethods +
-                    reconditionedMain,
+                reconditionedTraits +
+                reconditionedClasses +
+                reconditionedFunctionMethods +
+                reconditionedMethods +
+                reconditionedMain,
         )
     }
 
@@ -141,6 +144,8 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         SequenceAST(sequence.statements.map(this::reconditionStatement))
 
     override fun reconditionStatement(statement: StatementAST) = when (statement) {
+        is DisjunctiveAssertStatementAST -> reconditionDisjunctiveAssertStatement(statement)
+        is AssertStatementAST -> reconditionAssertStatement(statement)
         is BreakAST -> statement
         is MultiAssignmentAST -> reconditionMultiAssignmentAST(statement) // covers AssignmentAST
         is MultiTypedDeclarationAST -> reconditionMultiTypedDeclarationAST(statement)
@@ -154,6 +159,13 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         is VoidMethodCallAST -> reconditionVoidMethodCall(statement)
         else -> throw UnsupportedOperationException()
     }
+
+    override fun reconditionDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST): DisjunctiveAssertStatementAST = DisjunctiveAssertStatementAST(
+        reconditionExpression(assertStatement.baseExpr),
+        assertStatement.exprs.map(this::reconditionExpression).toMutableList(),
+    )
+
+    override fun reconditionAssertStatement(assertStatement: AssertStatementAST): AssertStatementAST = AssertStatementAST(reconditionExpression(assertStatement.expr))
 
     override fun reconditionMultiAssignmentAST(multiAssignmentAST: MultiAssignmentAST) = MultiAssignmentAST(
         multiAssignmentAST.identifiers.map(this::reconditionIdentifier),
@@ -188,7 +200,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         forLoopAST.identifier,
         reconditionExpression(forLoopAST.bottomRange),
         reconditionExpression(forLoopAST.topRange),
-        reconditionSequence(forLoopAST.body)
+        reconditionSequence(forLoopAST.body),
     )
 
     override fun reconditionForallStatement(forallStatementAST: ForallStatementAST): ForallStatementAST {
@@ -200,21 +212,35 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             AssignmentAST(
                 ArrayIndexAST(reconditionIdentifier(arrayIndex.array), arrayIndex.index),
                 reconditionExpression(forallStatementAST.assignment.expr),
-            )
+            ),
         )
     }
 
     override fun reconditionWhileLoopAST(whileLoopAST: WhileLoopAST) = when (whileLoopAST) {
+        is VerificationAwareWhileLoopAST -> VerificationAwareWhileLoopAST(
+            whileLoopAST.counter,
+            whileLoopAST.modset,
+            whileLoopAST.counterInitialisation,
+            whileLoopAST.terminationCheck,
+            whileLoopAST.counterUpdate,
+            reconditionExpression(whileLoopAST.condition),
+            whileLoopAST.decreases,
+            whileLoopAST.invariants,
+            reconditionSequence(whileLoopAST.body),
+        )
+
         is CounterLimitedWhileLoopAST -> CounterLimitedWhileLoopAST(
             whileLoopAST.counterInitialisation,
             whileLoopAST.terminationCheck,
             whileLoopAST.counterUpdate,
             reconditionExpression(whileLoopAST.condition),
+            whileLoopAST.annotations,
             reconditionSequence(whileLoopAST.body),
         )
 
         else -> WhileLoopAST(
             reconditionExpression(whileLoopAST.condition),
+            whileLoopAST.annotations,
             reconditionSequence(whileLoopAST.body),
         )
     }
@@ -484,6 +510,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         )
 
     override fun reconditionSetDisplay(setDisplay: SetDisplayAST): ExpressionAST = SetDisplayAST(
+        setDisplay.innerType,
         setDisplay.exprs.map(this::reconditionExpression),
         setDisplay.isMultiset,
     )
@@ -553,12 +580,14 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
             SequenceComprehensionAST(
                 FunctionMethodCallAST(ABSOLUTE.signature, listOf(sequenceComprehension.size)),
                 sequenceComprehension.identifier,
+                sequenceComprehension.annotations,
                 reconditionExpression(sequenceComprehension.expr),
             )
         } else {
             SequenceComprehensionAST(
                 sequenceComprehension.size,
                 sequenceComprehension.identifier,
+                sequenceComprehension.annotations,
                 reconditionExpression(sequenceComprehension.expr),
             )
         }

@@ -7,8 +7,8 @@ open class FunctionMethodAST(
     val signature: FunctionMethodSignatureAST,
     val body: ExpressionAST,
 ) : TopLevelAST() {
-    constructor(name: String, returnType: Type, params: List<IdentifierAST>, body: ExpressionAST) :
-        this(FunctionMethodSignatureAST(name, returnType, params), body)
+    constructor(name: String, returnType: Type, params: List<IdentifierAST>, annotations: List<VerifierAnnotationAST>, body: ExpressionAST) :
+        this(FunctionMethodSignatureAST(name, returnType, params, annotations), body)
 
     fun params(): List<IdentifierAST> = signature.params
 
@@ -16,7 +16,7 @@ open class FunctionMethodAST(
 
     fun returnType(): Type = signature.returnType
 
-    override fun toString(): String = "$signature {\n${indent(body)}\n}"
+    override fun toString(): String = "$signature{\n${indent(body)}\n}"
 
     override fun equals(other: Any?): Boolean =
         other is FunctionMethodAST && other.signature == signature && other.body == body
@@ -32,9 +32,19 @@ open class FunctionMethodSignatureAST(
     val name: String,
     val returnType: Type,
     val params: List<IdentifierAST>,
+    val annotations: List<VerifierAnnotationAST>,
 ) : ASTElement {
-    override fun toString(): String =
-        "function $name(${params.joinToString(", ") { param -> "${param.name}: ${param.type()}" }}): $returnType"
+    override fun toString(): String {
+        val sb = StringBuilder()
+        sb.append("function $name(${params.joinToString(", ") { param -> "${param.name}: ${param.type()}" }}): $returnType ")
+
+        if (annotations.isNotEmpty()) {
+            sb.append("\n")
+            annotations.forEach { sb.appendLine(indent(it)) }
+        }
+
+        return sb.toString()
+    }
 
     override fun equals(other: Any?): Boolean =
         other is FunctionMethodSignatureAST && other.name == name && other.returnType == returnType && other.params == params
@@ -50,4 +60,4 @@ open class FunctionMethodSignatureAST(
 class ClassInstanceFunctionMethodSignatureAST(
     val classInstance: IdentifierAST,
     val signature: FunctionMethodSignatureAST,
-) : FunctionMethodSignatureAST("$classInstance.${signature.name}", signature.returnType, signature.params)
+) : FunctionMethodSignatureAST("$classInstance.${signature.name}", signature.returnType, signature.params, signature.annotations)
