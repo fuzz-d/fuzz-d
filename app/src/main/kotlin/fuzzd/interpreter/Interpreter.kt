@@ -133,7 +133,7 @@ import java.math.BigInteger.ONE
 import java.math.BigInteger.ZERO
 import java.math.BigInteger.valueOf
 
-class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
+class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : ASTInterpreter {
     private val output = StringBuilder()
     private var doBreak = false
 
@@ -794,7 +794,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         returns.forEach { methodContext.fields.create(it) }
         interpretSequence(body, methodContext)
 
-        if (returns.isNotEmpty()) {
+        if (verify && returns.isNotEmpty()) {
             val returnCondition = returns
                 .map { Pair(it, interpretIdentifier(it, methodContext).toExpressionAST()) }
                 .map { BinaryExpressionAST(it.first, EqualsOperator, it.second) }

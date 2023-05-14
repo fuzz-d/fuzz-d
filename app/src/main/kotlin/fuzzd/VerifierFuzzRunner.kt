@@ -1,7 +1,6 @@
 package fuzzd
 
 import fuzzd.generator.Generator
-import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.probability_manager.BaseProbabilityManager
 import fuzzd.generator.selection.probability_manager.VerifierProbabilityManager
@@ -38,7 +37,7 @@ class VerifierFuzzRunner(private val dir: File, private val logger: Logger) {
             originalWriter.write { ast }
             originalWriter.close()
 
-            val output = reconditionRunner.run(ast, false)
+            val output = reconditionRunner.run(ast, advanced = false, verify = true)
 
             if (run) {
                 val outputValidator = OutputValidator()

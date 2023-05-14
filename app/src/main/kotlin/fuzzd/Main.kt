@@ -80,7 +80,7 @@ class Recondition : Subcommand("recondition", "Recondition a reduced test case")
         val file = File(file)
         val logger = Logger(file.absoluteFile.parentFile, fileName = "recondition.log")
         try {
-            ReconditionRunner(file.absoluteFile.parentFile, logger).run(file, advanced == true)
+            ReconditionRunner(file.absoluteFile.parentFile, logger).run(file, advanced == true, false)
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
@@ -97,7 +97,7 @@ class Interpret : Subcommand("interpret", "Interpret a valid .dfy file") {
         val file = File(file)
         val logger = Logger(file.absoluteFile.parentFile, fileName = "interpret.log")
         try {
-            InterpreterRunner(file.absoluteFile.parentFile, logger).run(file)
+            InterpreterRunner(file.absoluteFile.parentFile, logger).run(file, false)
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {

@@ -23,16 +23,16 @@ import org.antlr.v4.runtime.CommonTokenStream
 import java.io.File
 
 class ReconditionRunner(private val dir: File, private val logger: Logger) {
-    fun run(file: File, advanced: Boolean): Pair<String, DafnyAST> {
+    fun run(file: File, advanced: Boolean, verify: Boolean): Pair<String, DafnyAST> {
         val input = file.inputStream()
         val cs = CharStreams.fromStream(input)
         val tokens = CommonTokenStream(dafnyLexer(cs))
 
         val ast = DafnyVisitor().visitProgram(dafnyParser(tokens).program())
-        return run(ast, advanced)
+        return run(ast, advanced, verify)
     }
 
-    fun run(ast: DafnyAST, advanced: Boolean): Pair<String, DafnyAST> {
+    fun run(ast: DafnyAST, advanced: Boolean, verify: Boolean): Pair<String, DafnyAST> {
         val advancedReconditioner = AdvancedReconditioner()
         val interpreterRunner = InterpreterRunner(dir, logger)
         try {
@@ -50,7 +50,7 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
                 writer.write { advancedAST }
                 writer.close()
 
-                val output = interpreterRunner.run(advancedAST, false)
+                val output = interpreterRunner.run(advancedAST, false, verify)
 
                 val safetyRegex = Regex("safety[0-9]+\\n")
                 val ids = safetyRegex.findAll(output.first, 0)
@@ -67,7 +67,7 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
             val reconditionedAST = reconditioner.recondition(ast)
 
             val output: Pair<String, List<StatementAST>> = runCatching {
-                interpreterRunner.run(reconditionedAST, true)
+                interpreterRunner.run(reconditionedAST, true, verify)
             }.onFailure {
                 it.printStackTrace()
             }.getOrThrow()

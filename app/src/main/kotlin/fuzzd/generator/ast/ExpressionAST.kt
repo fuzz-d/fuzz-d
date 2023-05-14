@@ -369,7 +369,14 @@ sealed class ExpressionAST : ASTElement {
     class ClassInstanceFieldAST(
         val classInstance: IdentifierAST,
         val classField: IdentifierAST,
-    ) : IdentifierAST("$classInstance.$classField", classField.type(), mutable = true, initialised = true)
+    ) : IdentifierAST(
+        "$classInstance.$classField",
+        classField.type(),
+        mutable = classField.mutable,
+        initialised = classInstance.initialised() && classField.initialised(),
+    ) {
+        override fun initialise(): IdentifierAST = ClassInstanceFieldAST(classInstance, classField.initialise())
+    }
 
     class DatatypeDestructorAST(
         val datatypeInstance: ExpressionAST,

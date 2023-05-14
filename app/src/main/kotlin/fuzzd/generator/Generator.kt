@@ -251,7 +251,7 @@ class Generator(
         }
 
         val body = generateSequence(context, selectionManager.mainFunctionStatements())
-        return MainFunctionAST(SequenceAST(globalStateDependents + body.statements /*+ prints*/))
+        return MainFunctionAST(SequenceAST(globalStateDependents + body.statements))
     }
 
     override fun generateTrait(context: GenerationContext): TraitAST {
@@ -824,10 +824,9 @@ class Generator(
             ARRAY_INDEX -> generateArrayIndex(context, targetType)
         }
 
-        context.symbolTable.add(identifier.initialise())
-
         val (expr, exprDeps) = generateExpression(context, targetType)
 
+        context.symbolTable.add(identifier.initialise())
         return identDeps + exprDeps + AssignmentAST(identifier, expr)
     }
 
@@ -1062,9 +1061,7 @@ class Generator(
     ): Pair<IdentifierAST, List<StatementAST>> {
         val withType = context.symbolTable.withType(targetType)
             .filter { classInstances || it !is ClassInstanceFieldAST }
-            .filter {
-                (!mutableConstraint || it.mutable) && (!initialisedConstraint || it.initialised())
-            }
+            .filter { (!mutableConstraint || it.mutable) && (!initialisedConstraint || it.initialised()) }
 
         val deps = mutableListOf<StatementAST>()
 

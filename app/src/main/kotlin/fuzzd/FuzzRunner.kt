@@ -46,7 +46,7 @@ class FuzzRunner(private val dir: File, private val logger: Logger) {
             originalWriter.write { ast }
             originalWriter.close()
 
-            val output = reconditionRunner.run(ast, advanced)
+            val output = reconditionRunner.run(ast, advanced, verifier)
 
             if (run) {
                 // differential testing; log results
