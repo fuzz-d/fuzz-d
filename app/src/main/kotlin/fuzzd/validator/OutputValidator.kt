@@ -1,6 +1,6 @@
 package fuzzd.validator
 
-import fuzzd.logging.OutputWriter
+import fuzzd.validator.executor.ExecutionResult
 import fuzzd.validator.executor.execution_handler.CsExecutionHandler
 import fuzzd.validator.executor.execution_handler.GoExecutionHandler
 import fuzzd.validator.executor.execution_handler.JavaExecutionHandler
@@ -12,19 +12,11 @@ import java.io.File
 class OutputValidator {
     fun validateFile(
         fileDir: File,
-        wrapperFileName: String,
-        bodyFileName: String,
         mainFileName: String,
         targetOutput: String?,
         verifier: Boolean,
     ): ValidationResult {
-        val writer = OutputWriter(fileDir, "$mainFileName.dfy")
         val fileDirPath = fileDir.path
-
-        writer.write { File("$fileDirPath/$wrapperFileName.dfy").readText() }
-        writer.write { File("$fileDirPath/$bodyFileName.dfy").readText() }
-
-        writer.close()
 
         val executionHandlers = listOf(
             CsExecutionHandler(fileDirPath, mainFileName),
@@ -44,6 +36,13 @@ class OutputValidator {
 
             ValidationResult(executionHandlers, null, targetOutput)
         }
+    }
+
+    fun verifyFiles(fileDir: File, fileNames: List<String>): List<ExecutionResult> {
+        val verificationHandlers = fileNames.map { VerificationHandler(fileDir.path, it) }
+        execute(verificationHandlers)
+
+        return verificationHandlers.map { it.verificationResult() }
     }
 
     private fun execute(runnables: List<Runnable>) {

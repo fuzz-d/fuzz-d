@@ -8,11 +8,9 @@ import fuzzd.generator.selection.probability_manager.RandomProbabilityManager
 import fuzzd.generator.selection.probability_manager.VerifierProbabilityManager
 import fuzzd.logging.Logger
 import fuzzd.logging.OutputWriter
-import fuzzd.utils.DAFNY_BODY
 import fuzzd.utils.DAFNY_GENERATED
 import fuzzd.utils.DAFNY_MAIN
 import fuzzd.utils.DAFNY_TYPE
-import fuzzd.utils.DAFNY_WRAPPERS
 import fuzzd.validator.OutputValidator
 import java.io.File
 import kotlin.random.Random
@@ -52,7 +50,7 @@ class FuzzRunner(private val dir: File, private val logger: Logger) {
 
             if (run) {
                 // differential testing; log results
-                val validationResult = validator.validateFile(dir, DAFNY_WRAPPERS, DAFNY_BODY, DAFNY_MAIN, output.first, verifier)
+                val validationResult = validator.validateFile(dir, DAFNY_MAIN, output.first, verifier)
                 logger.log { validationResult }
             }
         } catch (e: Exception) {

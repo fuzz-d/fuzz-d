@@ -15,9 +15,8 @@ import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.DAFNY_ADVANCED
-import fuzzd.utils.DAFNY_BODY
+import fuzzd.utils.DAFNY_MAIN
 import fuzzd.utils.DAFNY_TYPE
-import fuzzd.utils.DAFNY_WRAPPERS
 import fuzzd.utils.WRAPPER_FUNCTIONS
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -74,15 +73,13 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
             }.getOrThrow()
 
             val withPrints = reconditionedAST.addPrintStatements(output.second)
-            val reconditionedWriter = OutputWriter(dir, "$DAFNY_BODY.$DAFNY_TYPE")
+
+            val reconditionedWriter = OutputWriter(dir, "$DAFNY_MAIN.$DAFNY_TYPE")
+            WRAPPER_FUNCTIONS.forEach { wrapper -> reconditionedWriter.write { "$wrapper\n" } }
             reconditionedWriter.write { withPrints }
             reconditionedWriter.close()
 
-            val wrappersWriter = OutputWriter(dir, "$DAFNY_WRAPPERS.$DAFNY_TYPE")
-            WRAPPER_FUNCTIONS.forEach { wrapper -> wrappersWriter.write { "$wrapper\n" } }
-            wrappersWriter.close()
-
-            return Pair(output.first, reconditionedAST)
+            return Pair(output.first, withPrints)
         } catch (e: Exception) {
             logger.log { "Reconditioning threw error" }
             logger.log { "===================================" }
