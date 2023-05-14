@@ -76,6 +76,6 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun numberOfTraits(): Int = 0
 
     // Verification mutation
-    override fun mutateVerificationCondition(): Double = 0.4
+    override fun mutateVerificationCondition(): Double = 0.1
     override fun mutateAssertFalse(): Double = 0.3
 }
