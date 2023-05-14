@@ -1,6 +1,7 @@
 package fuzzd
 
 import fuzzd.generator.Generator
+import fuzzd.generator.ast.DafnyAST
 import fuzzd.generator.selection.SelectionManager
 import fuzzd.generator.selection.probability_manager.BaseProbabilityManager
 import fuzzd.generator.selection.probability_manager.VerifierProbabilityManager
@@ -42,6 +43,7 @@ class VerifierFuzzRunner(private val dir: File, private val logger: Logger) {
             if (run) {
                 val outputValidator = OutputValidator()
                 // verify original main.dfy
+                logger.log { "==========================================================" }
                 logger.log { "Verifying original main.dfy file" }
                 val result = outputValidator.verifyFiles(dir, listOf(DAFNY_MAIN))
                 logger.log { result.first() }
@@ -67,6 +69,7 @@ class VerifierFuzzRunner(private val dir: File, private val logger: Logger) {
                         val mutantResults = outputValidator.verifyFiles(dir, mutantFiles)
 
                         mutantFiles.zip(mutantResults).forEach { (file, result) ->
+                            logger.log { "==========================================================" }
                             logger.log { "File $file results: \n" }
                             logger.log { result }
                         }

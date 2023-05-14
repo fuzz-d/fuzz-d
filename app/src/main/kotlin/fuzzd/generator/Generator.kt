@@ -1120,7 +1120,7 @@ class Generator(
                 innerType,
             )
         }.foldPair()
-        return Pair(SetDisplayAST(exprs, isMultiset), exprDeps)
+        return Pair(SetDisplayAST(innerType, exprs, isMultiset), exprDeps)
     }
 
     private fun generateBinaryExpressionWithIdentifier(

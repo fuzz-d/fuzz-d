@@ -200,7 +200,7 @@ sealed class ExpressionAST : ASTElement {
             }
         }
 
-        override fun type(): Type = MultisetType((expr.type() as SequenceType).innerType)
+        override fun type(): MultisetType = MultisetType((expr.type() as SequenceType).innerType)
 
         override fun toString(): String = "multiset($expr)"
     }
@@ -577,13 +577,7 @@ sealed class ExpressionAST : ASTElement {
     class DataStructureMapComprehensionAST(identifier: IdentifierAST, val dataStructure: ExpressionAST, assign: Pair<ExpressionAST, ExpressionAST>) :
         MapComprehensionAST(identifier, BinaryExpressionAST(identifier, MembershipOperator, dataStructure), assign)
 
-    class SetDisplayAST(val exprs: List<ExpressionAST>, val isMultiset: Boolean) : ExpressionAST() {
-        private var innerType = if (exprs.isEmpty()) PlaceholderType else exprs[0].type()
-
-        constructor(exprs: List<ExpressionAST>, isMultiset: Boolean, innerType: Type) : this(exprs, isMultiset) {
-            this.innerType = innerType
-        }
-
+    class SetDisplayAST(val innerType: Type, val exprs: List<ExpressionAST>, val isMultiset: Boolean) : ExpressionAST() {
         override fun type(): Type = if (isMultiset) MultisetType(innerType) else SetType(innerType)
 
         override fun toString(): String = "${if (isMultiset) "multiset" else ""}{${exprs.joinToString(", ")}}"

@@ -794,7 +794,7 @@ class AdvancedReconditioner {
 
     fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): Pair<ExpressionAST, List<StatementAST>> {
         val (exprs, exprDependents) = reconditionExpressionList(setDisplayAST.exprs)
-        return Pair(SetDisplayAST(exprs, setDisplayAST.isMultiset), exprDependents)
+        return Pair(SetDisplayAST(setDisplayAST.innerType, exprs, setDisplayAST.isMultiset), exprDependents)
     }
 
     fun reconditionSetComprehension(setComprehensionAST: SetComprehensionAST): Pair<ExpressionAST, List<StatementAST>> =
@@ -813,8 +813,8 @@ class AdvancedReconditioner {
             Pair(IntRangeSetComprehensionAST(setComprehensionAST.identifier, bottomRange, topRange, expr), bottomRangeDependents + topRangeDependents)
         } else {
             val temp = IdentifierAST(tempGenerator.newValue(), setComprehensionAST.type())
-            val tempDecl = DeclarationAST(temp, SetDisplayAST(emptyList(), false, setComprehensionAST.type().innerType))
-            val update = AssignmentAST(temp, BinaryExpressionAST(temp, UnionOperator, SetDisplayAST(listOf(expr), false)))
+            val tempDecl = DeclarationAST(temp, SetDisplayAST(setComprehensionAST.type().innerType, emptyList(), false))
+            val update = AssignmentAST(temp, BinaryExpressionAST(temp, UnionOperator, SetDisplayAST(expr.type(), listOf(expr), false)))
             val counter = setComprehensionAST.identifier
             val loop = ForLoopAST(counter, bottomRange, topRange, SequenceAST(exprDependents + update))
 
@@ -830,7 +830,7 @@ class AdvancedReconditioner {
             Pair(DataStructureSetComprehensionAST(setComprehensionAST.identifier, dataStructure, expr), dataStructureDependents)
         } else {
             val temp = IdentifierAST(tempGenerator.newValue(), setComprehensionAST.type())
-            val tempDecl = DeclarationAST(temp, SetDisplayAST(emptyList(), false, setComprehensionAST.type()))
+            val tempDecl = DeclarationAST(temp, SetDisplayAST(setComprehensionAST.type().innerType, emptyList(), false))
             val dataStructureType = dataStructure.type() as DataStructureType
             val (dataStructureTemp, dataStructureExpr) = if (dataStructureType is SequenceType || dataStructureType is MultisetType) {
                 val counter = IdentifierAST(tempGenerator.newValue(), (dataStructure.type() as DataStructureType).innerType)
@@ -844,10 +844,13 @@ class AdvancedReconditioner {
 
             val dataStructureDecl = DeclarationAST(dataStructureTemp, dataStructureExpr)
             val assignSuchThat = DataStructureAssignSuchThatStatement(setComprehensionAST.identifier, dataStructureTemp)
-            val tempUpdate = AssignmentAST(temp, BinaryExpressionAST(temp, UnionOperator, SetDisplayAST(listOf(setComprehensionAST.identifier), false)))
+            val tempUpdate = AssignmentAST(
+                temp,
+                BinaryExpressionAST(temp, UnionOperator, SetDisplayAST(setComprehensionAST.type().innerType, listOf(setComprehensionAST.identifier), false)),
+            )
             val dataStructureUpdate = AssignmentAST(
                 dataStructureTemp,
-                BinaryExpressionAST(dataStructureTemp, DifferenceOperator, SetDisplayAST(listOf(setComprehensionAST.identifier), false)),
+                BinaryExpressionAST(dataStructureTemp, DifferenceOperator, SetDisplayAST(setComprehensionAST.type().innerType, listOf(setComprehensionAST.identifier), false)),
             )
             val loop = WhileLoopAST(
                 BinaryExpressionAST(ModulusExpressionAST(dataStructureTemp), NotEqualsOperator, IntegerLiteralAST(0)),
@@ -925,8 +928,10 @@ class AdvancedReconditioner {
             val dataStructureDecl = DeclarationAST(dataStructureTemp, dataStructureExpr)
             val assignSuchThat = DataStructureAssignSuchThatStatement(mapComprehensionAST.identifier, dataStructureTemp)
             val tempUpdate = AssignmentAST(temp, IndexAssignAST(temp, key, value))
-            val dataStructureUpdate =
-                AssignmentAST(dataStructureTemp, BinaryExpressionAST(dataStructureTemp, DifferenceOperator, SetDisplayAST(listOf(mapComprehensionAST.identifier), false)))
+            val dataStructureUpdate = AssignmentAST(
+                dataStructureTemp,
+                BinaryExpressionAST(dataStructureTemp, DifferenceOperator, SetDisplayAST(mapComprehensionAST.type().keyType, listOf(mapComprehensionAST.identifier), false)),
+            )
             val loop = WhileLoopAST(
                 BinaryExpressionAST(ModulusExpressionAST(dataStructureTemp), NotEqualsOperator, IntegerLiteralAST(0)),
                 listOf(DecreasesAnnotation(ModulusExpressionAST(dataStructureTemp))),

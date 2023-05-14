@@ -966,7 +966,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
     override fun visitSetDisplay(ctx: SetDisplayContext): SetDisplayAST {
         val exprs = ctx.expression().map(this::visitExpression)
-        return SetDisplayAST(exprs, ctx.MULTISET() != null)
+        return SetDisplayAST(if (exprs.isEmpty()) PlaceholderType else exprs[0].type(), exprs, ctx.MULTISET() != null)
     }
 
     override fun visitSetComprehension(ctx: SetComprehensionContext): SetComprehensionAST {

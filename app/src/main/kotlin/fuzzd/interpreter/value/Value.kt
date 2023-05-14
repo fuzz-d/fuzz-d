@@ -12,6 +12,7 @@ import fuzzd.generator.ast.ExpressionAST.MapConstructorAST
 import fuzzd.generator.ast.ExpressionAST.SequenceDisplayAST
 import fuzzd.generator.ast.ExpressionAST.SetDisplayAST
 import fuzzd.generator.ast.ExpressionAST.StringLiteralAST
+import fuzzd.generator.ast.Type
 import fuzzd.generator.ast.Type.DataStructureType.MapType
 import fuzzd.interpreter.InterpreterContext
 import fuzzd.utils.reduceLists
@@ -177,7 +178,7 @@ sealed class Value {
         }
     }
 
-    data class MultisetValue(val map: Map<Value, Int>) : DataStructureValue() {
+    data class MultisetValue(val keyType: Type, val map: Map<Value, Int>) : DataStructureValue() {
         override fun contains(item: Value): BoolValue = BoolValue(map.containsKey(item) && map[item] != 0)
         override fun notContains(item: Value): BoolValue = BoolValue(!map.containsKey(item) || map[item] == 0)
         override fun modulus(): IntValue = IntValue(valueOf(map.values.sum().toLong()))
@@ -193,14 +194,15 @@ sealed class Value {
 
         fun disjoint(other: MultisetValue): BoolValue = BoolValue(map.keys.none { it in other.map })
         fun union(other: MultisetValue): MultisetValue = MultisetValue(
+            keyType,
             other.map.keys.fold(map.toMutableMap()) { m, k ->
                 if (m.containsKey(k)) m[k] = m[k]!! + other.map[k]!! else m[k] = other.map[k]!!
                 m
             },
         )
 
-        fun difference(other: MultisetValue): MultisetValue = MultisetValue(multisetDifference(map, other.map))
-        fun intersect(other: MultisetValue): MultisetValue = MultisetValue(multisetIntersect(map, other.map))
+        fun difference(other: MultisetValue): MultisetValue = MultisetValue(keyType, multisetDifference(map, other.map))
+        fun intersect(other: MultisetValue): MultisetValue = MultisetValue(keyType, multisetIntersect(map, other.map))
 
         fun get(key: Value): IntValue = if (key in map) {
             IntValue(valueOf(map[key]!!.toLong()))
@@ -209,24 +211,24 @@ sealed class Value {
         }
 
         fun assign(key: Value, value: Int): MultisetValue = if (value == 0) {
-            MultisetValue(map - setOf(key))
+            MultisetValue(keyType, map - setOf(key))
         } else {
-            MultisetValue(map + mapOf(key to value))
+            MultisetValue(keyType, map + mapOf(key to value))
         }
 
         override fun equals(other: Any?): Boolean = other is MultisetValue && map == other.map
         override fun hashCode(): Int = map.hashCode()
 
         override fun toExpressionAST(): ExpressionAST =
-            SetDisplayAST(map.map { (k, v) -> List(v) { k.toExpressionAST() } }.reduceLists(), true)
+            SetDisplayAST(keyType, map.map { (k, v) -> List(v) { k.toExpressionAST() } }.reduceLists(), true)
     }
 
-    data class SetValue(val set: Set<Value>) : DataStructureValue() {
+    data class SetValue(val innerType: Type, val set: Set<Value>) : DataStructureValue() {
         override fun contains(item: Value): BoolValue = BoolValue(item in set)
         override fun notContains(item: Value): BoolValue = BoolValue(item !in set)
         override fun modulus(): IntValue = IntValue(valueOf(set.size.toLong()))
         override fun elements(): List<Value> = set.toList()
-        override fun toExpressionAST(): ExpressionAST = SetDisplayAST(set.map { it.toExpressionAST() }, false)
+        override fun toExpressionAST(): ExpressionAST = SetDisplayAST(innerType, set.map { it.toExpressionAST() }, false)
 
         fun properSubsetOf(other: SetValue): BoolValue =
             BoolValue(other.set.containsAll(set) && (other.set subtract set).isNotEmpty())
@@ -237,9 +239,9 @@ sealed class Value {
             BoolValue(set.containsAll(other.set) && (set subtract other.set).isNotEmpty())
 
         fun disjoint(other: SetValue): BoolValue = BoolValue(set.none { other.set.contains(it) })
-        fun union(other: SetValue): SetValue = SetValue(set union other.set)
-        fun difference(other: SetValue): SetValue = SetValue(set subtract other.set)
-        fun intersect(other: SetValue): SetValue = SetValue(set intersect other.set)
+        fun union(other: SetValue): SetValue = SetValue(innerType, set union other.set)
+        fun difference(other: SetValue): SetValue = SetValue(innerType, set subtract other.set)
+        fun intersect(other: SetValue): SetValue = SetValue(innerType, set intersect other.set)
 
         override fun equals(other: Any?): Boolean = (other is SetValue) && set == other.set
         override fun hashCode(): Int = set.hashCode()

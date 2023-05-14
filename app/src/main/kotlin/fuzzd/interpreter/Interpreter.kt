@@ -978,7 +978,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         val value = interpretExpression(multisetConversion.expr, context)
         val sequenceValues =
             if (value is SequenceValue) value.seq else (value as StringValue).value.map { CharValue(it) }
-        return MultisetValue(sequenceValues.toMultiset())
+        return MultisetValue(multisetConversion.type().innerType, sequenceValues.toMultiset())
     }
 
     override fun interpretIdentifier(identifier: IdentifierAST, context: InterpreterContext): Value =
@@ -1046,7 +1046,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
 
     override fun interpretSetDisplay(setDisplay: SetDisplayAST, context: InterpreterContext): Value {
         val values = setDisplay.exprs.map { interpretExpression(it, context) }
-        return if (setDisplay.isMultiset) MultisetValue(values.toMultiset()) else SetValue(values.toSet())
+        return if (setDisplay.isMultiset) MultisetValue(setDisplay.innerType, values.toMultiset()) else SetValue(setDisplay.innerType, values.toSet())
     }
 
     override fun interpretSetComprehension(setComprehension: SetComprehensionAST, context: InterpreterContext): Value =
@@ -1070,7 +1070,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             i += ONE
         }
 
-        return SetValue(set)
+        return SetValue(setComprehension.type().innerType, set)
     }
 
     private fun interpretDataStructureSetComprehension(setComprehension: DataStructureSetComprehensionAST, context: InterpreterContext): Value {
@@ -1083,7 +1083,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
             set.add(interpretExpression(setComprehension.expr, exprContext))
         }
 
-        return SetValue(set)
+        return SetValue(setComprehension.type().innerType, set)
     }
 
     override fun interpretSequenceDisplay(sequenceDisplay: SequenceDisplayAST, context: InterpreterContext): Value =

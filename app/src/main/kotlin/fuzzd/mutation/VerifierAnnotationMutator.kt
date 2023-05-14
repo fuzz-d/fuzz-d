@@ -28,7 +28,14 @@ class VerifierAnnotationMutator(val selectionManager: SelectionManager) {
 
     private fun <T> mutate(element: T, block: () -> T): T = if (mutationUsed) element else block()
 
-    fun mutateDafny(dafny: DafnyAST): DafnyAST = DafnyAST(dafny.topLevelElements.map(this::mutateTopLevel))
+    fun mutateDafny(dafny: DafnyAST): DafnyAST {
+        var mutated: DafnyAST
+        do {
+            mutated = DafnyAST(dafny.topLevelElements.map(this::mutateTopLevel))
+        } while (!mutationUsed)
+
+        return mutated
+    }
 
     fun mutateTopLevel(topLevel: TopLevelAST): TopLevelAST = mutate(topLevel) {
         when (topLevel) {
@@ -110,6 +117,7 @@ class VerifierAnnotationMutator(val selectionManager: SelectionManager) {
         if (expression is BinaryExpressionAST) {
             when {
                 expression.operator is EqualsOperator && selectionManager.selectMutateVerificationCondition() -> {
+                    println("Selected mutation of $expression")
                     mutationUsed = true
                     if (selectionManager.selectMutateAssertFalse()) {
                         BooleanLiteralAST(false)

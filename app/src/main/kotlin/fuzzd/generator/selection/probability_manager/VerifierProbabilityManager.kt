@@ -21,7 +21,7 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun charType(): Double = probabilityManager.charType()
 
     // Statements
-    override fun assertStatement(): Double = 0.25
+    override fun assertStatement(): Double = 0.4
     override fun ifStatement(): Double = probabilityManager.ifStatement()
     override fun matchStatement(): Double = probabilityManager.matchStatement()
     override fun forallStatement(): Double = 0.0
@@ -76,6 +76,6 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun numberOfTraits(): Int = 0
 
     // Verification mutation
-    override fun mutateVerificationCondition(): Double = 0.1
+    override fun mutateVerificationCondition(): Double = 0.4
     override fun mutateAssertFalse(): Double = 0.3
 }
