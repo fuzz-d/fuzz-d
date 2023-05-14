@@ -74,4 +74,8 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun matchStatements(): Int = 3
     override fun comprehensionIdentifiers(): Int = probabilityManager.comprehensionIdentifiers()
     override fun numberOfTraits(): Int = 0
+
+    // Verification mutation
+    override fun mutateVerificationCondition(): Double = 0.1
+    override fun mutateAssertFalse(): Double = 0.3
 }

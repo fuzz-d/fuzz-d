@@ -78,4 +78,8 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun comprehensionIdentifiers(): Int = 3
 
     override fun numberOfTraits(): Int = 3
+
+    // verification mutation
+    override fun mutateVerificationCondition(): Double = 0.0
+    override fun mutateAssertFalse(): Double = 0.0
 }

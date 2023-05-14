@@ -19,13 +19,12 @@ import fuzzd.utils.DAFNY_BODY
 import fuzzd.utils.DAFNY_TYPE
 import fuzzd.utils.DAFNY_WRAPPERS
 import fuzzd.utils.WRAPPER_FUNCTIONS
-import fuzzd.validator.OutputValidator
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import java.io.File
 
 class ReconditionRunner(private val dir: File, private val logger: Logger) {
-    fun run(file: File, advanced: Boolean): String? {
+    fun run(file: File, advanced: Boolean): Pair<String, DafnyAST> {
         val input = file.inputStream()
         val cs = CharStreams.fromStream(input)
         val tokens = CommonTokenStream(dafnyLexer(cs))
@@ -34,7 +33,7 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
         return run(ast, advanced)
     }
 
-    fun run(ast: DafnyAST, advanced: Boolean): String? {
+    fun run(ast: DafnyAST, advanced: Boolean): Pair<String, DafnyAST> {
         val advancedReconditioner = AdvancedReconditioner()
         val interpreterRunner = InterpreterRunner(dir, logger)
         try {
@@ -83,13 +82,11 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
             WRAPPER_FUNCTIONS.forEach { wrapper -> wrappersWriter.write { "$wrapper\n" } }
             wrappersWriter.close()
 
-            return output.first
+            return Pair(output.first, reconditionedAST)
         } catch (e: Exception) {
             logger.log { "Reconditioning threw error" }
             logger.log { "===================================" }
-            logger.log { e.stackTraceToString() }
-            e.printStackTrace()
-            return null
+            throw e
         }
     }
 }

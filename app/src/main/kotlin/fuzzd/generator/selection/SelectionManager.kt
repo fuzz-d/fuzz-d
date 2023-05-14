@@ -433,6 +433,10 @@ class SelectionManager(
 
     fun selectInt(min: Int, max: Int): Int = if (min == max) min else random.nextInt(min, max)
 
+    fun selectMutateVerificationCondition(): Boolean = withProbability(probabilityManager.mutateVerificationCondition())
+
+    fun selectMutateAssertFalse(): Boolean = withProbability(probabilityManager.mutateAssertFalse())
+
     fun methodStatements(): Int = probabilityManager.methodStatements()
     fun ifBranchStatements(): Int = probabilityManager.ifBranchStatements()
     fun whileBodyStatements(): Int = probabilityManager.whileBodyStatements()

@@ -76,4 +76,8 @@ interface ProbabilityManager {
     fun comprehensionIdentifiers(): Int
 
     fun numberOfTraits(): Int
+
+    // verification mutation
+    fun mutateVerificationCondition(): Double
+    fun mutateAssertFalse(): Double
 }

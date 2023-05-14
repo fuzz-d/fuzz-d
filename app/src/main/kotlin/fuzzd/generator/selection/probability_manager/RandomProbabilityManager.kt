@@ -95,4 +95,8 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun comprehensionIdentifiers(): Int = min(getStatementCount(ProbabilityManager::comprehensionIdentifiers), 4)
 
     override fun numberOfTraits(): Int = getStatementCount(ProbabilityManager::numberOfTraits)
+
+    // Verification mutation
+    override fun mutateVerificationCondition(): Double = 0.0
+    override fun mutateAssertFalse(): Double = 0.0
 }

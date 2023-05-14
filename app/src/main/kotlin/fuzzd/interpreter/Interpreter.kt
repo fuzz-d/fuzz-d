@@ -235,6 +235,7 @@ class Interpreter(val generateChecksum: Boolean) : ASTInterpreter {
         }
 
     override fun interpretSequence(sequence: SequenceAST, context: InterpreterContext) {
+        sequence.setLive()
         sequence.statements.forEach { interpretStatement(it, context) }
     }
 

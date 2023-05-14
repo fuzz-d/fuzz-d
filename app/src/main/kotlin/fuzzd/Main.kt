@@ -1,4 +1,3 @@
-
 package fuzzd
 
 import fuzzd.logging.Logger
@@ -39,7 +38,7 @@ class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
     override fun execute() {
         val fileDir = if (outputFile != null) {
             val file = File(outputFile!!)
-            file.mkdir();
+            file.mkdir()
             file
         } else {
             val path = "output"
@@ -57,7 +56,7 @@ class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
                 instrument == true,
                 noRun != true,
                 swarm == true,
-                verifier == true
+                verifier == true,
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -108,12 +107,50 @@ class Interpret : Subcommand("interpret", "Interpret a valid .dfy file") {
 }
 
 @OptIn(ExperimentalCli::class)
+class VerifierFuzz : Subcommand("verifuzz", "Run fuzzing over the Dafny verifier") {
+    private val seed by option(ArgType.String, "seed", "s", "Generation Seed")
+
+    private val noRun by option(
+        ArgType.Boolean,
+        "noRun",
+        "n",
+        "Generate a program without running differential testing on it",
+    )
+
+    private val outputFile by option(ArgType.String, "output", "o", "Directory for output")
+
+    override fun execute() {
+        val fileDir = if (outputFile != null) {
+            val file = File(outputFile!!)
+            file.mkdir()
+            file
+        } else {
+            val path = "output"
+            val dir = UUID.randomUUID().toString()
+            File("$path/$dir")
+        }
+
+        val logger = Logger(fileDir)
+        val generationSeed = seed?.toLong() ?: Random.Default.nextLong()
+
+        try {
+            VerifierFuzzRunner(fileDir, logger).run(generationSeed, noRun != true)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            logger.close()
+        }
+    }
+}
+
+@OptIn(ExperimentalCli::class)
 fun createArgParser(): ArgParser {
     val parser = ArgParser("fuzzd")
     val fuzz = Fuzz()
     val recondition = Recondition()
     val interpret = Interpret()
-    parser.subcommands(fuzz, recondition, interpret)
+    val verifuzz = VerifierFuzz()
+    parser.subcommands(fuzz, recondition, interpret, verifuzz)
 
     return parser
 }
