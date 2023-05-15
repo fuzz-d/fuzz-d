@@ -26,6 +26,10 @@ for dir in result/execute_crash/*; do
 	if $(cat $dir/fuzz-d.log | grep "CodePoint" >/dev/null); then rm -rf $dir; fi
 done
 
+for dir in result/execute_crash/*; do 
+	if $(cat $dir/fuzz-d.log | grep " hi0_: intdef iife" >/dev/null); then rm -rf $dir; fi
+done
+
 for dir in result/resolver/*; do
 	if $(cat $dir/fuzz-d.log | grep "All elements of display must have some common supertype" >/dev/null); then rm -rf $dir; fi
 done
@@ -68,6 +72,14 @@ done
 
 for dir in result/compiler_crash/*; do
 	if $(cat $dir/fuzz-d.log | grep "error CS1628" >/dev/null); then rm -rf $dir; fi
+done
+
+for dir in result/compiler_crash/*; do
+	if $(cat $dir/fuzz-d.log | grep "Error: branches of if-then-else have incompatible types" >/dev/null); then rm -rf $dir; fi
+done
+
+for dir in result/compiler_crash/*; do
+	if $(cat $dir/fuzz-d.log | grep "Error: the two branches of an if-then-else expression must have the same type" >/dev/null); then rm -rf $dir; fi
 done
 
 rm -rf result/success/*
