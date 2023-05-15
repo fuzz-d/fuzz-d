@@ -242,8 +242,7 @@ class Generator(
             }.foldPair()
 
             val globalStateIdentifier = ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE)
-            val globalStateDecl =
-                DeclarationAST(globalStateIdentifier, ClassInstantiationAST(context.globalState(), globalStateParams))
+            val globalStateDecl = DeclarationAST(globalStateIdentifier, ClassInstantiationAST(context.globalState(), globalStateParams))
             context.symbolTable.add(globalStateIdentifier)
             globalStateDeps + globalStateDecl
         } else {
@@ -352,7 +351,7 @@ class Generator(
     override fun generateField(context: GenerationContext) = paramIdentifierFromType(
         generateType(context),
         fieldNameGenerator,
-        mutable = true,
+        mutable = selectionManager.selectFieldIsConstant(),
         initialised = true,
     )
 
@@ -799,7 +798,7 @@ class Generator(
             is TraitType -> TraitInstanceAST(targetType.trait, identifierName, mutable = true, initialised = true)
             is DatatypeType -> DatatypeInstanceAST(identifierName, targetType, mutable = true, initialised = true)
             is TopLevelDatatypeType -> TopLevelDatatypeInstanceAST(identifierName, targetType, mutable = true, initialised = true)
-            else -> IdentifierAST(identifierName, targetType, initialised = true)
+            else -> IdentifierAST(identifierName, targetType, mutable = true, initialised = true)
         }
 
         context.symbolTable.add(identifier)
@@ -831,6 +830,7 @@ class Generator(
     }
 
     override fun generateClassInstantiation(context: GenerationContext): List<StatementAST> {
+        val isConst = selectionManager.selectFieldIsConstant()
         // on demand create class if one doesn't exist
         if (!context.functionSymbolTable.hasClasses()) {
             generateClass(context)
@@ -843,7 +843,7 @@ class Generator(
             generateExpression(context.increaseExpressionDepth(), field.type())
         }.foldPair()
 
-        val ident = ClassInstanceAST(selectedClass, context.identifierNameGenerator.newValue())
+        val ident = ClassInstanceAST(selectedClass, context.identifierNameGenerator.newValue(), mutable = !isConst, initialised = true)
 
         context.symbolTable.add(ident)
 

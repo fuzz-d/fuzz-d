@@ -250,6 +250,8 @@ class SelectionManager(
         return randomWeightedSelection(normaliseWeights(selection))
     }
 
+    fun selectFieldIsConstant(): Boolean = withProbability(probabilityManager.constField())
+
     @Suppress("UNUSED_PARAMETER")
     fun selectAssignType(context: GenerationContext): AssignType =
         randomWeightedSelection(
@@ -454,7 +456,7 @@ class SelectionManager(
         private const val MAX_PARAMETERS = 5
         private const val MAX_RETURNS = 5
         private const val MAX_FIELDS = 3
-        private const val MAX_GLOBAL_FIELDS = 20
+        private const val MAX_GLOBAL_FIELDS = 30
         private const val MAX_FUNCTION_METHODS = 3
         private const val MAX_METHODS = 3
         private const val MAX_TRAIT_INHERITS = 2

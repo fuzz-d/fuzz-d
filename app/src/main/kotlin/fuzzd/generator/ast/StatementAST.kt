@@ -164,10 +164,7 @@ sealed class StatementAST : ASTElement {
         }
     }
 
-    open class MultiDeclarationAST(
-        val identifiers: List<IdentifierAST>,
-        val exprs: List<ExpressionAST>,
-    ) : StatementAST() {
+    open class MultiDeclarationAST(val identifiers: List<IdentifierAST>, val exprs: List<ExpressionAST>) : StatementAST() {
         override fun toString(): String = "var ${identifiers.joinToString(", ")} := ${exprs.joinToString(", ")};"
     }
 

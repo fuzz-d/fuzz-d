@@ -32,6 +32,9 @@ interface ProbabilityManager {
     fun assignStatement(): Double
     fun classInstantiation(): Double
 
+    // decl info
+    fun constField(): Double
+
     // assign type
     fun assignIdentifier(): Double
     fun assignArrayIndex(): Double

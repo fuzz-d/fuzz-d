@@ -33,6 +33,9 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun assignStatement() = 0.6
     override fun classInstantiation() = 0.05
 
+    // decl info
+    override fun constField(): Double = 0.3
+
     // assign type
     override fun assignIdentifier() = 0.8
     override fun assignArrayIndex() = 0.2

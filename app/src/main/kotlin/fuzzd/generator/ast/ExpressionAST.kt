@@ -335,14 +335,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean = other is ClassInstanceAST && clazz == other.clazz && name == other.name
 
-        override fun hashCode(): Int {
-            var result = super.hashCode()
-            result = 31 * result + clazz.hashCode()
-            result = 31 * result + fields.hashCode()
-            result = 31 * result + functionMethods.hashCode()
-            result = 31 * result + methods.hashCode()
-            return result
-        }
+        override fun hashCode(): Int = clazz.hashCode()
     }
 
     open class TopLevelDatatypeInstanceAST(
@@ -389,6 +382,8 @@ sealed class ExpressionAST : ASTElement {
         initialised = classInstance.initialised() && classField.initialised(),
     ) {
         override fun initialise(): IdentifierAST = ClassInstanceFieldAST(classInstance, classField.initialise())
+
+        override fun toString(): String = "$classInstance.$classField"
     }
 
     data class DatatypeDestructorAST(

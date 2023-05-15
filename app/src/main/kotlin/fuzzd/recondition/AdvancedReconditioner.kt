@@ -720,8 +720,7 @@ class AdvancedReconditioner {
                 val temp = IdentifierAST(tempGenerator.newValue(), IntType)
                 val safetyId = safetyIdGenerator.newValue()
                 idsMap[safetyId] = indexAssignAST
-                val methodCall =
-                    NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(value, state, StringLiteralAST(safetyId)))
+                val methodCall = NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(value, state, StringLiteralAST(safetyId)))
                 val decl = DeclarationAST(temp, methodCall)
                 Pair(IndexAssignAST(ident, key, temp), identDependents + keyDependents + valueDependents + decl)
             }

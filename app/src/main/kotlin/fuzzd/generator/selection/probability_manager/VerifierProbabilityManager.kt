@@ -32,6 +32,9 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun assignStatement(): Double = probabilityManager.assignStatement()
     override fun classInstantiation(): Double = 0.0
 
+    // Decl info
+    override fun constField(): Double = probabilityManager.constField()
+
     // Assign types
     override fun assignIdentifier(): Double = probabilityManager.assignIdentifier()
     override fun assignArrayIndex(): Double = 0.0
