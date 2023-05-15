@@ -28,6 +28,18 @@ done
 
 for dir in result/execute_crash/*; do 
 	if $(cat $dir/fuzz-d.log | grep " hi0_: intdef iife" >/dev/null); then rm -rf $dir; fi
+done 
+
+for dir in result/execute_crash/*; do
+	if $(cat $dir/fuzz-d.log | grep "not defined" >/dev/null); then rm -rf $dir; fi
+done
+
+for dir in result/execute_crash/*; do
+	if $(cat $dir/fuzz-d.log | grep "Value was either too large or too small for an Int32" >/dev/null); then rm -rf $dir; fi
+done
+
+for dir in result/execute_crash/*; do
+	if $(cat $dir/fuzz-d.log | grep "cannot fit 'int' into an index-sized integer" >/dev/null); then rm -rf $dir; fi
 done
 
 for dir in result/resolver/*; do
