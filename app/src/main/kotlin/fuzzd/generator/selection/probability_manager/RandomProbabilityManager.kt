@@ -31,6 +31,7 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
 
     private fun getStatementCount(function: KFunction<*>): Int = statementCounts[function] ?: 0
 
+    // type selection
     override fun classType(): Double = getProbability(ProbabilityManager::classType)
     override fun traitType(): Double = getProbability(ProbabilityManager::traitType)
     override fun datatype(): Double = getProbability(ProbabilityManager::datatype)
@@ -46,6 +47,8 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun boolType(): Double = getProbability(ProbabilityManager::boolType)
     override fun charType(): Double = getProbability(ProbabilityManager::charType)
 
+
+    // statements
     override fun assertStatement(): Double = 0.0
     override fun ifStatement(): Double = getProbability(ProbabilityManager::ifStatement)
     override fun matchStatement(): Double = getProbability(ProbabilityManager::matchStatement)
@@ -54,9 +57,14 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun whileStatement(): Double = getProbability(ProbabilityManager::whileStatement)
     override fun methodCall(): Double = getProbability(ProbabilityManager::methodCall)
     override fun mapAssign(): Double = getProbability(ProbabilityManager::mapAssign)
-    override fun assignStatement(): Double = getProbability(ProbabilityManager::assignStatement)
+    override fun assignStatement(): Double = getProbability(ProbabilityManager::assignStatement) - multiAssignStatement()
+    override fun multiAssignStatement(): Double = min(getProbability(ProbabilityManager::multiAssignStatement), 0.15)
     override fun classInstantiation(): Double = getProbability(ProbabilityManager::classInstantiation)
 
+    // decl info
+    override fun constField(): Double = getProbability(ProbabilityManager::constField)
+
+    // expressions
     override fun assignIdentifier(): Double = getProbability(ProbabilityManager::assignIdentifier)
     override fun assignArrayIndex(): Double = getProbability(ProbabilityManager::assignArrayIndex)
     override fun binaryExpression(): Double = getProbability(ProbabilityManager::binaryExpression)
@@ -75,6 +83,7 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
 
     override fun comprehensionConditionIntRange(): Double = getProbability(ProbabilityManager::comprehensionConditionIntRange)
 
+    // index types
     override fun arrayIndexType(): Double = getProbability(ProbabilityManager::arrayIndexType)
     override fun mapIndexType(): Double = getProbability(ProbabilityManager::mapIndexType)
     override fun multisetIndexType(): Double = getProbability(ProbabilityManager::multisetIndexType)
@@ -82,10 +91,12 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun stringIndexType(): Double = getProbability(ProbabilityManager::stringIndexType)
     override fun datatypeIndexType(): Double = getProbability(ProbabilityManager::datatypeIndexType)
 
+    // array init types
     override fun arrayInitValues(): Double = getProbability(ProbabilityManager::arrayInitValues)
     override fun arrayInitComprehension(): Double = getProbability(ProbabilityManager::arrayInitComprehension)
     override fun arrayInitDefault(): Double = getProbability(ProbabilityManager::arrayInitDefault)
 
+    // other info
     override fun methodStatements(): Int = getStatementCount(ProbabilityManager::methodStatements)
     override fun ifBranchStatements(): Int = getStatementCount(ProbabilityManager::ifBranchStatements)
     override fun forLoopBodyStatements(): Int = getStatementCount(ProbabilityManager::forLoopBodyStatements)
@@ -95,6 +106,8 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun comprehensionIdentifiers(): Int = min(getStatementCount(ProbabilityManager::comprehensionIdentifiers), 4)
 
     override fun numberOfTraits(): Int = getStatementCount(ProbabilityManager::numberOfTraits)
+
+    override fun maxNumberOfAssigns(): Int = min(getStatementCount(ProbabilityManager::maxNumberOfAssigns), 6)
 
     // Verification mutation
     override fun mutateVerificationCondition(): Double = 0.0

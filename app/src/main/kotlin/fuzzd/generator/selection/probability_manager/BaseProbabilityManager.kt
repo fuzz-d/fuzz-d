@@ -30,8 +30,12 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun whileStatement() = 0.12
     override fun methodCall() = 0.05
     override fun mapAssign() = 0.05
-    override fun assignStatement() = 0.6
+    override fun assignStatement() = 0.5
+    override fun multiAssignStatement(): Double = 0.1
     override fun classInstantiation() = 0.05
+
+    // decl info
+    override fun constField(): Double = 0.3
 
     // assign type
     override fun assignIdentifier() = 0.8
@@ -44,7 +48,7 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun multisetConversion() = 0.00 // due to resolver bug
     override fun functionCall() = 0.1
     override fun ternary() = 0.05
-    override fun matchExpression() = 0.05
+    override fun matchExpression() = 0.00 // due to assertion failure
     override fun assignExpression() = 0.1
     override fun indexExpression() = 0.1
     override fun identifier() = 0.5
@@ -78,6 +82,8 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun comprehensionIdentifiers(): Int = 3
 
     override fun numberOfTraits(): Int = 3
+
+    override fun maxNumberOfAssigns(): Int = 5
 
     // verification mutation
     override fun mutateVerificationCondition(): Double = 0.0

@@ -65,6 +65,7 @@ import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
+import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
@@ -345,7 +346,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitTopDeclMember(ctx: TopDeclMemberContext): TopLevelAST =
         super.visitTopDeclMember(ctx) as TopLevelAST
 
-    override fun visitFieldDecl(ctx: FieldDeclContext): IdentifierAST = visitIdentifierType(ctx.identifierType())
+    override fun visitFieldDecl(ctx: FieldDeclContext): IdentifierAST = visitIdentifierTypeWithMutable(ctx.identifierType(), isMutable = ctx.VAR() != null)
 
     override fun visitFunctionDecl(ctx: FunctionDeclContext): FunctionMethodAST {
         val signature = visitFunctionSignatureDecl(ctx.functionSignatureDecl())
@@ -418,7 +419,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     }
 
     private fun visitReturnsList(ctx: ParametersContext): List<IdentifierAST> =
-        ctx.identifierType().map { identifierTypeCtx -> visitIdentifierType(identifierTypeCtx) }.map { identifier ->
+        ctx.identifierType().map { identifierTypeCtx -> visitIdentifierTypeWithMutable(identifierTypeCtx) }.map { identifier ->
             IdentifierAST(
                 identifier.name,
                 identifier.type(),
@@ -428,7 +429,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         }
 
     private fun visitParametersList(ctx: ParametersContext): List<IdentifierAST> =
-        ctx.identifierType().map { identifierTypeCtx -> visitIdentifierType(identifierTypeCtx) }.map { identifier ->
+        ctx.identifierType().map { identifierTypeCtx -> visitIdentifierTypeWithMutable(identifierTypeCtx) }.map { identifier ->
             val result = when (val type = identifier.type()) {
                 is ClassType -> ClassInstanceAST(type.clazz, identifier.name, mutable = false, initialised = true)
                 is TraitType -> TraitInstanceAST(type.trait, identifier.name, mutable = false, initialised = true)
@@ -443,14 +444,14 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitSequence(ctx: SequenceContext): SequenceAST =
         SequenceAST(ctx.statement().map(this::visitStatement))
 
-    override fun visitIdentifierType(ctx: IdentifierTypeContext): IdentifierAST {
+    fun visitIdentifierTypeWithMutable(ctx: IdentifierTypeContext, isMutable: Boolean = true): IdentifierAST {
         val type = visitType(ctx.type())
         val name = visitIdentifierName(ctx.identifier())
         return when (type) {
-            is ClassType -> ClassInstanceAST(type.clazz, name)
-            is TraitType -> TraitInstanceAST(type.trait, name)
-            is TopLevelDatatypeType -> TopLevelDatatypeInstanceAST(name, type)
-            else -> IdentifierAST(name, type)
+            is ClassType -> ClassInstanceAST(type.clazz, name, mutable = isMutable)
+            is TraitType -> TraitInstanceAST(type.trait, name, mutable = isMutable)
+            is TopLevelDatatypeType -> TopLevelDatatypeInstanceAST(name, type, mutable = isMutable)
+            else -> IdentifierAST(name, type, mutable = isMutable)
         }
     }
 
@@ -489,9 +490,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         }
 
         return if (ctx.type() != null) {
-            MultiTypedDeclarationAST(identifiers, listOf(rhs))
+            MultiTypedDeclarationAST(identifiers, listOf(rhs)) // TODO()
         } else {
-            MultiDeclarationAST(identifiers, listOf(rhs))
+            MultiDeclarationAST(identifiers, listOf(rhs)) // TODO()
         }
     }
 
@@ -532,11 +533,11 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitDeclAssignRhs(ctx: DeclAssignRhsContext): ExpressionAST =
         super.visitDeclAssignRhs(ctx) as ExpressionAST
 
-    override fun visitAssignment(ctx: AssignmentContext): AssignmentAST {
-        val lhs = visitAssignmentLhs(ctx.assignmentLhs())
-        val rhs = visitDeclAssignRhs(ctx.declAssignRhs())
+    override fun visitAssignment(ctx: AssignmentContext): MultiAssignmentAST {
+        val lhss = ctx.assignmentLhs().map(this::visitAssignmentLhs)
+        val rhss = ctx.declAssignRhs().map(this::visitDeclAssignRhs)
 
-        return AssignmentAST(lhs, rhs)
+        return if (lhss.size == 1) AssignmentAST(lhss.first(), rhss.first()) else MultiAssignmentAST(lhss, rhss)
     }
 
     override fun visitAssignmentLhs(ctx: AssignmentLhsContext): IdentifierAST = visitDeclAssignLhs(ctx.declAssignLhs())
@@ -603,7 +604,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         identifiersTable = identifiersTable.increaseDepth()
         identifiersTable.addEntry(identifier.name, identifier)
-        val assign = visitAssignment(ctx.assignment())
+        val assign = visitAssignment(ctx.assignment()) as AssignmentAST
         identifiersTable = identifiersTable.decreaseDepth()
 
         return ForallStatementAST(identifier, bottomRange, topRange, assign)
@@ -970,7 +971,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     }
 
     override fun visitSetComprehension(ctx: SetComprehensionContext): SetComprehensionAST {
-        val identifier = visitIdentifierType(ctx.identifierType())
+        val identifier = visitIdentifierTypeWithMutable(ctx.identifierType())
 
         identifiersTable = identifiersTable.increaseDepth()
         identifiersTable.addEntry(identifier.name, identifier)
@@ -1036,7 +1037,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     )
 
     override fun visitMapComprehension(ctx: MapComprehensionContext): MapComprehensionAST {
-        val identifier = visitIdentifierType(ctx.identifierType())
+        val identifier = visitIdentifierTypeWithMutable(ctx.identifierType())
 
         identifiersTable = identifiersTable.increaseDepth()
         identifiersTable.addEntry(identifier.name, identifier)

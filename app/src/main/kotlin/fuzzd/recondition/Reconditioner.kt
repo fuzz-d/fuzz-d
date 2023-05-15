@@ -162,7 +162,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
     override fun reconditionDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST): DisjunctiveAssertStatementAST = DisjunctiveAssertStatementAST(
         reconditionExpression(assertStatement.baseExpr),
-        assertStatement.exprs.map(this::reconditionExpression).toMutableList(),
+        assertStatement.exprs.map(this::reconditionExpression).toMutableSet(),
     )
 
     override fun reconditionAssertStatement(assertStatement: AssertStatementAST): AssertStatementAST = AssertStatementAST(reconditionExpression(assertStatement.expr))
@@ -374,7 +374,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
                     reconditionedArray,
                     FunctionMethodCallAST(
                         SAFE_ARRAY_INDEX.signature,
-                        listOf(reconditionedIndex, ArrayLengthAST(identifierAST.array)),
+                        listOf(reconditionedIndex, ArrayLengthAST(reconditionedArray)),
                     ),
                 )
             } else {

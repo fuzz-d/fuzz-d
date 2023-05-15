@@ -90,6 +90,8 @@ interface ASTGenerator {
 
     fun generateDeclarationStatement(context: GenerationContext): List<StatementAST>
 
+    fun generateMultiAssignmentStatement(context: GenerationContext): List<StatementAST>
+
     fun generateAssignmentStatement(context: GenerationContext): List<StatementAST>
 
     fun generateClassInstantiation(context: GenerationContext): List<StatementAST>

@@ -48,7 +48,10 @@ sealed class ExpressionAST : ASTElement {
 
     open fun requiresParenthesesWrap(): Boolean = false
 
-    class ClassInstantiationAST(val clazz: ClassAST, val params: List<ExpressionAST>) :
+    abstract override fun equals(other: Any?): Boolean
+    abstract override fun hashCode(): Int
+
+    data class ClassInstantiationAST(val clazz: ClassAST, val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
             val expectedParams = clazz.constructorFields.toList()
@@ -60,7 +63,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "new ${clazz.name}(${params.joinToString(", ")})"
     }
 
-    class DatatypeInstantiationAST(
+    data class DatatypeInstantiationAST(
         val datatype: DatatypeAST,
         val constructor: DatatypeConstructorAST,
         val params: List<ExpressionAST>,
@@ -70,7 +73,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "${constructor.name}(${params.joinToString(", ")})"
     }
 
-    class DatatypeUpdateAST(
+    data class DatatypeUpdateAST(
         val datatypeInstance: ExpressionAST,
         val updates: List<Pair<IdentifierAST, ExpressionAST>>,
     ) : ExpressionAST() {
@@ -98,7 +101,7 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
-    class MatchExpressionAST(
+    data class MatchExpressionAST(
         val match: ExpressionAST,
         val type: Type,
         val cases: List<Pair<ExpressionAST, ExpressionAST>>,
@@ -116,7 +119,7 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
-    class NonVoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) :
+    data class NonVoidMethodCallAST(val method: MethodSignatureAST, val params: List<ExpressionAST>) :
         ExpressionAST() {
         init {
             val methodParams = method.params
@@ -128,7 +131,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "${method.name}(${params.joinToString(", ")})"
     }
 
-    class FunctionMethodCallAST(
+    data class FunctionMethodCallAST(
         val function: FunctionMethodSignatureAST,
         val params: List<ExpressionAST>,
     ) :
@@ -143,7 +146,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "${function.name}(${params.joinToString(", ")})"
     }
 
-    class TernaryExpressionAST(
+    data class TernaryExpressionAST(
         val condition: ExpressionAST,
         val ifBranch: ExpressionAST,
         val elseBranch: ExpressionAST,
@@ -159,9 +162,11 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): Type = ifBranch.type()
 
         override fun toString(): String = "if ($condition) then $ifBranch else $elseBranch"
+
+
     }
 
-    class UnaryExpressionAST(val expr: ExpressionAST, val operator: UnaryOperator) : ExpressionAST() {
+    data class UnaryExpressionAST(val expr: ExpressionAST, val operator: UnaryOperator) : ExpressionAST() {
         init {
             if (!operator.supportsInput(expr.type())) {
                 throw InvalidInputException("Operator $operator does not support input type ${expr.type()}")
@@ -179,7 +184,7 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
-    class ModulusExpressionAST(val expr: ExpressionAST) : ExpressionAST() {
+    data class ModulusExpressionAST(val expr: ExpressionAST) : ExpressionAST() {
         init {
             val type = expr.type()
             if (type !is PlaceholderType && type !is MapType && type !is SetType && type !is MultisetType && type !is SequenceType) {
@@ -192,7 +197,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = if (expr.requiresParenthesesWrap()) "|($expr)|" else "|$expr|"
     }
 
-    class MultisetConversionAST(val expr: ExpressionAST) : ExpressionAST() {
+    data class MultisetConversionAST(val expr: ExpressionAST) : ExpressionAST() {
         init {
             val type = expr.type()
             if (type !is SequenceType) {
@@ -205,7 +210,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "multiset($expr)"
     }
 
-    class BinaryExpressionAST(
+    data class BinaryExpressionAST(
         val expr1: ExpressionAST,
         val operator: BinaryOperator,
         val expr2: ExpressionAST,
@@ -232,7 +237,15 @@ sealed class ExpressionAST : ASTElement {
             return sb.toString()
         }
 
+        override fun equals(other: Any?): Boolean = other is BinaryExpressionAST && other.expr1 == expr1 && other.operator == operator && other.expr2 == expr2
+
         private fun shouldWrap(expr: ExpressionAST) = expr.requiresParenthesesWrap()
+        override fun hashCode(): Int {
+            var result = expr1.hashCode()
+            result = 31 * result + operator.hashCode()
+            result = 31 * result + expr2.hashCode()
+            return result
+        }
     }
 
     open class IdentifierAST(
@@ -289,14 +302,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean = other is TraitInstanceAST && trait == other.trait && name == other.name
 
-        override fun hashCode(): Int {
-            var result = super.hashCode()
-            result = 31 * result + trait.hashCode()
-            result = 31 * result + fields.hashCode()
-            result = 31 * result + functionMethods.hashCode()
-            result = 31 * result + methods.hashCode()
-            return result
-        }
+        override fun hashCode(): Int = trait.hashCode()
     }
 
     class ClassInstanceAST(
@@ -322,14 +328,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean = other is ClassInstanceAST && clazz == other.clazz && name == other.name
 
-        override fun hashCode(): Int {
-            var result = super.hashCode()
-            result = 31 * result + clazz.hashCode()
-            result = 31 * result + fields.hashCode()
-            result = 31 * result + functionMethods.hashCode()
-            result = 31 * result + methods.hashCode()
-            return result
-        }
+        override fun hashCode(): Int = clazz.hashCode()
     }
 
     open class TopLevelDatatypeInstanceAST(
@@ -366,7 +365,7 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
-    class ClassInstanceFieldAST(
+    data class ClassInstanceFieldAST(
         val classInstance: IdentifierAST,
         val classField: IdentifierAST,
     ) : IdentifierAST(
@@ -376,9 +375,11 @@ sealed class ExpressionAST : ASTElement {
         initialised = classInstance.initialised() && classField.initialised(),
     ) {
         override fun initialise(): IdentifierAST = ClassInstanceFieldAST(classInstance, classField.initialise())
+
+        override fun toString(): String = "$classInstance.$classField"
     }
 
-    class DatatypeDestructorAST(
+    data class DatatypeDestructorAST(
         val datatypeInstance: ExpressionAST,
         val field: IdentifierAST,
     ) : IdentifierAST("$datatypeInstance.$field", field.type(), true, true) {
@@ -450,6 +451,9 @@ sealed class ExpressionAST : ASTElement {
         }
 
         override fun type(): Type = (sequence.type() as SequenceType).innerType
+        override fun equals(other: Any?): Boolean = other is SequenceIndexAST && other.sequence == sequence && other.key == key
+
+        override fun hashCode(): Int = 31 * sequence.hashCode() + key.hashCode()
     }
 
     class MapIndexAST(val map: ExpressionAST, key: ExpressionAST) : IndexAST(map, key) {
@@ -465,6 +469,9 @@ sealed class ExpressionAST : ASTElement {
         }
 
         override fun type(): Type = (map.type() as MapType).valueType
+        override fun equals(other: Any?): Boolean = other is MapIndexAST && other.map == map && other.key == key
+
+        override fun hashCode(): Int = 31 * map.hashCode() + key.hashCode()
     }
 
     class MultisetIndexAST(val multiset: ExpressionAST, key: ExpressionAST) : IndexAST(multiset, key) {
@@ -480,9 +487,13 @@ sealed class ExpressionAST : ASTElement {
         }
 
         override fun type(): Type = IntType
+
+        override fun equals(other: Any?): Boolean = other is MultisetIndexAST && other.multiset == multiset && other.key == key
+
+        override fun hashCode(): Int = 31 * multiset.hashCode() + key.hashCode()
     }
 
-    class IndexAssignAST(
+    data class IndexAssignAST(
         val expression: ExpressionAST,
         val key: ExpressionAST,
         val value: ExpressionAST,
@@ -532,7 +543,7 @@ sealed class ExpressionAST : ASTElement {
         }
     }
 
-    class MapConstructorAST(
+    data class MapConstructorAST(
         val keyType: Type,
         val valueType: Type,
         val assignments: List<Pair<ExpressionAST, ExpressionAST>> = emptyList(),
@@ -568,6 +579,15 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): MapType = MapType(assign.first.type(), assign.second.type())
 
         override fun toString(): String = "map $identifier : ${identifier.type()} | $condition :: (${assign.first}) := (${assign.second})"
+
+        override fun equals(other: Any?): Boolean = other is MapComprehensionAST && other.identifier == identifier && other.condition == condition && other.assign == assign
+
+        override fun hashCode(): Int {
+            var result = identifier.hashCode()
+            result = 31 * result + condition.hashCode()
+            result = 31 * result + assign.hashCode()
+            return result
+        }
     }
 
     class IntRangeMapComprehensionAST(identifier: IdentifierAST, val bottomRange: ExpressionAST, val topRange: ExpressionAST, assign: Pair<ExpressionAST, ExpressionAST>) :
@@ -584,7 +604,7 @@ sealed class ExpressionAST : ASTElement {
     class DataStructureMapComprehensionAST(identifier: IdentifierAST, val dataStructure: ExpressionAST, assign: Pair<ExpressionAST, ExpressionAST>) :
         MapComprehensionAST(identifier, BinaryExpressionAST(identifier, MembershipOperator, dataStructure), assign)
 
-    class SetDisplayAST(val innerType: Type, val exprs: List<ExpressionAST>, val isMultiset: Boolean) : ExpressionAST() {
+    data class SetDisplayAST(val innerType: Type, val exprs: List<ExpressionAST>, val isMultiset: Boolean) : ExpressionAST() {
         override fun type(): Type = if (isMultiset) MultisetType(innerType) else SetType(innerType)
 
         override fun toString(): String = "${if (isMultiset) "multiset" else ""}{${exprs.joinToString(", ")}}"
@@ -602,6 +622,15 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): SetType = SetType(expr.type())
 
         override fun toString(): String = "set $identifier : ${identifier.type()} | $condition :: ($expr)"
+
+        override fun equals(other: Any?): Boolean = other is SetComprehensionAST && other.identifier == identifier && other.condition == condition && other.expr == expr
+
+        override fun hashCode(): Int {
+            var result = identifier.hashCode()
+            result = 31 * result + condition.hashCode()
+            result = 31 * result + expr.hashCode()
+            return result
+        }
     }
 
     class IntRangeSetComprehensionAST(identifier: IdentifierAST, val bottomRange: ExpressionAST, val topRange: ExpressionAST, expr: ExpressionAST) : SetComprehensionAST(
@@ -617,7 +646,7 @@ sealed class ExpressionAST : ASTElement {
     class DataStructureSetComprehensionAST(identifier: IdentifierAST, val dataStructure: ExpressionAST, expr: ExpressionAST) :
         SetComprehensionAST(identifier, BinaryExpressionAST(identifier, MembershipOperator, dataStructure), expr)
 
-    class SequenceDisplayAST(val exprs: List<ExpressionAST>) : ExpressionAST() {
+    data class SequenceDisplayAST(val exprs: List<ExpressionAST>) : ExpressionAST() {
         private var innerType = if (exprs.isEmpty()) PlaceholderType else exprs[0].type()
 
         constructor(exprs: List<ExpressionAST>, innerType: Type) : this(exprs) {
@@ -629,7 +658,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "[${exprs.joinToString(", ")}]"
     }
 
-    class SequenceComprehensionAST(
+    data class SequenceComprehensionAST(
         val size: ExpressionAST,
         val identifier: IdentifierAST,
         val annotations: List<VerifierAnnotationAST>,
@@ -648,7 +677,7 @@ sealed class ExpressionAST : ASTElement {
         override fun toString(): String = "seq($size, $identifier ${annotations.joinToString(" ")} => ($expr))"
     }
 
-    class ArrayLengthAST(val array: IdentifierAST) : ExpressionAST() {
+    data class ArrayLengthAST(val array: IdentifierAST) : ExpressionAST() {
         init {
             if (array.type() !is ArrayType) {
                 throw InvalidInputException("Creating array index with identifier of type ${array.type()}")
@@ -657,13 +686,17 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): Type = IntType
 
-        override fun toString(): String = "${array.name}.Length"
+        override fun toString(): String = "$array.Length"
     }
 
     open class ArrayInitAST(val length: Int, private val type: ArrayType) : ExpressionAST() {
         override fun type(): ArrayType = type
 
         override fun toString(): String = "new ${type.internalType}[$length]"
+
+        override fun equals(other: Any?) = other is ArrayInitAST && other.length == length && other.type == type
+
+        override fun hashCode(): Int = 31 * length.hashCode() + type.hashCode()
     }
 
     class ValueInitialisedArrayInitAST(
@@ -675,6 +708,10 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): ArrayType = ArrayType(innerType)
 
         override fun toString(): String = "new $innerType[$length] [${values.joinToString(", ")}]"
+
+        override fun equals(other: Any?): Boolean = other is ValueInitialisedArrayInitAST && other.length == length && other.values == values
+
+        override fun hashCode(): Int = 31 * length.hashCode() + values.hashCode()
     }
 
     class ComprehensionInitialisedArrayInitAST(
@@ -687,6 +724,16 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): ArrayType = ArrayType(innerType)
 
         override fun toString(): String = "new $innerType[$length]($identifier => $expr)"
+
+        override fun equals(other: Any?): Boolean =
+            other is ComprehensionInitialisedArrayInitAST && other.length == length && other.identifier == identifier && other.expr == expr
+
+        override fun hashCode(): Int {
+            var result = length.hashCode()
+            result = 31 * result + identifier.hashCode()
+            result = 31 * result + expr.hashCode()
+            return result
+        }
     }
 
     abstract class LiteralAST(private val value: String, private val type: Type) : ExpressionAST() {
@@ -695,6 +742,8 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): Type = type
 
         override fun equals(other: Any?): Boolean = other is LiteralAST && other.value == value
+
+        override fun hashCode(): Int = value.hashCode()
     }
 
     class BooleanLiteralAST(val value: Boolean) : LiteralAST(value.toString(), BoolType) {

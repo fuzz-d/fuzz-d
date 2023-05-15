@@ -323,9 +323,9 @@ class AdvancedReconditioner {
 
     fun reconditionDisjunctiveAssertStatement(assertStatementAST: DisjunctiveAssertStatementAST): List<StatementAST> {
         val (reconditionedBaseExpr, baseExprDependents) = reconditionExpression(assertStatementAST.baseExpr)
-        val (reconditionedExprs, exprDependents) = reconditionExpressionList(assertStatementAST.exprs)
+        val (reconditionedExprs, exprDependents) = reconditionExpressionList(assertStatementAST.exprs.toList())
 
-        return baseExprDependents + exprDependents + DisjunctiveAssertStatementAST(reconditionedBaseExpr, reconditionedExprs.toMutableList())
+        return baseExprDependents + exprDependents + DisjunctiveAssertStatementAST(reconditionedBaseExpr, reconditionedExprs.toMutableSet())
     }
 
     fun reconditionAssertStatement(assertStatementAST: AssertStatementAST): List<StatementAST> {
@@ -720,8 +720,7 @@ class AdvancedReconditioner {
                 val temp = IdentifierAST(tempGenerator.newValue(), IntType)
                 val safetyId = safetyIdGenerator.newValue()
                 idsMap[safetyId] = indexAssignAST
-                val methodCall =
-                    NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(value, state, StringLiteralAST(safetyId)))
+                val methodCall = NonVoidMethodCallAST(ADVANCED_ABSOLUTE.signature, listOf(value, state, StringLiteralAST(safetyId)))
                 val decl = DeclarationAST(temp, methodCall)
                 Pair(IndexAssignAST(ident, key, temp), identDependents + keyDependents + valueDependents + decl)
             }

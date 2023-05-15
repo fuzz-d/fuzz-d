@@ -30,7 +30,11 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun methodCall(): Double = probabilityManager.methodCall()
     override fun mapAssign(): Double = probabilityManager.mapAssign()
     override fun assignStatement(): Double = probabilityManager.assignStatement()
+    override fun multiAssignStatement(): Double = probabilityManager.multiAssignStatement()
     override fun classInstantiation(): Double = 0.0
+
+    // Decl info
+    override fun constField(): Double = probabilityManager.constField()
 
     // Assign types
     override fun assignIdentifier(): Double = probabilityManager.assignIdentifier()
@@ -74,6 +78,8 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun matchStatements(): Int = 3
     override fun comprehensionIdentifiers(): Int = probabilityManager.comprehensionIdentifiers()
     override fun numberOfTraits(): Int = 0
+
+    override fun maxNumberOfAssigns(): Int = probabilityManager.maxNumberOfAssigns()
 
     // Verification mutation
     override fun mutateVerificationCondition(): Double = 0.1

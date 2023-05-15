@@ -58,6 +58,7 @@ import fuzzd.generator.selection.StatementType.FOR_LOOP
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.MAP_ASSIGN
 import fuzzd.generator.selection.StatementType.METHOD_CALL
+import fuzzd.generator.selection.StatementType.MULTI_ASSIGN
 import fuzzd.generator.selection.StatementType.WHILE
 import fuzzd.generator.selection.probability_manager.BaseProbabilityManager
 import fuzzd.generator.selection.probability_manager.ProbabilityManager
@@ -244,11 +245,14 @@ class SelectionManager(
             StatementType.MATCH to matchProbability,
             MAP_ASSIGN to min(probabilityManager.mapAssign(), 0.2),
             ASSIGN to probabilityManager.assignStatement(),
+            MULTI_ASSIGN to probabilityManager.multiAssignStatement(),
             CLASS_INSTANTIATION to min(probabilityManager.classInstantiation(), 0.1),
         )
 
         return randomWeightedSelection(normaliseWeights(selection))
     }
+
+    fun selectFieldIsConstant(): Boolean = withProbability(probabilityManager.constField())
 
     @Suppress("UNUSED_PARAMETER")
     fun selectAssignType(context: GenerationContext): AssignType =
@@ -304,7 +308,7 @@ class SelectionManager(
                 0.0
             }
         val constructorProbability =
-            if (((targetType is ArrayType || targetType is ClassType || targetType is TraitType) && context.expressionDepth == 1) ||
+            if (((targetType is ArrayType || targetType is ClassType || targetType is TraitType) && context.effectfulStatements && context.expressionDepth == 1) ||
                 (targetType !is LiteralType && targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType)
             ) {
                 if (identifier) probabilityManager.constructor() / 3 else probabilityManager.constructor()
@@ -423,6 +427,8 @@ class SelectionManager(
 
     fun selectNumberOfTraitInherits() = random.nextInt(0, MAX_TRAIT_INHERITS)
 
+    fun selectNumberOfAssigns(): Int = random.nextInt(1, probabilityManager.maxNumberOfAssigns() + 1) // include max of probability manager with +1
+
     fun selectDecimalLiteral(): Int = random.nextInt(0, MAX_INT_VALUE)
 
     fun selectStringLength(): Int = random.nextInt(1, MAX_STRING_LENGTH)
@@ -454,7 +460,7 @@ class SelectionManager(
         private const val MAX_PARAMETERS = 5
         private const val MAX_RETURNS = 5
         private const val MAX_FIELDS = 3
-        private const val MAX_GLOBAL_FIELDS = 20
+        private const val MAX_GLOBAL_FIELDS = 30
         private const val MAX_FUNCTION_METHODS = 3
         private const val MAX_METHODS = 3
         private const val MAX_TRAIT_INHERITS = 2

@@ -78,7 +78,7 @@ class ClassAST(
         }
         sb.appendLine(" {")
 
-        fields.forEach { field -> sb.appendLine(indent("var ${field.name} : ${field.type()}")) }
+        fields.forEach { field -> sb.appendLine(indent("${if(field.mutable) "var" else "const"} ${field.name} : ${field.type()}")) }
 
         sb.appendLine(indent(constructor))
 
