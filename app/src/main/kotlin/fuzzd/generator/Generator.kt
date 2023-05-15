@@ -65,6 +65,7 @@ import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
+import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
 import fuzzd.generator.ast.StatementAST.TypedDeclarationAST
@@ -154,6 +155,7 @@ import fuzzd.generator.selection.StatementType.FOR_LOOP
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.MAP_ASSIGN
 import fuzzd.generator.selection.StatementType.METHOD_CALL
+import fuzzd.generator.selection.StatementType.MULTI_ASSIGN
 import fuzzd.generator.selection.StatementType.PRINT
 import fuzzd.generator.selection.StatementType.WHILE
 import fuzzd.generator.symbol_table.DependencyTable
@@ -254,16 +256,17 @@ class Generator(
     }
 
     override fun generateTrait(context: GenerationContext): TraitAST {
-        val fields = (1..selectionManager.selectNumberOfFields()).map { generateField(context) }.toSet()
+        val numberOfInherits = selectionManager.selectNumberOfTraitInherits()
+        val selectedTraits = selectTraits(context, numberOfInherits)
+
+        val fields = (1..selectionManager.selectNumberOfFields()).map { generateField(context) }
+            .filter { it.type() !is TraitType || it.type() is TraitType && (it.type() as TraitType).trait !in selectedTraits }.toSet()
 
         val functionMethods =
             (1..selectionManager.selectNumberOfFunctionMethods()).map { generateFunctionMethodSignature(context) }
                 .toSet()
 
         val methods = (1..selectionManager.selectNumberOfMethods()).map { generateMethodSignature(context) }.toSet()
-
-        val numberOfInherits = selectionManager.selectNumberOfTraitInherits()
-        val selectedTraits = selectTraits(context, numberOfInherits)
 
         val trait = TraitAST(traitNameGenerator.newValue(), selectedTraits, functionMethods, methods, fields)
 
@@ -437,7 +440,7 @@ class Generator(
 
         val annotations = if (verifier) {
             (if (globalState) listOf(ReadsAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) else emptyList()) +
-                generateAnnotationsFromParameters(parameters)
+                    generateAnnotationsFromParameters(parameters)
         } else {
             emptyList()
         }
@@ -541,7 +544,7 @@ class Generator(
 
         val annotations = if (verifier) {
             (if (globalState) listOf(ModifiesAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) else emptyList()) +
-                generateAnnotationsFromParameters(parameters)
+                    generateAnnotationsFromParameters(parameters)
         } else {
             emptyList()
         }
@@ -602,6 +605,7 @@ class Generator(
     ): List<StatementAST> = when (type) {
         ASSERT -> generateAssertStatement(context)
         ASSIGN -> generateAssignmentStatement(context)
+        MULTI_ASSIGN -> generateMultiAssignmentStatement(context)
         CLASS_INSTANTIATION -> generateClassInstantiation(context)
         DECLARATION -> generateDeclarationStatement(context)
         FORALL -> generateForallStatement(context)
@@ -680,7 +684,7 @@ class Generator(
         }
 
         return arrayDeps +
-            ForallStatementAST(identifier, IntegerLiteralAST(0), ArrayLengthAST(array), AssignmentAST(ArrayIndexAST(array, identifier), assignExpr))
+                ForallStatementAST(identifier, IntegerLiteralAST(0), ArrayLengthAST(array), AssignmentAST(ArrayIndexAST(array, identifier), assignExpr))
     }
 
     private fun generateModsetType(context: GenerationContext): Type {
@@ -810,9 +814,8 @@ class Generator(
         }
     }
 
-    override fun generateAssignmentStatement(context: GenerationContext): List<StatementAST> {
-        val targetType = generateType(context)
-        val (identifier, identDeps) = when (selectionManager.selectAssignType(context)) {
+    private fun generateAssignmentIdentifier(context: GenerationContext, targetType: Type): Pair<IdentifierAST, List<StatementAST>> =
+        when (selectionManager.selectAssignType(context)) {
             AssignType.IDENTIFIER -> generateIdentifier(
                 context,
                 targetType,
@@ -823,6 +826,19 @@ class Generator(
             ARRAY_INDEX -> generateArrayIndex(context, targetType)
         }
 
+    override fun generateMultiAssignmentStatement(context: GenerationContext): List<StatementAST> {
+        val numberOfAssigns = selectionManager.selectNumberOfAssigns()
+        val targetTypes = (1..numberOfAssigns).map { generateType(context) }
+        val (identifiers, identifierDeps) = targetTypes.map { generateAssignmentIdentifier(context, it) }.foldPair()
+        val (exprs, exprDeps) = targetTypes.map { generateExpression(context.disableEffectfulStatements(), it) }.foldPair()
+
+        identifiers.forEach { context.symbolTable.add(it.initialise()) }
+        return identifierDeps + exprDeps + MultiAssignmentAST(identifiers, exprs)
+    }
+
+    override fun generateAssignmentStatement(context: GenerationContext): List<StatementAST> {
+        val targetType = generateType(context)
+        val (identifier, identDeps) = generateAssignmentIdentifier(context, targetType)
         val (expr, exprDeps) = generateExpression(context, targetType)
 
         context.symbolTable.add(identifier.initialise())
@@ -854,16 +870,16 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-            context.functionSymbolTable.methods().map { it.signature } +
-                context.symbolTable.classInstances().map { it.methods() }.unionAll() +
-                context.symbolTable.traitInstances().map { it.methods() }.unionAll()
-            )
+                context.functionSymbolTable.methods().map { it.signature } +
+                        context.symbolTable.classInstances().map { it.methods() }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.methods() }.unionAll()
+                )
             .filter { method ->
                 context.methodContext == null ||
-                    method is ClassInstanceMethodSignatureAST &&
-                    methodCallTable.canUseDependency(context.methodContext, method.signature) ||
-                    method !is ClassInstanceMethodSignatureAST &&
-                    methodCallTable.canUseDependency(context.methodContext, method)
+                        method is ClassInstanceMethodSignatureAST &&
+                        methodCallTable.canUseDependency(context.methodContext, method.signature) ||
+                        method !is ClassInstanceMethodSignatureAST &&
+                        methodCallTable.canUseDependency(context.methodContext, method)
             }
 
         // no support for on demand method generation within methods
@@ -1045,10 +1061,10 @@ class Generator(
         targetType: Type,
     ): List<FunctionMethodSignatureAST> =
         (
-            context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
-                context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
-            )
+                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+                        context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
+                        context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
+                )
             .filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)

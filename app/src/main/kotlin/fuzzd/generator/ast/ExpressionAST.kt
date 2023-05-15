@@ -302,14 +302,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun equals(other: Any?): Boolean = other is TraitInstanceAST && trait == other.trait && name == other.name
 
-        override fun hashCode(): Int {
-            var result = super.hashCode()
-            result = 31 * result + trait.hashCode()
-            result = 31 * result + fields.hashCode()
-            result = 31 * result + functionMethods.hashCode()
-            result = 31 * result + methods.hashCode()
-            return result
-        }
+        override fun hashCode(): Int = trait.hashCode()
     }
 
     class ClassInstanceAST(
@@ -693,7 +686,7 @@ sealed class ExpressionAST : ASTElement {
 
         override fun type(): Type = IntType
 
-        override fun toString(): String = "${array.name}.Length"
+        override fun toString(): String = "$array.Length"
     }
 
     open class ArrayInitAST(val length: Int, private val type: ArrayType) : ExpressionAST() {
@@ -732,7 +725,8 @@ sealed class ExpressionAST : ASTElement {
 
         override fun toString(): String = "new $innerType[$length]($identifier => $expr)"
 
-        override fun equals(other: Any?): Boolean = other is ComprehensionInitialisedArrayInitAST && other.length == length && other.identifier == identifier && other.expr == expr
+        override fun equals(other: Any?): Boolean =
+            other is ComprehensionInitialisedArrayInitAST && other.length == length && other.identifier == identifier && other.expr == expr
 
         override fun hashCode(): Int {
             var result = length.hashCode()

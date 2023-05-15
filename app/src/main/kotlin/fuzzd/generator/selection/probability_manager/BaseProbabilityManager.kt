@@ -30,7 +30,8 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun whileStatement() = 0.12
     override fun methodCall() = 0.05
     override fun mapAssign() = 0.05
-    override fun assignStatement() = 0.6
+    override fun assignStatement() = 0.5
+    override fun multiAssignStatement(): Double = 0.1
     override fun classInstantiation() = 0.05
 
     // decl info
@@ -81,6 +82,8 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun comprehensionIdentifiers(): Int = 3
 
     override fun numberOfTraits(): Int = 3
+
+    override fun maxNumberOfAssigns(): Int = 5
 
     // verification mutation
     override fun mutateVerificationCondition(): Double = 0.0

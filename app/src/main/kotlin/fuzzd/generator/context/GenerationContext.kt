@@ -17,6 +17,7 @@ data class GenerationContext(
     val methodContext: MethodSignatureAST? = null, // track if we are inside a method
     val onDemandIdentifiers: Boolean = true,
     val functionCalls: Boolean = true,
+    val effectfulStatements: Boolean = true,
 ) {
     private var globalState: ClassAST? = null
 
@@ -38,6 +39,7 @@ data class GenerationContext(
             methodContext,
             onDemandIdentifiers,
             functionCalls,
+            effectfulStatements
         ).setGlobalState(globalState)
 
     fun increaseExpressionDepthWithSymbolTable(): GenerationContext =
@@ -51,6 +53,7 @@ data class GenerationContext(
             methodContext,
             onDemandIdentifiers,
             functionCalls,
+            effectfulStatements
         ).setGlobalState(globalState)
 
     fun increaseStatementDepth(): GenerationContext =
@@ -64,6 +67,7 @@ data class GenerationContext(
             methodContext,
             onDemandIdentifiers,
             functionCalls,
+            effectfulStatements
         ).setGlobalState(globalState)
 
     fun disableOnDemand(): GenerationContext =
@@ -77,6 +81,7 @@ data class GenerationContext(
             methodContext,
             false,
             functionCalls,
+            effectfulStatements
         ).setGlobalState(globalState)
 
     fun disableFunctionCalls(): GenerationContext =
@@ -90,6 +95,21 @@ data class GenerationContext(
             methodContext,
             onDemandIdentifiers,
             false,
+            effectfulStatements
+        ).setGlobalState(globalState)
+
+    fun disableEffectfulStatements(): GenerationContext =
+        GenerationContext(
+            functionSymbolTable,
+            statementDepth,
+            expressionDepth,
+            symbolTable,
+            identifierNameGenerator,
+            loopCounterGenerator,
+            methodContext,
+            onDemandIdentifiers,
+            functionCalls,
+            false
         ).setGlobalState(globalState)
 
     fun withSymbolTable(symbolTable: SymbolTable): GenerationContext =
@@ -102,5 +122,6 @@ data class GenerationContext(
             loopCounterGenerator,
             methodContext,
             onDemandIdentifiers,
+            effectfulStatements
         ).setGlobalState(globalState)
 }

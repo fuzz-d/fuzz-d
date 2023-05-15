@@ -57,7 +57,8 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun whileStatement(): Double = getProbability(ProbabilityManager::whileStatement)
     override fun methodCall(): Double = getProbability(ProbabilityManager::methodCall)
     override fun mapAssign(): Double = getProbability(ProbabilityManager::mapAssign)
-    override fun assignStatement(): Double = getProbability(ProbabilityManager::assignStatement)
+    override fun assignStatement(): Double = getProbability(ProbabilityManager::assignStatement) - multiAssignStatement()
+    override fun multiAssignStatement(): Double = min(getProbability(ProbabilityManager::multiAssignStatement), 0.15)
     override fun classInstantiation(): Double = getProbability(ProbabilityManager::classInstantiation)
 
     // decl info
@@ -105,6 +106,8 @@ class RandomProbabilityManager(seed: Long, excludedFeatures: Set<KFunction<*>> =
     override fun comprehensionIdentifiers(): Int = min(getStatementCount(ProbabilityManager::comprehensionIdentifiers), 4)
 
     override fun numberOfTraits(): Int = getStatementCount(ProbabilityManager::numberOfTraits)
+
+    override fun maxNumberOfAssigns(): Int = min(getStatementCount(ProbabilityManager::maxNumberOfAssigns), 6)
 
     // Verification mutation
     override fun mutateVerificationCondition(): Double = 0.0

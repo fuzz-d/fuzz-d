@@ -65,6 +65,7 @@ import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
+import fuzzd.generator.ast.StatementAST.MultiAssignmentAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.MultiTypedDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
@@ -532,11 +533,11 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitDeclAssignRhs(ctx: DeclAssignRhsContext): ExpressionAST =
         super.visitDeclAssignRhs(ctx) as ExpressionAST
 
-    override fun visitAssignment(ctx: AssignmentContext): AssignmentAST {
-        val lhs = visitAssignmentLhs(ctx.assignmentLhs())
-        val rhs = visitDeclAssignRhs(ctx.declAssignRhs())
+    override fun visitAssignment(ctx: AssignmentContext): MultiAssignmentAST {
+        val lhss = ctx.assignmentLhs().map(this::visitAssignmentLhs)
+        val rhss = ctx.declAssignRhs().map(this::visitDeclAssignRhs)
 
-        return AssignmentAST(lhs, rhs)
+        return if (lhss.size == 1) AssignmentAST(lhss.first(), rhss.first()) else MultiAssignmentAST(lhss, rhss)
     }
 
     override fun visitAssignmentLhs(ctx: AssignmentLhsContext): IdentifierAST = visitDeclAssignLhs(ctx.declAssignLhs())
@@ -603,7 +604,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
 
         identifiersTable = identifiersTable.increaseDepth()
         identifiersTable.addEntry(identifier.name, identifier)
-        val assign = visitAssignment(ctx.assignment())
+        val assign = visitAssignment(ctx.assignment()) as AssignmentAST
         identifiersTable = identifiersTable.decreaseDepth()
 
         return ForallStatementAST(identifier, bottomRange, topRange, assign)

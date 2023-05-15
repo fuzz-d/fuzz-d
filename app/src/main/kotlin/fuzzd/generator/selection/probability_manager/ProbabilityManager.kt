@@ -30,6 +30,7 @@ interface ProbabilityManager {
     fun methodCall(): Double
     fun mapAssign(): Double
     fun assignStatement(): Double
+    fun multiAssignStatement(): Double
     fun classInstantiation(): Double
 
     // decl info
@@ -79,6 +80,8 @@ interface ProbabilityManager {
     fun comprehensionIdentifiers(): Int
 
     fun numberOfTraits(): Int
+
+    fun maxNumberOfAssigns(): Int
 
     // verification mutation
     fun mutateVerificationCondition(): Double

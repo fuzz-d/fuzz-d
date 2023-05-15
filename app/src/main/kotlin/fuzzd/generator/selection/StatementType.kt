@@ -3,6 +3,7 @@ package fuzzd.generator.selection
 enum class StatementType {
     ASSERT,
     ASSIGN,
+    MULTI_ASSIGN,
     CLASS_INSTANTIATION,
     DECLARATION,
     FORALL,

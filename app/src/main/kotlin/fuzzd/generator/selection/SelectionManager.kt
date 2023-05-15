@@ -58,6 +58,7 @@ import fuzzd.generator.selection.StatementType.FOR_LOOP
 import fuzzd.generator.selection.StatementType.IF
 import fuzzd.generator.selection.StatementType.MAP_ASSIGN
 import fuzzd.generator.selection.StatementType.METHOD_CALL
+import fuzzd.generator.selection.StatementType.MULTI_ASSIGN
 import fuzzd.generator.selection.StatementType.WHILE
 import fuzzd.generator.selection.probability_manager.BaseProbabilityManager
 import fuzzd.generator.selection.probability_manager.ProbabilityManager
@@ -244,6 +245,7 @@ class SelectionManager(
             StatementType.MATCH to matchProbability,
             MAP_ASSIGN to min(probabilityManager.mapAssign(), 0.2),
             ASSIGN to probabilityManager.assignStatement(),
+            MULTI_ASSIGN to probabilityManager.multiAssignStatement(),
             CLASS_INSTANTIATION to min(probabilityManager.classInstantiation(), 0.1),
         )
 
@@ -306,7 +308,7 @@ class SelectionManager(
                 0.0
             }
         val constructorProbability =
-            if (((targetType is ArrayType || targetType is ClassType || targetType is TraitType) && context.expressionDepth == 1) ||
+            if (((targetType is ArrayType || targetType is ClassType || targetType is TraitType) && context.effectfulStatements && context.expressionDepth == 1) ||
                 (targetType !is LiteralType && targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType)
             ) {
                 if (identifier) probabilityManager.constructor() / 3 else probabilityManager.constructor()
@@ -424,6 +426,8 @@ class SelectionManager(
     fun selectNumberOfTraits() = random.nextInt(0, probabilityManager.numberOfTraits())
 
     fun selectNumberOfTraitInherits() = random.nextInt(0, MAX_TRAIT_INHERITS)
+
+    fun selectNumberOfAssigns(): Int = random.nextInt(1, probabilityManager.maxNumberOfAssigns())
 
     fun selectDecimalLiteral(): Int = random.nextInt(0, MAX_INT_VALUE)
 

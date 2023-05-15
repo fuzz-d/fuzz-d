@@ -374,7 +374,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
                     reconditionedArray,
                     FunctionMethodCallAST(
                         SAFE_ARRAY_INDEX.signature,
-                        listOf(reconditionedIndex, ArrayLengthAST(identifierAST.array)),
+                        listOf(reconditionedIndex, ArrayLengthAST(reconditionedArray)),
                     ),
                 )
             } else {
