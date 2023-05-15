@@ -48,7 +48,7 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun multisetConversion() = 0.00 // due to resolver bug
     override fun functionCall() = 0.1
     override fun ternary() = 0.05
-    override fun matchExpression() = 0.05
+    override fun matchExpression() = 0.00 // due to assertion failure
     override fun assignExpression() = 0.1
     override fun indexExpression() = 0.1
     override fun identifier() = 0.5

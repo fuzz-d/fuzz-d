@@ -427,7 +427,7 @@ class SelectionManager(
 
     fun selectNumberOfTraitInherits() = random.nextInt(0, MAX_TRAIT_INHERITS)
 
-    fun selectNumberOfAssigns(): Int = random.nextInt(1, probabilityManager.maxNumberOfAssigns())
+    fun selectNumberOfAssigns(): Int = random.nextInt(1, probabilityManager.maxNumberOfAssigns() + 1) // include max of probability manager with +1
 
     fun selectDecimalLiteral(): Int = random.nextInt(0, MAX_INT_VALUE)
 
