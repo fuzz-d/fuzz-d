@@ -15,7 +15,7 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "assert($expr);"
     }
 
-    class DisjunctiveAssertStatementAST(val baseExpr: ExpressionAST, val exprs: MutableList<ExpressionAST>) : AssertStatementAST(baseExpr) {
+    class DisjunctiveAssertStatementAST(val baseExpr: ExpressionAST, val exprs: MutableSet<ExpressionAST>) : AssertStatementAST(baseExpr) {
         override fun toString(): String = "assert (${if (exprs.isEmpty()) baseExpr else exprs.reduce { l, r -> BinaryExpressionAST(l, DisjunctionOperator, r) }});"
     }
 

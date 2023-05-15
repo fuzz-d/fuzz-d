@@ -323,9 +323,9 @@ class AdvancedReconditioner {
 
     fun reconditionDisjunctiveAssertStatement(assertStatementAST: DisjunctiveAssertStatementAST): List<StatementAST> {
         val (reconditionedBaseExpr, baseExprDependents) = reconditionExpression(assertStatementAST.baseExpr)
-        val (reconditionedExprs, exprDependents) = reconditionExpressionList(assertStatementAST.exprs)
+        val (reconditionedExprs, exprDependents) = reconditionExpressionList(assertStatementAST.exprs.toList())
 
-        return baseExprDependents + exprDependents + DisjunctiveAssertStatementAST(reconditionedBaseExpr, reconditionedExprs.toMutableList())
+        return baseExprDependents + exprDependents + DisjunctiveAssertStatementAST(reconditionedBaseExpr, reconditionedExprs.toMutableSet())
     }
 
     fun reconditionAssertStatement(assertStatementAST: AssertStatementAST): List<StatementAST> {

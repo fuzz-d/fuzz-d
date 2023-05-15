@@ -88,9 +88,9 @@ class VerifierAnnotationMutator(val selectionManager: SelectionManager) {
 
     fun mutateDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST): DisjunctiveAssertStatementAST = mutate(assertStatement) {
         if (assertStatement.exprs.isNotEmpty()) {
-            DisjunctiveAssertStatementAST(assertStatement.baseExpr, assertStatement.exprs.map(this::mutateExpression).toMutableList())
+            DisjunctiveAssertStatementAST(assertStatement.baseExpr, assertStatement.exprs.map(this::mutateExpression).toMutableSet())
         } else {
-            DisjunctiveAssertStatementAST(mutateExpression(assertStatement.baseExpr), mutableListOf())
+            DisjunctiveAssertStatementAST(mutateExpression(assertStatement.baseExpr), mutableSetOf())
         }
     }
 

@@ -592,7 +592,7 @@ class Generator(
         val (expr, exprDeps) = if (identifier.type() is LiteralType) generateBinaryExpressionWithIdentifier(identifier, context, type) else Pair(identifier, emptyList())
 
         val assertExpr = BinaryExpressionAST(expr, EqualsOperator, expr)
-        val assertStatement = DisjunctiveAssertStatementAST(assertExpr, mutableListOf())
+        val assertStatement = DisjunctiveAssertStatementAST(assertExpr, mutableSetOf())
 
         return identifierDeps + exprDeps + assertStatement + generateStatement(context)
     }
