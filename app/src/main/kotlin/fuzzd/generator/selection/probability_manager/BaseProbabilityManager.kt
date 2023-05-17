@@ -19,7 +19,7 @@ class BaseProbabilityManager : ProbabilityManager {
     // literal types
     override fun intType() = 0.4
     override fun boolType() = 0.4
-    override fun charType() = 0.0
+    override fun charType() = 0.05
 
     // statements
     override fun assertStatement(): Double = 0.0
@@ -45,10 +45,10 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun binaryExpression() = 0.4
     override fun unaryExpression() = 0.15
     override fun modulusExpression() = 0.15
-    override fun multisetConversion() = 0.00 // due to resolver bug
+    override fun multisetConversion() = 0.05
     override fun functionCall() = 0.1
     override fun ternary() = 0.05
-    override fun matchExpression() = 0.00 // due to assertion failure
+    override fun matchExpression() = 0.05
     override fun assignExpression() = 0.1
     override fun indexExpression() = 0.1
     override fun identifier() = 0.5
