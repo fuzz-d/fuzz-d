@@ -440,7 +440,7 @@ class Generator(
 
         val annotations = if (verifier) {
             (if (globalState) listOf(ReadsAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) else emptyList()) +
-                    generateAnnotationsFromParameters(parameters)
+                generateAnnotationsFromParameters(parameters)
         } else {
             emptyList()
         }
@@ -544,7 +544,7 @@ class Generator(
 
         val annotations = if (verifier) {
             (if (globalState) listOf(ModifiesAnnotation(ClassInstanceAST(context.globalState(), PARAM_GLOBAL_STATE))) else emptyList()) +
-                    generateAnnotationsFromParameters(parameters)
+                generateAnnotationsFromParameters(parameters)
         } else {
             emptyList()
         }
@@ -684,7 +684,7 @@ class Generator(
         }
 
         return arrayDeps +
-                ForallStatementAST(identifier, IntegerLiteralAST(0), ArrayLengthAST(array), AssignmentAST(ArrayIndexAST(array, identifier), assignExpr))
+            ForallStatementAST(identifier, IntegerLiteralAST(0), ArrayLengthAST(array), AssignmentAST(ArrayIndexAST(array, identifier), assignExpr))
     }
 
     private fun generateModsetType(context: GenerationContext): Type {
@@ -870,16 +870,16 @@ class Generator(
     override fun generateMethodCall(context: GenerationContext): List<StatementAST> {
         // get callable methods
         val methods = (
-                context.functionSymbolTable.methods().map { it.signature } +
-                        context.symbolTable.classInstances().map { it.methods() }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.methods() }.unionAll()
-                )
+            context.functionSymbolTable.methods().map { it.signature } +
+                context.symbolTable.classInstances().map { it.methods() }.unionAll() +
+                context.symbolTable.traitInstances().map { it.methods() }.unionAll()
+            )
             .filter { method ->
                 context.methodContext == null ||
-                        method is ClassInstanceMethodSignatureAST &&
-                        methodCallTable.canUseDependency(context.methodContext, method.signature) ||
-                        method !is ClassInstanceMethodSignatureAST &&
-                        methodCallTable.canUseDependency(context.methodContext, method)
+                    method is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method.signature) ||
+                    method !is ClassInstanceMethodSignatureAST &&
+                    methodCallTable.canUseDependency(context.methodContext, method)
             }
 
         // no support for on demand method generation within methods
@@ -1059,13 +1059,11 @@ class Generator(
     private fun functionMethodsWithType(
         context: GenerationContext,
         targetType: Type,
-    ): List<FunctionMethodSignatureAST> =
-        (
-                context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
-                        context.symbolTable.classInstances().map { it.functionMethods() }.unionAll() +
-                        context.symbolTable.traitInstances().map { it.functionMethods() }.unionAll()
-                )
-            .filter { it.returnType == targetType }
+    ): List<FunctionMethodSignatureAST> = (
+        context.functionSymbolTable.withFunctionMethodType(targetType).map { it.signature } +
+            context.symbolTable.classInstances().filter { it.initialised() }.map { it.functionMethods() }.unionAll() +
+            context.symbolTable.traitInstances().filter { it.initialised() }.map { it.functionMethods() }.unionAll()
+        ).filter { it.returnType == targetType }
 
     @Throws(IdentifierOnDemandException::class)
     override fun generateIdentifier(
