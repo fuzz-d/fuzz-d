@@ -17,14 +17,11 @@ class Runner():
 class FuzzdRunner(Runner):
     def run(self, seed, output_dir):
         return_code = os.system(f'timeout 30 java -jar app/build/libs/app.jar fuzz -n -s {seed} -o {output_dir}')
-        if return_code == 0:
-            os.system(f'cat {output_dir}/wrappers.dfy > {output_dir}/main.dfy')
-            os.system(f'cat {output_dir}/body.dfy >> {output_dir}/main.dfy')
         return return_code
 
 class XDSmithRunner(Runner):
     def run(self, seed, output_dir):
-        return os.system(f'racket xdsmith/fuzzer.rkt --seed {seed} > {output_dir}/main.dfy')
+        return os.system(f'racket xdsmith/fuzzer.rkt --dafny-syntax true --seed {seed} > {output_dir}/main.dfy')
 
 def generate_random_seed():
     return random.randint(-1 * 2 ** 63, 2 ** 63 - 1)
@@ -63,7 +60,7 @@ if __name__ == '__main__':
 
     start_time = time.time()
     timeout_secs = 60 * 60 * 24
-    checkpoints = [1, 2, 6, 12, 24]
+    checkpoints = [1, 4, 8, 12, 16, 20, 24]
     checkpoints_saved = [False] * len(checkpoints)
     while (time.time() < start_time + timeout_secs):
         for (i, checkpoint) in enumerate(checkpoints):
