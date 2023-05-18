@@ -72,9 +72,9 @@ class SelectionManager(
     private val probabilityManager: ProbabilityManager = BaseProbabilityManager(),
 ) {
     fun selectType(context: GenerationContext, depth: Int = 1): Type {
-        val classTypeProb = if (context.onDemandIdentifiers && context.functionSymbolTable.hasClasses()) probabilityManager.classType() / context.expressionDepth else 0.0
-        val traitTypeProb = if (context.onDemandIdentifiers && context.functionSymbolTable.hasTraits()) probabilityManager.traitType() / context.expressionDepth else 0.0
-        val datatypeProb = if (context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) probabilityManager.datatype() / context.expressionDepth else 0.0
+        val classTypeProb = if (context.onDemandIdentifiers && context.globalSymbolTable.hasClasses()) probabilityManager.classType() / context.expressionDepth else 0.0
+        val traitTypeProb = if (context.onDemandIdentifiers && context.globalSymbolTable.hasTraits()) probabilityManager.traitType() / context.expressionDepth else 0.0
+        val datatypeProb = if (context.globalSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) probabilityManager.datatype() / context.expressionDepth else 0.0
 
         val selection = listOf<Pair<(GenerationContext, Int) -> Type, Double>>(
             this::selectClassType to classTypeProb,
@@ -90,15 +90,15 @@ class SelectionManager(
 
     @Suppress("UNUSED_PARAMETER")
     private fun selectClassType(context: GenerationContext, depth: Int): ClassType =
-        ClassType(randomSelection(context.functionSymbolTable.classes().toList()))
+        ClassType(randomSelection(context.globalSymbolTable.classes().toList()))
 
     @Suppress("UNUSED_PARAMETER")
     private fun selectTraitType(context: GenerationContext, depth: Int): TraitType =
-        TraitType(randomSelection(context.functionSymbolTable.traits().toList()))
+        TraitType(randomSelection(context.globalSymbolTable.traits().toList()))
 
     @Suppress("UNUSED_PARAMETER")
     fun selectDatatypeType(context: GenerationContext, depth: Int): DatatypeType {
-        return randomSelection(context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers))
+        return randomSelection(context.globalSymbolTable.availableDatatypes(context.onDemandIdentifiers))
     }
 
     fun selectDataStructureType(context: GenerationContext, depth: Int): DataStructureType =
@@ -287,7 +287,9 @@ class SelectionManager(
             }
         val ternaryProbability = if (context.expressionDepth < MAX_EXPRESSION_DEPTH) probabilityManager.ternary() / context.expressionDepth else 0.0
         val matchProbability =
-            if (context.expressionDepth == 1 && context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers) && !targetType.hasHeapType()) {
+            // depth conditions to avoid assertion errors
+            if (context.statementDepth == 1 && context.expressionDepth == 1
+                && context.globalSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers) && !targetType.hasHeapType()) {
                 probabilityManager.matchExpression()
             } else {
                 0.0

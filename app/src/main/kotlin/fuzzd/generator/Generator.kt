@@ -160,6 +160,7 @@ import fuzzd.generator.selection.StatementType.PRINT
 import fuzzd.generator.selection.StatementType.WHILE
 import fuzzd.generator.symbol_table.DependencyTable
 import fuzzd.generator.symbol_table.FunctionSymbolTable
+import fuzzd.generator.symbol_table.GlobalSymbolTable
 import fuzzd.generator.symbol_table.SymbolTable
 import fuzzd.utils.foldPair
 import fuzzd.utils.reduceLists
@@ -187,7 +188,7 @@ class Generator(
     /* ==================================== TOP LEVEL ==================================== */
 
     override fun generate(): DafnyAST {
-        val context = GenerationContext(FunctionSymbolTable())
+        val context = GenerationContext(GlobalSymbolTable(), FunctionSymbolTable())
 
         (1..selectionManager.selectNumberOfFields()).map { generateDatatype(context) }
 
@@ -210,6 +211,7 @@ class Generator(
             visitedMethods.add(method)
 
             val functionContext = GenerationContext(
+                context.globalSymbolTable,
                 context.functionSymbolTable,
                 methodContext = method.signature,
             )
@@ -222,12 +224,30 @@ class Generator(
             methodBodyQueue.addAll(context.functionSymbolTable.methods() subtract methodBodyQueue.toSet() subtract visitedMethods)
         }
 
-        ast.addAll(context.functionSymbolTable.datatypes())
+        val functionBodyQueue = context.functionSymbolTable.functionMethods().toMutableList()
+        val visitedFunctions = mutableSetOf<FunctionMethodAST>()
+        while (functionBodyQueue.isNotEmpty()) {
+            val function = functionBodyQueue.removeFirst()
+
+            if (function in visitedFunctions) continue
+            visitedFunctions.add(function)
+
+            val functionContext = GenerationContext(context.globalSymbolTable, context.functionSymbolTable).disableOnDemand()
+            if (globalState) {
+                functionContext.setGlobalState(context.globalState())
+            }
+            val (body, _) = generateExpression(functionContext, function.returnType())
+            function.setBody(body)
+
+            functionBodyQueue.addAll(context.functionSymbolTable.functionMethods() subtract functionBodyQueue.toSet() subtract visitedFunctions)
+        }
+
+        ast.addAll(context.globalSymbolTable.datatypes())
         if (globalState) ast.add(context.globalState())
         ast.addAll(context.functionSymbolTable.functionMethods())
         ast.addAll(context.functionSymbolTable.methods())
-        ast.addAll(context.functionSymbolTable.traits())
-        ast.addAll(context.functionSymbolTable.classes())
+        ast.addAll(context.globalSymbolTable.traits())
+        ast.addAll(context.globalSymbolTable.classes())
         ast.add(mainFunction)
 
         return DafnyAST(ast)
@@ -270,13 +290,13 @@ class Generator(
 
         val trait = TraitAST(traitNameGenerator.newValue(), selectedTraits, functionMethods, methods, fields)
 
-        context.functionSymbolTable.addTrait(trait)
+        context.globalSymbolTable.addTrait(trait)
 
         return trait
     }
 
     private fun selectTraits(context: GenerationContext, n: Int): Set<TraitAST> {
-        val traits = context.functionSymbolTable.traits().toMutableList()
+        val traits = context.globalSymbolTable.traits().toMutableList()
         val selectedTraits = mutableSetOf<TraitAST>()
 
         for (i in 1..n) {
@@ -294,7 +314,7 @@ class Generator(
 
     override fun generateClass(context: GenerationContext, mustExtend: List<TraitAST>): ClassAST {
         val classContext =
-            GenerationContext(FunctionSymbolTable(context.functionSymbolTable.topLevel())).setGlobalState(context.globalState())
+            GenerationContext(context.globalSymbolTable, FunctionSymbolTable(context.functionSymbolTable.topLevel())).setGlobalState(context.globalState())
 
         // get traits
         val numberOfTraits = selectionManager.selectNumberOfTraits()
@@ -314,6 +334,13 @@ class Generator(
         val requiredFunctionMethods = selectedTraits.map { it.functionMethods() }.unionAll()
             .map { signature -> generateFunctionMethod(classContext, signature) }.toSet()
         val functionMethods = requiredFunctionMethods union additionalFunctionMethods
+        functionMethods.forEach { function ->
+            val (body, _) = generateExpression(
+                GenerationContext(context.globalSymbolTable, classContext.functionSymbolTable, symbolTable = SymbolTable(classContext.symbolTable)).disableOnDemand(),
+                function.returnType(),
+            )
+            function.setBody(body)
+        }
 
         // generate methods
         val additionalMethods =
@@ -325,6 +352,7 @@ class Generator(
             method.setBody(
                 generateMethodBody(
                     GenerationContext(
+                        context.globalSymbolTable,
                         classContext.functionSymbolTable,
                         symbolTable = SymbolTable(classContext.symbolTable),
                         methodContext = method.signature,
@@ -346,7 +374,7 @@ class Generator(
         // update symbol table with on-demand methods & classes generated into local global context
         context.functionSymbolTable.addFunctionMethods(classContext.functionSymbolTable.functionMethods() subtract functionMethods)
         context.functionSymbolTable.addMethods(classContext.functionSymbolTable.methods() subtract methods)
-        context.functionSymbolTable.addClass(clazz)
+        context.globalSymbolTable.addClass(clazz)
 
         return clazz
     }
@@ -378,7 +406,7 @@ class Generator(
             datatype.constructors.add(constructor)
         }
 
-        context.functionSymbolTable.addDatatype(datatype)
+        context.globalSymbolTable.addDatatype(datatype)
         return datatype
     }
 
@@ -387,6 +415,7 @@ class Generator(
         signature: FunctionMethodSignatureAST,
     ): FunctionMethodAST {
         val functionContext = GenerationContext(
+            context.globalSymbolTable,
             context.functionSymbolTable,
             onDemandIdentifiers = false,
         )
@@ -395,8 +424,7 @@ class Generator(
         }
         signature.params.forEach { param -> functionContext.symbolTable.add(param) }
 
-        val (body, _) = generateExpression(functionContext, signature.returnType)
-        val functionMethodAST = FunctionMethodAST(signature, body)
+        val functionMethodAST = FunctionMethodAST(signature)
 
         context.functionSymbolTable.addFunctionMethod(functionMethodAST)
 
@@ -481,7 +509,7 @@ class Generator(
             datatype.constructors.add(constructor)
         }
 
-        context.functionSymbolTable.addDatatype(datatype)
+        context.globalSymbolTable.addDatatype(datatype)
         return datatype
     }
 
@@ -619,7 +647,7 @@ class Generator(
     }
 
     override fun generateMatchStatement(context: GenerationContext): List<StatementAST> {
-        if (!context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) {
+        if (!context.globalSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) {
             generateDatatype(context)
         }
         val datatype = selectionManager.selectDatatypeType(context, 1)
@@ -848,11 +876,11 @@ class Generator(
     override fun generateClassInstantiation(context: GenerationContext): List<StatementAST> {
         val isConst = selectionManager.selectFieldIsConstant()
         // on demand create class if one doesn't exist
-        if (!context.functionSymbolTable.hasClasses()) {
+        if (!context.globalSymbolTable.hasClasses()) {
             generateClass(context)
         }
 
-        val selectedClass = selectionManager.randomSelection(context.functionSymbolTable.classes().toList())
+        val selectedClass = selectionManager.randomSelection(context.globalSymbolTable.classes().toList())
         val requiredFields = selectedClass.constructorFields
 
         val (params, paramDeps) = requiredFields.map { field ->
@@ -959,7 +987,7 @@ class Generator(
         targetType: TopLevelDatatypeType,
     ): Pair<DatatypeInstantiationAST, List<StatementAST>> {
         val datatype = targetType.datatype
-        val availableDatatypes = context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers)
+        val availableDatatypes = context.globalSymbolTable.availableDatatypes(context.onDemandIdentifiers)
         val type = selectionManager.randomSelection(datatype.datatypes().filter { it in availableDatatypes })
 
         return generateDatatypeInstantiation(context, type)
@@ -986,7 +1014,7 @@ class Generator(
         context: GenerationContext,
         targetType: Type,
     ): Pair<MatchExpressionAST, List<StatementAST>> {
-        if (!context.functionSymbolTable.hasAvailableDatatypes(onDemand = false)) {
+        if (!context.globalSymbolTable.hasAvailableDatatypes(onDemand = false)) {
             generateDatatype(context.disableOnDemand())
         }
 
@@ -1369,7 +1397,7 @@ class Generator(
         }
 
     private fun datatypesWithType(context: GenerationContext, type: Type): List<DatatypeType> =
-        context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers)
+        context.globalSymbolTable.availableDatatypes(context.onDemandIdentifiers)
             .filter { it.constructor.fields.any { f -> f.type() == type } }
 
     private fun generateDatatypeDestructor(
@@ -1547,13 +1575,13 @@ class Generator(
         context: GenerationContext,
         targetType: TraitType,
     ): Pair<ClassInstantiationAST, List<StatementAST>> {
-        val classes = context.functionSymbolTable.classes().filter { targetType.trait in it.extends }
+        val classes = context.globalSymbolTable.classes().filter { targetType.trait in it.extends }
         if (classes.isEmpty()) {
             generateClass(context, listOf(targetType.trait))
         }
 
         val selectedClass = selectionManager.randomSelection(
-            context.functionSymbolTable.classes().filter { targetType.trait in it.extends },
+            context.globalSymbolTable.classes().filter { targetType.trait in it.extends },
         )
 
         return generateClassConstructor(context, ClassType(selectedClass))

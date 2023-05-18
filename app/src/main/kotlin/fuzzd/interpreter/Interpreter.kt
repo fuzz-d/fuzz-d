@@ -145,7 +145,7 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
         }
 
         dafny.topLevelElements.filterIsInstance<FunctionMethodAST>().forEach { function ->
-            context.functions.assign(function.signature, function.body)
+            context.functions.assign(function.signature, function.getBody())
         }
 
         listOf(
@@ -160,7 +160,7 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
             SAFE_ARRAY_INDEX,
             SAFE_DIVISION_INT,
             SAFE_MODULO_INT,
-        ).forEach { context.functions.assign(it.signature, it.body) }
+        ).forEach { context.functions.assign(it.signature, it.getBody()) }
 
         val mainFunction = dafny.topLevelElements.first { it is MainFunctionAST }
         val prints = interpretMainFunction(mainFunction as MainFunctionAST, context)
@@ -830,7 +830,7 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
         val classContext = InterpreterContext()
 
         classFields.zip(constructorParams).forEach { classContext.fields.declare(it.first, it.second) }
-        classInstantiation.clazz.functionMethods.forEach { classContext.functions.declare(it.signature, it.body) }
+        classInstantiation.clazz.functionMethods.forEach { classContext.functions.declare(it.signature, it.getBody()) }
         classInstantiation.clazz.methods.forEach { classContext.methods.declare(it.signature, it.getBody()) }
 
         return ClassValue(classContext)

@@ -234,7 +234,7 @@ class AdvancedReconditioner {
         return reconditionMethod(
             MethodAST(
                 reconditionFunctionMethodSignature(functionMethodAST.signature),
-                SequenceAST(listOf(AssignmentAST(returnIdentifier, functionMethodAST.body))),
+                SequenceAST(listOf(AssignmentAST(returnIdentifier, functionMethodAST.getBody()))),
             ),
         )
     }

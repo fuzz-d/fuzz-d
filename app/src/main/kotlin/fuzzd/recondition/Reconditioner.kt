@@ -138,7 +138,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         MainFunctionAST(reconditionSequence(mainFunction.sequenceAST))
 
     override fun reconditionFunctionMethod(functionMethodAST: FunctionMethodAST): FunctionMethodAST =
-        FunctionMethodAST(functionMethodAST.signature, reconditionExpression(functionMethodAST.body))
+        FunctionMethodAST(functionMethodAST.signature, reconditionExpression(functionMethodAST.getBody()))
 
     override fun reconditionSequence(sequence: SequenceAST): SequenceAST =
         SequenceAST(sequence.statements.map(this::reconditionStatement))
