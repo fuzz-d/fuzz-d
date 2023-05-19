@@ -190,8 +190,6 @@ class Generator(
     override fun generate(): DafnyAST {
         val context = GenerationContext(GlobalSymbolTable(), FunctionSymbolTable())
 
-        (1..selectionManager.selectNumberOfFields()).map { generateDatatype(context) }
-
         if (globalState) {
             val globalFields = (1..selectionManager.selectNumberOfGlobalFields()).map { generateField(context) }.toSet()
             val globalStateClass = ClassAST.builder().withName(GLOBAL_STATE).withFields(globalFields).build()
@@ -904,7 +902,7 @@ class Generator(
             )
             .filter { method ->
                 context.methodContext == null ||
-                    method is ClassInstanceMethodSignatureAST &&
+                    method is ClassInstanceMethodSignatureAST && method.classInstance.initialised() &&
                     methodCallTable.canUseDependency(context.methodContext, method.signature) ||
                     method !is ClassInstanceMethodSignatureAST &&
                     methodCallTable.canUseDependency(context.methodContext, method)
