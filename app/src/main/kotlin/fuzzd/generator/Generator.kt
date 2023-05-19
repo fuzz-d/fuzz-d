@@ -617,7 +617,7 @@ class Generator(
         val type = if (selectionManager.selectAssertStatementDatastructureType()) selectionManager.selectDataStructureTypeWithInnerType(literalType, context) else literalType
 
         val (identifier, identifierDeps) = generateIdentifier(context, type, classInstances = false)
-        val (expr, exprDeps) = if (identifier.type() is LiteralType) generateBinaryExpressionWithIdentifier(identifier, context, type) else Pair(identifier, emptyList())
+        val (expr, exprDeps) = if (identifier.type() is LiteralType && identifier.type() != CharType) generateBinaryExpressionWithIdentifier(identifier, context, type) else Pair(identifier, emptyList())
 
         val assertExpr = BinaryExpressionAST(expr, EqualsOperator, expr)
         val assertStatement = DisjunctiveAssertStatementAST(assertExpr, mutableSetOf())
