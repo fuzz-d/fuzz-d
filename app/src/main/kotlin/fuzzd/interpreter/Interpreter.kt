@@ -10,6 +10,7 @@ import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
+import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.ComprehensionInitialisedArrayInitAST
@@ -119,10 +120,10 @@ import fuzzd.interpreter.value.Value.TopLevelDatatypeValue
 import fuzzd.interpreter.value.ValueTable
 import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.ADVANCED_ABSOLUTE
-import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
+import fuzzd.utils.ADVANCED_SAFE_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
-import fuzzd.utils.SAFE_ARRAY_INDEX
+import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.conjunct
@@ -150,14 +151,14 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
 
         listOf(
             ADVANCED_ABSOLUTE,
-            ADVANCED_SAFE_ARRAY_INDEX,
+            ADVANCED_SAFE_INDEX,
             ADVANCED_SAFE_DIV_INT,
             ADVANCED_SAFE_MODULO_INT,
         ).forEach { context.methods.assign(it.signature, it.getBody()) }
 
         listOf(
             ABSOLUTE,
-            SAFE_ARRAY_INDEX,
+            SAFE_INDEX,
             SAFE_DIVISION_INT,
             SAFE_MODULO_INT,
         ).forEach { context.functions.assign(it.signature, it.getBody()) }
@@ -1002,7 +1003,6 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
             else -> if (context.fields.has(identifier)) {
                 context.fields.get(identifier)
             } else {
-                println(identifier)
                 context.classContext!!.fields.get(identifier)
             }
         }

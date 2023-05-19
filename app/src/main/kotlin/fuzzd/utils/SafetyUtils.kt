@@ -46,8 +46,8 @@ val ABSOLUTE = FunctionMethodAST(
     ),
 )
 
-val SAFE_ARRAY_INDEX = FunctionMethodAST(
-    "safeArrayIndex",
+val SAFE_INDEX = FunctionMethodAST(
+    "safeIndex",
     IntType,
     listOf(INT_IDENTIFIER, LENGTH),
     listOf(RequiresAnnotation(BinaryExpressionAST(LENGTH, GreaterThanOperator, IntegerLiteralAST(0)))),
@@ -86,11 +86,7 @@ val SAFE_MODULO_INT = FunctionMethodAST(
     TernaryExpressionAST(
         BinaryExpressionAST(INT_IDENTIFIER_2, EqualsOperator, IntegerLiteralAST("0")),
         INT_IDENTIFIER_1,
-        BinaryExpressionAST(
-            FunctionMethodCallAST(ABSOLUTE.signature, listOf(INT_IDENTIFIER_1)),
-            ModuloOperator,
-            INT_IDENTIFIER_2,
-        ),
+        BinaryExpressionAST(INT_IDENTIFIER_1, ModuloOperator, INT_IDENTIFIER_2),
     ),
 )
 
@@ -101,7 +97,7 @@ val safetyMap = mapOf<Pair<BinaryOperator, Type>, FunctionMethodAST>(
 
 val WRAPPER_FUNCTIONS = listOf(
     ABSOLUTE,
-    SAFE_ARRAY_INDEX,
+    SAFE_INDEX,
     SAFE_DIVISION_INT,
     SAFE_MODULO_INT,
 )

@@ -71,7 +71,7 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.MathematicalBinaryOperator
 import fuzzd.logging.Logger
 import fuzzd.utils.ABSOLUTE
-import fuzzd.utils.SAFE_ARRAY_INDEX
+import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.safetyMap
 
 class Reconditioner(private val logger: Logger, private val ids: Set<String>? = null) : ASTReconditioner {
@@ -373,7 +373,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
                 ArrayIndexAST(
                     reconditionedArray,
                     FunctionMethodCallAST(
-                        SAFE_ARRAY_INDEX.signature,
+                        SAFE_INDEX.signature,
                         listOf(reconditionedIndex, ArrayLengthAST(reconditionedArray)),
                     ),
                 )
@@ -413,7 +413,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
                 SequenceIndexAST(
                     reconditionedSequence,
                     FunctionMethodCallAST(
-                        SAFE_ARRAY_INDEX.signature,
+                        SAFE_INDEX.signature,
                         listOf(reconditionedIndex, ModulusExpressionAST(reconditionedSequence)),
                     ),
                 )
@@ -456,7 +456,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
                     IndexAssignAST(
                         ident,
-                        FunctionMethodCallAST(SAFE_ARRAY_INDEX.signature, listOf(key, ModulusExpressionAST(ident))),
+                        FunctionMethodCallAST(SAFE_INDEX.signature, listOf(key, ModulusExpressionAST(ident))),
                         value,
                     )
                 } else {

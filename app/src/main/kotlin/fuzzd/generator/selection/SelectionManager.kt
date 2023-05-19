@@ -230,9 +230,9 @@ class SelectionManager(
 
         val methodCallProbability = if (methodCalls) {
             val methodCallProbability = min(probabilityManager.methodCall(), 0.1)
-            if (context.methodContext == null) methodCallProbability else methodCallProbability / 5
+            if (context.methodContext == null) methodCallProbability else methodCallProbability / 5 // avoid large call chains
         } else {
-            0.0 // TODO() is there a better heuristic?
+            0.0
         }
 
         val selection = listOf(
@@ -279,12 +279,7 @@ class SelectionManager(
         val unaryProbability = if (isUnaryType(targetType)) probabilityManager.unaryExpression() / context.expressionDepth else 0.0
         val modulusProbability = if (targetType == IntType) probabilityManager.modulusExpression() else 0.0
         val multisetConversionProbability = if (targetType is MultisetType) probabilityManager.multisetConversion() else 0.0
-        val functionCallProbability =
-            if (!targetType.hasHeapType() && context.onDemandIdentifiers && context.functionCalls) {
-                probabilityManager.functionCall() / context.expressionDepth
-            } else {
-                0.0
-            }
+        val functionCallProbability = if (!targetType.hasHeapType() && context.onDemandIdentifiers && context.functionCalls) probabilityManager.functionCall() / context.expressionDepth else 0.0
         val ternaryProbability = if (context.expressionDepth < MAX_EXPRESSION_DEPTH) probabilityManager.ternary() / context.expressionDepth else 0.0
         val matchProbability =
             // depth conditions to avoid assertion errors
@@ -294,13 +289,9 @@ class SelectionManager(
             } else {
                 0.0
             }
-        val assignProbability = if (isAssignType(targetType) && context.symbolTable.hasType(targetType)) {
-            probabilityManager.assignExpression() / context.expressionDepth
-        } else {
-            0.0
-        }
+        val assignProbability = if (isAssignType(targetType) && (context.onDemandIdentifiers || context.symbolTable.hasType(targetType))) probabilityManager.assignExpression() / context.expressionDepth else 0.0
         val indexProbability =
-            if (identifier && (targetType !is DatatypeType || !targetType.isInductive())) probabilityManager.indexExpression() / context.expressionDepth else 0.0
+            if (identifier && (targetType !is DatatypeType)) probabilityManager.indexExpression() / context.expressionDepth else 0.0
 
         val identifierProbability = if (identifier) probabilityManager.identifier() else 0.0
         val literalProbability =
@@ -311,7 +302,7 @@ class SelectionManager(
             }
         val constructorProbability =
             if (((targetType is ArrayType || targetType is ClassType || targetType is TraitType) && context.effectfulStatements && context.expressionDepth == 1) ||
-                (targetType !is LiteralType && targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType)
+                (targetType is TopLevelDatatypeType || targetType is DataStructureType)
             ) {
                 if (identifier) probabilityManager.constructor() / 3 else probabilityManager.constructor()
             } else {

@@ -129,7 +129,7 @@ import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.utils.ABSOLUTE
-import fuzzd.utils.SAFE_ARRAY_INDEX
+import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.toHexInt
@@ -185,7 +185,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     /* ============================================ TOP LEVEL ============================================ */
     override fun visitProgram(ctx: ProgramContext): DafnyAST {
         listOf(
-            SAFE_ARRAY_INDEX,
+            SAFE_INDEX,
             SAFE_DIVISION_INT,
             SAFE_MODULO_INT,
             ABSOLUTE,

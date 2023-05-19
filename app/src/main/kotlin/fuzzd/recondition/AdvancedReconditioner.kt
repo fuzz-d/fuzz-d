@@ -102,7 +102,7 @@ import fuzzd.generator.ast.operators.BinaryOperator.NotEqualsOperator
 import fuzzd.generator.ast.operators.BinaryOperator.UnionOperator
 import fuzzd.utils.ADVANCED_ABSOLUTE
 import fuzzd.utils.ADVANCED_RECONDITION_CLASS
-import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
+import fuzzd.utils.ADVANCED_SAFE_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.foldPair
@@ -139,10 +139,10 @@ class AdvancedReconditioner {
 
         return DafnyAST(
             reconditionedDatatypes +
-                reconditionedTraits +
-                reconditionedClasses +
-                reconditionedMethods +
-                reconditionedMain,
+                    reconditionedTraits +
+                    reconditionedClasses +
+                    reconditionedMethods +
+                    reconditionedMain,
         )
     }
 
@@ -338,7 +338,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
         return identifierDependents + exprDependents +
-            MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMultiTypedDeclaration(multiTypedDeclarationAST: MultiTypedDeclarationAST): List<StatementAST> {
@@ -356,7 +356,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
 
         return identifierDependents + exprDependents +
-            MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMatchStatement(matchStatementAST: MatchStatementAST): List<StatementAST> {
@@ -395,12 +395,12 @@ class AdvancedReconditioner {
 
         // conversion to equivalent for-loop due to possible method calls (not allowed in forall statement)
         return bottomRangeDependents + topRangeDependents + arrayDependents +
-            ForLoopAST(
-                forallStatementAST.identifier,
-                bottomRange,
-                topRange,
-                SequenceAST(assignExprDependents + AssignmentAST(ArrayIndexAST(array, arrayIndex.index), assignExpr)),
-            )
+                ForLoopAST(
+                    forallStatementAST.identifier,
+                    bottomRange,
+                    topRange,
+                    SequenceAST(assignExprDependents + AssignmentAST(ArrayIndexAST(array, arrayIndex.index), assignExpr)),
+                )
     }
 
     fun reconditionVerificationAwareWhileLoop(whileLoopAST: VerificationAwareWhileLoopAST): List<StatementAST> {
@@ -503,7 +503,11 @@ class AdvancedReconditioner {
         val (params, paramDeps) = reconditionExpressionList(instantiationAST.params)
 
         return Pair(
-            DatatypeInstantiationAST(instantiationAST.datatype, instantiationAST.constructor, params),
+            DatatypeInstantiationAST(
+                reconditionDatatype(instantiationAST.datatype),
+                reconditionDatatypeConstructor(instantiationAST.constructor),
+                params
+            ),
             paramDeps,
         )
     }
@@ -626,7 +630,7 @@ class AdvancedReconditioner {
                 val safetyId = safetyIdGenerator.newValue()
                 idsMap[safetyId] = identifierAST
                 val methodCall = NonVoidMethodCallAST(
-                    ADVANCED_SAFE_ARRAY_INDEX.signature,
+                    ADVANCED_SAFE_INDEX.signature,
                     listOf(rexpr, ArrayLengthAST(arr), state, StringLiteralAST(safetyId)),
                 )
 
@@ -699,7 +703,7 @@ class AdvancedReconditioner {
             val safetyId = safetyIdGenerator.newValue()
             idsMap[safetyId] = indexAST
             val methodCall = NonVoidMethodCallAST(
-                ADVANCED_SAFE_ARRAY_INDEX.signature,
+                ADVANCED_SAFE_INDEX.signature,
                 listOf(rexpr, ModulusExpressionAST(seq), state, StringLiteralAST(safetyId)),
             )
 
@@ -730,7 +734,7 @@ class AdvancedReconditioner {
                 val safetyId = safetyIdGenerator.newValue()
                 idsMap[safetyId] = indexAssignAST
                 val methodCall = NonVoidMethodCallAST(
-                    ADVANCED_SAFE_ARRAY_INDEX.signature,
+                    ADVANCED_SAFE_INDEX.signature,
                     listOf(key, ModulusExpressionAST(ident), state, StringLiteralAST(safetyId)),
                 )
                 val decl = DeclarationAST(temp, methodCall)
