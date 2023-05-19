@@ -60,7 +60,7 @@ import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DeclarationAST
-import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
+import fuzzd.generator.ast.StatementAST.ConjunctiveAssertStatement
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -620,7 +620,7 @@ class Generator(
         val (expr, exprDeps) = if (identifier.type() is LiteralType && identifier.type() != CharType) generateBinaryExpressionWithIdentifier(identifier, context, type) else Pair(identifier, emptyList())
 
         val assertExpr = BinaryExpressionAST(expr, EqualsOperator, expr)
-        val assertStatement = DisjunctiveAssertStatementAST(assertExpr, mutableSetOf())
+        val assertStatement = ConjunctiveAssertStatement(assertExpr, mutableSetOf())
 
         return identifierDeps + exprDeps + assertStatement + generateStatement(context)
     }
@@ -1225,10 +1225,7 @@ class Generator(
         val seqType = targetType as SequenceType
         val numberOfExpressions = selectionManager.selectNumberOfConstructorFields(context)
         val (exprs, exprDeps) = (1..numberOfExpressions).map {
-            generateExpression(
-                context.increaseExpressionDepth(),
-                seqType.innerType,
-            )
+            generateExpression(context.increaseExpressionDepth(), seqType.innerType)
         }.foldPair()
 
         return Pair(SequenceDisplayAST(exprs), exprDeps)
