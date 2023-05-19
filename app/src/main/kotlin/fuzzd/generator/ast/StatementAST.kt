@@ -6,7 +6,7 @@ import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.VerifierAnnotationAST.DecreasesAnnotation
 import fuzzd.generator.ast.VerifierAnnotationAST.InvariantAnnotation
 import fuzzd.generator.ast.error.InvalidInputException
-import fuzzd.generator.ast.operators.BinaryOperator.DisjunctionOperator
+import fuzzd.generator.ast.operators.BinaryOperator.ConjunctionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.MembershipOperator
 import fuzzd.utils.indent
 
@@ -15,8 +15,8 @@ sealed class StatementAST : ASTElement {
         override fun toString(): String = "assert($expr);"
     }
 
-    class DisjunctiveAssertStatementAST(val baseExpr: ExpressionAST, val exprs: MutableSet<ExpressionAST>) : AssertStatementAST(baseExpr) {
-        override fun toString(): String = "assert (${if (exprs.isEmpty()) baseExpr else exprs.reduce { l, r -> BinaryExpressionAST(l, DisjunctionOperator, r) }});"
+    class ConjunctiveAssertStatement(val baseExpr: ExpressionAST, val exprs: MutableSet<ExpressionAST>) : AssertStatementAST(baseExpr) {
+        override fun toString(): String = "assert (${if (exprs.isEmpty()) baseExpr else exprs.reduce { l, r -> BinaryExpressionAST(l, ConjunctionOperator, r) }});"
     }
 
     class MatchStatementAST(

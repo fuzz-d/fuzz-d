@@ -30,7 +30,7 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun methodCall(): Double = probabilityManager.methodCall()
     override fun mapAssign(): Double = probabilityManager.mapAssign()
     override fun assignStatement(): Double = probabilityManager.assignStatement()
-    override fun multiAssignStatement(): Double = probabilityManager.multiAssignStatement()
+    override fun multiAssignStatement(): Double = 0.0
     override fun classInstantiation(): Double = 0.0
 
     // Decl info

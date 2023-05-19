@@ -63,7 +63,7 @@ import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DataStructureAssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.DeclarationAST
-import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
+import fuzzd.generator.ast.StatementAST.ConjunctiveAssertStatement
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -303,7 +303,7 @@ class AdvancedReconditioner {
     /* ==================================== STATEMENTS ======================================== */
 
     fun reconditionStatement(statementAST: StatementAST): List<StatementAST> = when (statementAST) {
-        is DisjunctiveAssertStatementAST -> reconditionDisjunctiveAssertStatement(statementAST)
+        is ConjunctiveAssertStatement -> reconditionConjunctiveAssertStatement(statementAST)
         is AssertStatementAST -> reconditionAssertStatement(statementAST)
         is BreakAST -> listOf(statementAST)
         is MultiAssignmentAST -> reconditionMultiAssignment(statementAST)
@@ -321,11 +321,11 @@ class AdvancedReconditioner {
         else -> throw UnsupportedOperationException()
     }
 
-    fun reconditionDisjunctiveAssertStatement(assertStatementAST: DisjunctiveAssertStatementAST): List<StatementAST> {
+    fun reconditionConjunctiveAssertStatement(assertStatementAST: ConjunctiveAssertStatement): List<StatementAST> {
         val (reconditionedBaseExpr, baseExprDependents) = reconditionExpression(assertStatementAST.baseExpr)
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(assertStatementAST.exprs.toList())
 
-        return baseExprDependents + exprDependents + DisjunctiveAssertStatementAST(reconditionedBaseExpr, reconditionedExprs.toMutableSet())
+        return baseExprDependents + exprDependents + ConjunctiveAssertStatement(reconditionedBaseExpr, reconditionedExprs.toMutableSet())
     }
 
     fun reconditionAssertStatement(assertStatementAST: AssertStatementAST): List<StatementAST> {

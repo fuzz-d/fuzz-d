@@ -9,7 +9,7 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.MethodSignatureAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
-import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
+import fuzzd.generator.ast.StatementAST.ConjunctiveAssertStatement
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MatchStatementAST
 import fuzzd.generator.ast.StatementAST.VerificationAwareWhileLoopAST
@@ -78,7 +78,7 @@ class VerifierAnnotationMutator(val selectionManager: SelectionManager) {
 
     fun mutateStatement(statement: StatementAST): StatementAST = mutate(statement) {
         when (statement) {
-            is DisjunctiveAssertStatementAST -> mutateDisjunctiveAssertStatement(statement)
+            is ConjunctiveAssertStatement -> mutateConjunctiveAssertStatement(statement)
             is VerificationAwareWhileLoopAST -> mutateVerificationAwareWhileLoop(statement)
             is IfStatementAST -> IfStatementAST(statement.condition, mutateSequence(statement.ifBranch), statement.elseBranch?.let { mutateSequence(it) })
             is MatchStatementAST -> MatchStatementAST(statement.match, statement.cases.map { Pair(it.first, mutateSequence(it.second)) })
@@ -86,11 +86,11 @@ class VerifierAnnotationMutator(val selectionManager: SelectionManager) {
         }
     }
 
-    fun mutateDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST): DisjunctiveAssertStatementAST = mutate(assertStatement) {
+    fun mutateConjunctiveAssertStatement(assertStatement: ConjunctiveAssertStatement): ConjunctiveAssertStatement = mutate(assertStatement) {
         if (assertStatement.exprs.isNotEmpty()) {
-            DisjunctiveAssertStatementAST(assertStatement.baseExpr, assertStatement.exprs.map(this::mutateExpression).toMutableSet())
+            ConjunctiveAssertStatement(assertStatement.baseExpr, assertStatement.exprs.map(this::mutateExpression).toMutableSet())
         } else {
-            DisjunctiveAssertStatementAST(mutateExpression(assertStatement.baseExpr), mutableSetOf())
+            ConjunctiveAssertStatement(mutateExpression(assertStatement.baseExpr), mutableSetOf())
         }
     }
 

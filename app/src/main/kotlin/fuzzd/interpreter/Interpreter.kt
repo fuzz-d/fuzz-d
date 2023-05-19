@@ -55,7 +55,7 @@ import fuzzd.generator.ast.StatementAST.AssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DataStructureAssignSuchThatStatement
-import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
+import fuzzd.generator.ast.StatementAST.ConjunctiveAssertStatement
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -262,14 +262,14 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
             is MultiDeclarationAST -> interpretMultiDeclaration(statement, context)
             is MultiAssignmentAST -> interpretMultiAssign(statement, context)
             is PrintAST -> interpretPrint(statement, context)
-            is DisjunctiveAssertStatementAST -> interpretDisjunctiveAssertStatement(statement, context)
+            is ConjunctiveAssertStatement -> interpretConjunctiveAssertStatement(statement, context)
             is AssertStatementAST -> interpretAssertStatement(statement, context)
         }
     }
 
     // specific function for handling assertions in methods & while loops where parameters may/may not have an influence on the assertion outcome.
     // if they do, it generates an assertion for the current parameter values (<p1> == ... && <p2> == ... && ... ==> <assertion>)
-    override fun interpretDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST, context: InterpreterContext) {
+    override fun interpretConjunctiveAssertStatement(assertStatement: ConjunctiveAssertStatement, context: InterpreterContext) {
         val baseExpr = (assertStatement.baseExpr as BinaryExpressionAST).expr1
         val baseExprValue = interpretExpression(baseExpr, context).toExpressionAST()
 
@@ -1002,6 +1002,7 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
             else -> if (context.fields.has(identifier)) {
                 context.fields.get(identifier)
             } else {
+                println(identifier)
                 context.classContext!!.fields.get(identifier)
             }
         }

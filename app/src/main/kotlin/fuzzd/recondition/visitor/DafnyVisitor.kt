@@ -195,19 +195,17 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         topLevelClasses.addAll(ctx.topDecl().mapNotNull { it.classDecl() })
         topLevelTraits.addAll(ctx.topDecl().mapNotNull { it.traitDecl() })
 
-        val globalStateCtx = ctx.topDecl().first {
+        val globalStateCtx = ctx.topDecl().firstOrNull {
             it.classDecl() != null && visitUpperIdentifierName(it.classDecl().upperIdentifier(0)) == GLOBAL_STATE
         }
 
-        visitClassDecl(globalStateCtx.classDecl())
+        globalStateCtx?.let { visitClassDecl(globalStateCtx.classDecl()) }
 
-        val advancedStateCtx = ctx.topDecl().filter {
+        val advancedStateCtx = ctx.topDecl().firstOrNull {
             it.classDecl() != null && visitUpperIdentifierName(it.classDecl().upperIdentifier(0)) == ADVANCED_STATE
         }
 
-        if (advancedStateCtx.isNotEmpty()) {
-            visitClassDecl(advancedStateCtx[0].classDecl())
-        }
+        advancedStateCtx?.let { visitClassDecl(advancedStateCtx.classDecl()) }
 
         val topLevelContexts = ctx.topDecl().filter { it.topDeclMember() != null }.map { it.topDeclMember() }
 
