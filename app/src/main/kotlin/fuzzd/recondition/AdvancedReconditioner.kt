@@ -486,7 +486,7 @@ class AdvancedReconditioner {
             is MapConstructorAST -> reconditionMapConstructor(expressionAST)
             is MapComprehensionAST -> reconditionMapComprehension(expressionAST)
             is SequenceDisplayAST -> reconditionSequenceDisplay(expressionAST)
-            is SequenceComprehensionAST -> reconditionSeqeunceComprehension(expressionAST)
+            is SequenceComprehensionAST -> reconditionSequenceComprehension(expressionAST)
             is DatatypeInstantiationAST -> reconditionDatatypeInstantiation(expressionAST)
             is DatatypeUpdateAST -> reconditionDatatypeUpdate(expressionAST)
             is MatchExpressionAST -> reconditionMatchExpression(expressionAST)
@@ -950,7 +950,7 @@ class AdvancedReconditioner {
         return Pair(SequenceDisplayAST(exprs), exprDependents)
     }
 
-    fun reconditionSeqeunceComprehension(
+    fun reconditionSequenceComprehension(
         sequenceComprehensionAST: SequenceComprehensionAST,
     ): Pair<ExpressionAST, List<StatementAST>> {
         val temp = IdentifierAST(tempGenerator.newValue(), IntType)
@@ -968,7 +968,6 @@ class AdvancedReconditioner {
             val update = AssignmentAST(tempSeq, BinaryExpressionAST(tempSeq, UnionOperator, SequenceDisplayAST(listOf(expr))))
             val counter = sequenceComprehensionAST.identifier
             val loop = ForLoopAST(counter, IntegerLiteralAST(0), temp, SequenceAST(exprDependents + update))
-
             Pair(tempSeq, listOf(tempDecl) + tempSeqDecl + loop)
         }
     }

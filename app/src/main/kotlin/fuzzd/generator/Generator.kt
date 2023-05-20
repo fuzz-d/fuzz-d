@@ -1242,7 +1242,7 @@ class Generator(
         targetType: SequenceType,
     ): Pair<SequenceComprehensionAST, List<StatementAST>> {
         val (length, _) = generateIntegerLiteral(context)
-        val identifier = IdentifierAST(context.loopCounterGenerator.newValue(), targetType.innerType)
+        val identifier = IdentifierAST(context.loopCounterGenerator.newValue(), IntType)
         val exprContext = context.increaseExpressionDepthWithSymbolTable().disableOnDemand()
         exprContext.symbolTable.add(identifier)
         val (expr, exprDeps) = generateExpression(exprContext, targetType.innerType)

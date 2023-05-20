@@ -281,10 +281,7 @@ class SelectionManager(
         val multisetConversionProbability = if (targetType is MultisetType) probabilityManager.multisetConversion() else 0.0
         val functionCallProbability = if (!targetType.hasHeapType() && context.onDemandIdentifiers && context.functionCalls) probabilityManager.functionCall() / context.expressionDepth else 0.0
         val ternaryProbability = if (context.expressionDepth < MAX_EXPRESSION_DEPTH) probabilityManager.ternary() / context.expressionDepth else 0.0
-        val matchProbability =
-            // depth conditions to avoid assertion errors
-            if (context.statementDepth == 1 && context.expressionDepth == 1
-                && context.globalSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers) && !targetType.hasHeapType()) {
+        val matchProbability = if (context.expressionDepth < MAX_EXPRESSION_DEPTH && context.globalSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers) && !targetType.hasHeapType()) {
                 probabilityManager.matchExpression()
             } else {
                 0.0
