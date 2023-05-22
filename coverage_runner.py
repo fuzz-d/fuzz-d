@@ -17,9 +17,6 @@ class Runner():
 class FuzzdRunner(Runner):
     def run(self, seed, output_dir):
         return_code = os.system(f'timeout 30 java -jar app/build/libs/app.jar fuzz -n -s {seed} -o {output_dir}')
-        if return_code == 0:
-            os.system(f'cat {output_dir}/wrappers.dfy > {output_dir}/main.dfy')
-            os.system(f'cat {output_dir}/body.dfy >> {output_dir}/main.dfy')
         return return_code
 
 class XDSmithRunner(Runner):
