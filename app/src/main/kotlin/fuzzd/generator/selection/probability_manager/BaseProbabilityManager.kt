@@ -23,11 +23,11 @@ class BaseProbabilityManager : ProbabilityManager {
 
     // statements
     override fun assertStatement(): Double = 0.0
-    override fun ifStatement() = 0.13
+    override fun ifStatement() = 0.1
     override fun matchStatement() = 0.05
     override fun forallStatement(): Double = 0.05
-    override fun forLoopStatement(): Double = 0.1
-    override fun whileStatement() = 0.12
+    override fun forLoopStatement(): Double = 0.07
+    override fun whileStatement() = 0.1
     override fun methodCall() = 0.05
     override fun mapAssign() = 0.05
     override fun assignStatement() = 0.5
@@ -72,11 +72,11 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun arrayInitComprehension(): Double = 0.3
 
     // other data
-    override fun methodStatements(): Int = 6
+    override fun methodStatements(): Int = 5
     override fun ifBranchStatements(): Int = 4
     override fun forLoopBodyStatements(): Int = 4
     override fun whileBodyStatements(): Int = 4
-    override fun mainFunctionStatements(): Int = 14
+    override fun mainFunctionStatements(): Int = 12
     override fun matchStatements(): Int = 4
     override fun comprehensionIdentifiers(): Int = 3
 
