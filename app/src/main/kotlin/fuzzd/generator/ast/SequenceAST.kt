@@ -7,7 +7,11 @@ class SequenceAST(val statements: List<StatementAST>) : ASTElement {
 
     override fun toString(): String = statements.joinToString("\n") { s -> indent(s) }
 
-    fun addStatements(newStatements: List<StatementAST>): SequenceAST = SequenceAST(statements + newStatements)
+    fun addStatements(newStatements: List<StatementAST>): SequenceAST {
+        val seq = SequenceAST(statements + newStatements)
+        if (isLive) seq.setLive()
+        return seq
+    }
 
     fun setLive() {
         isLive = true

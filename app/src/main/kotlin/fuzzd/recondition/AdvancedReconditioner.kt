@@ -60,10 +60,10 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
+import fuzzd.generator.ast.StatementAST.ConjunctiveAssertStatement
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DataStructureAssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.DeclarationAST
-import fuzzd.generator.ast.StatementAST.ConjunctiveAssertStatement
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -102,8 +102,8 @@ import fuzzd.generator.ast.operators.BinaryOperator.NotEqualsOperator
 import fuzzd.generator.ast.operators.BinaryOperator.UnionOperator
 import fuzzd.utils.ADVANCED_ABSOLUTE
 import fuzzd.utils.ADVANCED_RECONDITION_CLASS
-import fuzzd.utils.ADVANCED_SAFE_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
+import fuzzd.utils.ADVANCED_SAFE_INDEX
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.foldPair
 
@@ -139,10 +139,10 @@ class AdvancedReconditioner {
 
         return DafnyAST(
             reconditionedDatatypes +
-                    reconditionedTraits +
-                    reconditionedClasses +
-                    reconditionedMethods +
-                    reconditionedMain,
+                reconditionedTraits +
+                reconditionedClasses +
+                reconditionedMethods +
+                reconditionedMain,
         )
     }
 
@@ -338,7 +338,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiAssignmentAST.exprs)
 
         return identifierDependents + exprDependents +
-                MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+            MultiAssignmentAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMultiTypedDeclaration(multiTypedDeclarationAST: MultiTypedDeclarationAST): List<StatementAST> {
@@ -356,7 +356,7 @@ class AdvancedReconditioner {
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(multiDeclarationAST.exprs)
 
         return identifierDependents + exprDependents +
-                MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
+            MultiDeclarationAST(reconditionedIdentifiers.map { it as IdentifierAST }, reconditionedExprs)
     }
 
     fun reconditionMatchStatement(matchStatementAST: MatchStatementAST): List<StatementAST> {
@@ -395,12 +395,12 @@ class AdvancedReconditioner {
 
         // conversion to equivalent for-loop due to possible method calls (not allowed in forall statement)
         return bottomRangeDependents + topRangeDependents + arrayDependents +
-                ForLoopAST(
-                    forallStatementAST.identifier,
-                    bottomRange,
-                    topRange,
-                    SequenceAST(assignExprDependents + AssignmentAST(ArrayIndexAST(array, arrayIndex.index), assignExpr)),
-                )
+            ForLoopAST(
+                forallStatementAST.identifier,
+                bottomRange,
+                topRange,
+                SequenceAST(assignExprDependents + AssignmentAST(ArrayIndexAST(array, arrayIndex.index), assignExpr)),
+            )
     }
 
     fun reconditionVerificationAwareWhileLoop(whileLoopAST: VerificationAwareWhileLoopAST): List<StatementAST> {
@@ -506,7 +506,7 @@ class AdvancedReconditioner {
             DatatypeInstantiationAST(
                 reconditionDatatype(instantiationAST.datatype),
                 reconditionDatatypeConstructor(instantiationAST.constructor),
-                params
+                params,
             ),
             paramDeps,
         )

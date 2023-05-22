@@ -10,6 +10,6 @@ class DafnyAST(val topLevelElements: List<TopLevelAST>) : ASTElement {
             } else {
                 topLevel
             }
-        }
+        },
     )
 }

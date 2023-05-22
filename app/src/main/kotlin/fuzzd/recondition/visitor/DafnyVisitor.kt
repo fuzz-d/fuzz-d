@@ -129,8 +129,8 @@ import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.utils.ABSOLUTE
-import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.SAFE_DIVISION_INT
+import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
@@ -347,10 +347,10 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitFieldDecl(ctx: FieldDeclContext): IdentifierAST = visitIdentifierTypeWithMutable(ctx.identifierType(), isMutable = ctx.VAR() != null)
 
     override fun visitFunctionDecl(ctx: FunctionDeclContext): FunctionMethodAST {
-        val signature = visitFunctionSignatureDecl(ctx.functionSignatureDecl())
-
         val prevIdentifiersTable = identifiersTable
         identifiersTable = VisitorSymbolTable()
+
+        val signature = visitFunctionSignatureDecl(ctx.functionSignatureDecl())
         signature.params.forEach { param -> identifiersTable.addEntry(param.name, param) }
 
         val body = visitExpression(ctx.expression())
@@ -361,6 +361,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     }
 
     override fun visitFunctionSignatureDecl(ctx: FunctionSignatureDeclContext): FunctionMethodSignatureAST {
+        val prevIdentifiersTable = identifiersTable
+        identifiersTable = VisitorSymbolTable()
+
         val name = if (ctx.identifier() != null) {
             visitIdentifierName(ctx.identifier())
         } else {
@@ -374,6 +377,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val params = visitParametersList(ctx.parameters())
         val returnType = visitType(ctx.type())
         val annotations = ctx.verifierAnnotation().map(this::visitVerifierAnnotation)
+
+        identifiersTable = prevIdentifiersTable
 
         val signature = FunctionMethodSignatureAST(name, returnType, params, annotations)
         functionMethodsTable.addEntry(name, signature)
@@ -1104,8 +1109,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         else -> throw UnsupportedOperationException("Visiting unsupported unary operator $ctx")
     }
 
-    override fun visitModulus(ctx: ModulusContext): ModulusExpressionAST =
-        ModulusExpressionAST(visitExpression(ctx.expression()))
+    override fun visitModulus(ctx: ModulusContext): ModulusExpressionAST = ModulusExpressionAST(visitExpression(ctx.expression()))
 
     override fun visitMultisetConversion(ctx: MultisetConversionContext): MultisetConversionAST =
         MultisetConversionAST(visitExpression(ctx.expression()))

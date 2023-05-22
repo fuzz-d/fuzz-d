@@ -10,7 +10,6 @@ import fuzzd.generator.ast.ExpressionAST.ArrayLengthAST
 import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
-import fuzzd.generator.ast.ExpressionAST.ClassInstanceAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstanceFieldAST
 import fuzzd.generator.ast.ExpressionAST.ClassInstantiationAST
 import fuzzd.generator.ast.ExpressionAST.ComprehensionInitialisedArrayInitAST
@@ -54,9 +53,9 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.BreakAST
+import fuzzd.generator.ast.StatementAST.ConjunctiveAssertStatement
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DataStructureAssignSuchThatStatement
-import fuzzd.generator.ast.StatementAST.ConjunctiveAssertStatement
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -120,11 +119,11 @@ import fuzzd.interpreter.value.Value.TopLevelDatatypeValue
 import fuzzd.interpreter.value.ValueTable
 import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.ADVANCED_ABSOLUTE
-import fuzzd.utils.ADVANCED_SAFE_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
+import fuzzd.utils.ADVANCED_SAFE_INDEX
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
-import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.SAFE_DIVISION_INT
+import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.conjunct
 import fuzzd.utils.mapFirst
@@ -183,7 +182,6 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
         }
 
         prints.forEach { interpretPrint(it, context) }
-
         return prints
     }
 
