@@ -106,6 +106,8 @@ sealed class ExpressionAST : ASTElement {
         val type: Type,
         val cases: List<Pair<ExpressionAST, ExpressionAST>>,
     ) : ExpressionAST() {
+        override fun requiresParenthesesWrap(): Boolean = true
+
         override fun type(): Type = type
 
         override fun toString(): String {
