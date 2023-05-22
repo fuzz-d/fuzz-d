@@ -25,7 +25,7 @@ sealed class StatementAST : ASTElement {
     ) : StatementAST() {
         override fun toString(): String {
             val sb = StringBuilder()
-            sb.appendLine("match $match {")
+            sb.appendLine("match ($match) {")
             cases.forEach { (case, seq) ->
                 sb.appendLine(indent("case $case =>"))
                 sb.appendLine(indent(seq))
