@@ -72,9 +72,9 @@ class SelectionManager(
     private val probabilityManager: ProbabilityManager = BaseProbabilityManager(),
 ) {
     fun selectType(context: GenerationContext, depth: Int = 1): Type {
-        val classTypeProb = if (context.onDemandIdentifiers && context.functionSymbolTable.hasClasses()) probabilityManager.classType() / context.expressionDepth else 0.0
-        val traitTypeProb = if (context.onDemandIdentifiers && context.functionSymbolTable.hasTraits()) probabilityManager.traitType() / context.expressionDepth else 0.0
-        val datatypeProb = if (context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) probabilityManager.datatype() / context.expressionDepth else 0.0
+        val classTypeProb = if (context.onDemandIdentifiers && context.globalSymbolTable.hasClasses()) probabilityManager.classType() / context.expressionDepth else 0.0
+        val traitTypeProb = if (context.onDemandIdentifiers && context.globalSymbolTable.hasTraits()) probabilityManager.traitType() / context.expressionDepth else 0.0
+        val datatypeProb = if (context.globalSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers)) probabilityManager.datatype() / context.expressionDepth else 0.0
 
         val selection = listOf<Pair<(GenerationContext, Int) -> Type, Double>>(
             this::selectClassType to classTypeProb,
@@ -90,15 +90,15 @@ class SelectionManager(
 
     @Suppress("UNUSED_PARAMETER")
     private fun selectClassType(context: GenerationContext, depth: Int): ClassType =
-        ClassType(randomSelection(context.functionSymbolTable.classes().toList()))
+        ClassType(randomSelection(context.globalSymbolTable.classes().toList()))
 
     @Suppress("UNUSED_PARAMETER")
     private fun selectTraitType(context: GenerationContext, depth: Int): TraitType =
-        TraitType(randomSelection(context.functionSymbolTable.traits().toList()))
+        TraitType(randomSelection(context.globalSymbolTable.traits().toList()))
 
     @Suppress("UNUSED_PARAMETER")
     fun selectDatatypeType(context: GenerationContext, depth: Int): DatatypeType {
-        return randomSelection(context.functionSymbolTable.availableDatatypes(context.onDemandIdentifiers))
+        return randomSelection(context.globalSymbolTable.availableDatatypes(context.onDemandIdentifiers))
     }
 
     fun selectDataStructureType(context: GenerationContext, depth: Int): DataStructureType =
@@ -230,9 +230,9 @@ class SelectionManager(
 
         val methodCallProbability = if (methodCalls) {
             val methodCallProbability = min(probabilityManager.methodCall(), 0.1)
-            if (context.methodContext == null) methodCallProbability else methodCallProbability / 5
+            if (context.methodContext == null) methodCallProbability else methodCallProbability / 5 // avoid large call chains
         } else {
-            0.0 // TODO() is there a better heuristic?
+            0.0
         }
 
         val selection = listOf(
@@ -278,27 +278,21 @@ class SelectionManager(
             if (isBinaryType(targetType) && context.expressionDepth < MAX_EXPRESSION_DEPTH) probabilityManager.binaryExpression() / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) probabilityManager.unaryExpression() / context.expressionDepth else 0.0
         val modulusProbability = if (targetType == IntType) probabilityManager.modulusExpression() else 0.0
-        val multisetConversionProbability = if (targetType is MultisetType) probabilityManager.multisetConversion() else 0.0
+        val multisetConversionProbability =
+            if (targetType is MultisetType && targetType.innerType !is ArrayType /* due to resolver errors*/) probabilityManager.multisetConversion() else 0.0
         val functionCallProbability =
-            if (!targetType.hasHeapType() && context.onDemandIdentifiers && context.functionCalls) {
-                probabilityManager.functionCall() / context.expressionDepth
-            } else {
-                0.0
-            }
+            if (!targetType.hasHeapType() && context.onDemandIdentifiers && context.functionCalls) probabilityManager.functionCall() / context.expressionDepth else 0.0
         val ternaryProbability = if (context.expressionDepth < MAX_EXPRESSION_DEPTH) probabilityManager.ternary() / context.expressionDepth else 0.0
         val matchProbability =
-            if (context.expressionDepth == 1 && context.functionSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers) && !targetType.hasHeapType()) {
-                probabilityManager.matchExpression()
+            if (context.expressionDepth == 1 && context.statementDepth == 1 /*< MAX_EXPRESSION_DEPTH*/ && context.globalSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers) && !targetType.hasHeapType()) {
+                probabilityManager.matchExpression() / context.expressionDepth
             } else {
                 0.0
             }
-        val assignProbability = if (isAssignType(targetType) && context.symbolTable.hasType(targetType)) {
-            probabilityManager.assignExpression() / context.expressionDepth
-        } else {
-            0.0
-        }
+        val assignProbability =
+            if (isAssignType(targetType) && (context.onDemandIdentifiers || context.symbolTable.hasType(targetType))) probabilityManager.assignExpression() / context.expressionDepth else 0.0
         val indexProbability =
-            if (identifier && (targetType !is DatatypeType || !targetType.isInductive())) probabilityManager.indexExpression() / context.expressionDepth else 0.0
+            if (identifier && (targetType !is DatatypeType)) probabilityManager.indexExpression() / context.expressionDepth else 0.0
 
         val identifierProbability = if (identifier) probabilityManager.identifier() else 0.0
         val literalProbability =
@@ -309,7 +303,7 @@ class SelectionManager(
             }
         val constructorProbability =
             if (((targetType is ArrayType || targetType is ClassType || targetType is TraitType) && context.effectfulStatements && context.expressionDepth == 1) ||
-                (targetType !is LiteralType && targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType)
+                (targetType is TopLevelDatatypeType || targetType is DataStructureType)
             ) {
                 if (identifier) probabilityManager.constructor() / 3 else probabilityManager.constructor()
             } else {

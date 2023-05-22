@@ -129,8 +129,8 @@ import fuzzd.generator.ast.operators.UnaryOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NegationOperator
 import fuzzd.generator.ast.operators.UnaryOperator.NotOperator
 import fuzzd.utils.ABSOLUTE
-import fuzzd.utils.SAFE_ARRAY_INDEX
 import fuzzd.utils.SAFE_DIVISION_INT
+import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.toHexInt
 import fuzzd.utils.unionAll
@@ -185,7 +185,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     /* ============================================ TOP LEVEL ============================================ */
     override fun visitProgram(ctx: ProgramContext): DafnyAST {
         listOf(
-            SAFE_ARRAY_INDEX,
+            SAFE_INDEX,
             SAFE_DIVISION_INT,
             SAFE_MODULO_INT,
             ABSOLUTE,
@@ -195,19 +195,17 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         topLevelClasses.addAll(ctx.topDecl().mapNotNull { it.classDecl() })
         topLevelTraits.addAll(ctx.topDecl().mapNotNull { it.traitDecl() })
 
-        val globalStateCtx = ctx.topDecl().first {
+        val globalStateCtx = ctx.topDecl().firstOrNull {
             it.classDecl() != null && visitUpperIdentifierName(it.classDecl().upperIdentifier(0)) == GLOBAL_STATE
         }
 
-        visitClassDecl(globalStateCtx.classDecl())
+        globalStateCtx?.let { visitClassDecl(globalStateCtx.classDecl()) }
 
-        val advancedStateCtx = ctx.topDecl().filter {
+        val advancedStateCtx = ctx.topDecl().firstOrNull {
             it.classDecl() != null && visitUpperIdentifierName(it.classDecl().upperIdentifier(0)) == ADVANCED_STATE
         }
 
-        if (advancedStateCtx.isNotEmpty()) {
-            visitClassDecl(advancedStateCtx[0].classDecl())
-        }
+        advancedStateCtx?.let { visitClassDecl(advancedStateCtx.classDecl()) }
 
         val topLevelContexts = ctx.topDecl().filter { it.topDeclMember() != null }.map { it.topDeclMember() }
 
@@ -349,10 +347,10 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     override fun visitFieldDecl(ctx: FieldDeclContext): IdentifierAST = visitIdentifierTypeWithMutable(ctx.identifierType(), isMutable = ctx.VAR() != null)
 
     override fun visitFunctionDecl(ctx: FunctionDeclContext): FunctionMethodAST {
-        val signature = visitFunctionSignatureDecl(ctx.functionSignatureDecl())
-
         val prevIdentifiersTable = identifiersTable
         identifiersTable = VisitorSymbolTable()
+
+        val signature = visitFunctionSignatureDecl(ctx.functionSignatureDecl())
         signature.params.forEach { param -> identifiersTable.addEntry(param.name, param) }
 
         val body = visitExpression(ctx.expression())
@@ -363,6 +361,9 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
     }
 
     override fun visitFunctionSignatureDecl(ctx: FunctionSignatureDeclContext): FunctionMethodSignatureAST {
+        val prevIdentifiersTable = identifiersTable
+        identifiersTable = VisitorSymbolTable()
+
         val name = if (ctx.identifier() != null) {
             visitIdentifierName(ctx.identifier())
         } else {
@@ -376,6 +377,8 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         val params = visitParametersList(ctx.parameters())
         val returnType = visitType(ctx.type())
         val annotations = ctx.verifierAnnotation().map(this::visitVerifierAnnotation)
+
+        identifiersTable = prevIdentifiersTable
 
         val signature = FunctionMethodSignatureAST(name, returnType, params, annotations)
         functionMethodsTable.addEntry(name, signature)
@@ -1106,8 +1109,7 @@ class DafnyVisitor : dafnyBaseVisitor<ASTElement>() {
         else -> throw UnsupportedOperationException("Visiting unsupported unary operator $ctx")
     }
 
-    override fun visitModulus(ctx: ModulusContext): ModulusExpressionAST =
-        ModulusExpressionAST(visitExpression(ctx.expression()))
+    override fun visitModulus(ctx: ModulusContext): ModulusExpressionAST = ModulusExpressionAST(visitExpression(ctx.expression()))
 
     override fun visitMultisetConversion(ctx: MultisetConversionContext): MultisetConversionAST =
         MultisetConversionAST(visitExpression(ctx.expression()))

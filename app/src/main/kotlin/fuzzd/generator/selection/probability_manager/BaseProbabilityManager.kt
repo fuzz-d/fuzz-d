@@ -23,11 +23,11 @@ class BaseProbabilityManager : ProbabilityManager {
 
     // statements
     override fun assertStatement(): Double = 0.0
-    override fun ifStatement() = 0.13
+    override fun ifStatement() = 0.1
     override fun matchStatement() = 0.05
     override fun forallStatement(): Double = 0.05
-    override fun forLoopStatement(): Double = 0.1
-    override fun whileStatement() = 0.12
+    override fun forLoopStatement(): Double = 0.07
+    override fun whileStatement() = 0.1
     override fun methodCall() = 0.05
     override fun mapAssign() = 0.05
     override fun assignStatement() = 0.5
@@ -46,7 +46,7 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun unaryExpression() = 0.15
     override fun modulusExpression() = 0.15
     override fun multisetConversion() = 0.05
-    override fun functionCall() = 0.1
+    override fun functionCall() = 0.07
     override fun ternary() = 0.05
     override fun matchExpression() = 0.05
     override fun assignExpression() = 0.1
@@ -72,13 +72,12 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun arrayInitComprehension(): Double = 0.3
 
     // other data
-    override fun methodStatements(): Int = 7
-    override fun ifBranchStatements(): Int = 6
+    override fun methodStatements(): Int = 5
+    override fun ifBranchStatements(): Int = 4
     override fun forLoopBodyStatements(): Int = 4
-
-    override fun whileBodyStatements(): Int = 5
-    override fun mainFunctionStatements(): Int = 18
-    override fun matchStatements(): Int = 5
+    override fun whileBodyStatements(): Int = 4
+    override fun mainFunctionStatements(): Int = 12
+    override fun matchStatements(): Int = 4
     override fun comprehensionIdentifiers(): Int = 3
 
     override fun numberOfTraits(): Int = 3

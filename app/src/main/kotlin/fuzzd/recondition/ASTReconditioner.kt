@@ -31,7 +31,7 @@ import fuzzd.generator.ast.MethodAST
 import fuzzd.generator.ast.SequenceAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssertStatementAST
-import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
+import fuzzd.generator.ast.StatementAST.ConjunctiveAssertStatement
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -65,7 +65,7 @@ interface ASTReconditioner {
 
     fun reconditionAssertStatement(assertStatement: AssertStatementAST): AssertStatementAST
 
-    fun reconditionDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST): DisjunctiveAssertStatementAST
+    fun reconditionConjunctiveAssertStatement(assertStatement: ConjunctiveAssertStatement): ConjunctiveAssertStatement
 
     fun reconditionMultiAssignmentAST(multiAssignmentAST: MultiAssignmentAST): MultiAssignmentAST
 

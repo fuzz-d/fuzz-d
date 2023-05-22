@@ -50,7 +50,7 @@ import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
-import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
+import fuzzd.generator.ast.StatementAST.ConjunctiveAssertStatement
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -71,7 +71,7 @@ import fuzzd.generator.ast.identifier_generator.NameGenerator.SafetyIdGenerator
 import fuzzd.generator.ast.operators.BinaryOperator.MathematicalBinaryOperator
 import fuzzd.logging.Logger
 import fuzzd.utils.ABSOLUTE
-import fuzzd.utils.SAFE_ARRAY_INDEX
+import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.safetyMap
 
 class Reconditioner(private val logger: Logger, private val ids: Set<String>? = null) : ASTReconditioner {
@@ -138,13 +138,13 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         MainFunctionAST(reconditionSequence(mainFunction.sequenceAST))
 
     override fun reconditionFunctionMethod(functionMethodAST: FunctionMethodAST): FunctionMethodAST =
-        FunctionMethodAST(functionMethodAST.signature, reconditionExpression(functionMethodAST.body))
+        FunctionMethodAST(functionMethodAST.signature, reconditionExpression(functionMethodAST.getBody()))
 
     override fun reconditionSequence(sequence: SequenceAST): SequenceAST =
         SequenceAST(sequence.statements.map(this::reconditionStatement))
 
     override fun reconditionStatement(statement: StatementAST) = when (statement) {
-        is DisjunctiveAssertStatementAST -> reconditionDisjunctiveAssertStatement(statement)
+        is ConjunctiveAssertStatement -> reconditionConjunctiveAssertStatement(statement)
         is AssertStatementAST -> reconditionAssertStatement(statement)
         is BreakAST -> statement
         is MultiAssignmentAST -> reconditionMultiAssignmentAST(statement) // covers AssignmentAST
@@ -160,7 +160,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
         else -> throw UnsupportedOperationException()
     }
 
-    override fun reconditionDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST): DisjunctiveAssertStatementAST = DisjunctiveAssertStatementAST(
+    override fun reconditionConjunctiveAssertStatement(assertStatement: ConjunctiveAssertStatement): ConjunctiveAssertStatement = ConjunctiveAssertStatement(
         reconditionExpression(assertStatement.baseExpr),
         assertStatement.exprs.map(this::reconditionExpression).toMutableSet(),
     )
@@ -373,7 +373,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
                 ArrayIndexAST(
                     reconditionedArray,
                     FunctionMethodCallAST(
-                        SAFE_ARRAY_INDEX.signature,
+                        SAFE_INDEX.signature,
                         listOf(reconditionedIndex, ArrayLengthAST(reconditionedArray)),
                     ),
                 )
@@ -413,7 +413,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
                 SequenceIndexAST(
                     reconditionedSequence,
                     FunctionMethodCallAST(
-                        SAFE_ARRAY_INDEX.signature,
+                        SAFE_INDEX.signature,
                         listOf(reconditionedIndex, ModulusExpressionAST(reconditionedSequence)),
                     ),
                 )
@@ -456,7 +456,7 @@ class Reconditioner(private val logger: Logger, private val ids: Set<String>? = 
 
                     IndexAssignAST(
                         ident,
-                        FunctionMethodCallAST(SAFE_ARRAY_INDEX.signature, listOf(key, ModulusExpressionAST(ident))),
+                        FunctionMethodCallAST(SAFE_INDEX.signature, listOf(key, ModulusExpressionAST(ident))),
                         value,
                     )
                 } else {

@@ -53,9 +53,9 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.BreakAST
+import fuzzd.generator.ast.StatementAST.ConjunctiveAssertStatement
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DataStructureAssignSuchThatStatement
-import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -119,11 +119,11 @@ import fuzzd.interpreter.value.Value.TopLevelDatatypeValue
 import fuzzd.interpreter.value.ValueTable
 import fuzzd.utils.ABSOLUTE
 import fuzzd.utils.ADVANCED_ABSOLUTE
-import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
+import fuzzd.utils.ADVANCED_SAFE_INDEX
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
-import fuzzd.utils.SAFE_ARRAY_INDEX
 import fuzzd.utils.SAFE_DIVISION_INT
+import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.SAFE_MODULO_INT
 import fuzzd.utils.conjunct
 import fuzzd.utils.mapFirst
@@ -145,22 +145,22 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
         }
 
         dafny.topLevelElements.filterIsInstance<FunctionMethodAST>().forEach { function ->
-            context.functions.assign(function.signature, function.body)
+            context.functions.assign(function.signature, function.getBody())
         }
 
         listOf(
             ADVANCED_ABSOLUTE,
-            ADVANCED_SAFE_ARRAY_INDEX,
+            ADVANCED_SAFE_INDEX,
             ADVANCED_SAFE_DIV_INT,
             ADVANCED_SAFE_MODULO_INT,
         ).forEach { context.methods.assign(it.signature, it.getBody()) }
 
         listOf(
             ABSOLUTE,
-            SAFE_ARRAY_INDEX,
+            SAFE_INDEX,
             SAFE_DIVISION_INT,
             SAFE_MODULO_INT,
-        ).forEach { context.functions.assign(it.signature, it.body) }
+        ).forEach { context.functions.assign(it.signature, it.getBody()) }
 
         val mainFunction = dafny.topLevelElements.first { it is MainFunctionAST }
         val prints = interpretMainFunction(mainFunction as MainFunctionAST, context)
@@ -182,7 +182,6 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
         }
 
         prints.forEach { interpretPrint(it, context) }
-
         return prints
     }
 
@@ -262,14 +261,14 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
             is MultiDeclarationAST -> interpretMultiDeclaration(statement, context)
             is MultiAssignmentAST -> interpretMultiAssign(statement, context)
             is PrintAST -> interpretPrint(statement, context)
-            is DisjunctiveAssertStatementAST -> interpretDisjunctiveAssertStatement(statement, context)
+            is ConjunctiveAssertStatement -> interpretConjunctiveAssertStatement(statement, context)
             is AssertStatementAST -> interpretAssertStatement(statement, context)
         }
     }
 
     // specific function for handling assertions in methods & while loops where parameters may/may not have an influence on the assertion outcome.
     // if they do, it generates an assertion for the current parameter values (<p1> == ... && <p2> == ... && ... ==> <assertion>)
-    override fun interpretDisjunctiveAssertStatement(assertStatement: DisjunctiveAssertStatementAST, context: InterpreterContext) {
+    override fun interpretConjunctiveAssertStatement(assertStatement: ConjunctiveAssertStatement, context: InterpreterContext) {
         val baseExpr = (assertStatement.baseExpr as BinaryExpressionAST).expr1
         val baseExprValue = interpretExpression(baseExpr, context).toExpressionAST()
 
@@ -830,7 +829,7 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
         val classContext = InterpreterContext()
 
         classFields.zip(constructorParams).forEach { classContext.fields.declare(it.first, it.second) }
-        classInstantiation.clazz.functionMethods.forEach { classContext.functions.declare(it.signature, it.body) }
+        classInstantiation.clazz.functionMethods.forEach { classContext.functions.declare(it.signature, it.getBody()) }
         classInstantiation.clazz.methods.forEach { classContext.methods.declare(it.signature, it.getBody()) }
 
         return ClassValue(classContext)

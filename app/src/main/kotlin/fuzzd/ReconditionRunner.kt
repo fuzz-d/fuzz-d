@@ -3,6 +3,7 @@ package fuzzd
 import dafnyLexer
 import dafnyParser
 import fuzzd.generator.ast.DafnyAST
+import fuzzd.generator.ast.MainFunctionAST
 import fuzzd.generator.ast.StatementAST
 import fuzzd.logging.Logger
 import fuzzd.logging.OutputWriter
@@ -11,8 +12,8 @@ import fuzzd.recondition.Reconditioner
 import fuzzd.recondition.visitor.DafnyVisitor
 import fuzzd.utils.ADVANCED_ABSOLUTE
 import fuzzd.utils.ADVANCED_RECONDITION_CLASS
-import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
+import fuzzd.utils.ADVANCED_SAFE_INDEX
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.DAFNY_ADVANCED
 import fuzzd.utils.DAFNY_MAIN
@@ -44,7 +45,7 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
                 val writer = OutputWriter(dir, "$DAFNY_ADVANCED.$DAFNY_TYPE")
                 writer.write { "$ADVANCED_RECONDITION_CLASS\n" }
                 writer.write { "$ADVANCED_ABSOLUTE\n" }
-                writer.write { "$ADVANCED_SAFE_ARRAY_INDEX\n" }
+                writer.write { "$ADVANCED_SAFE_INDEX\n" }
                 writer.write { "$ADVANCED_SAFE_MODULO_INT\n" }
                 writer.write { "$ADVANCED_SAFE_DIV_INT\n" }
                 writer.write { advancedAST }

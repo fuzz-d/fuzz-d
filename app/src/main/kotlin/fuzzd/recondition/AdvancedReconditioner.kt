@@ -60,10 +60,10 @@ import fuzzd.generator.ast.StatementAST
 import fuzzd.generator.ast.StatementAST.AssertStatementAST
 import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.BreakAST
+import fuzzd.generator.ast.StatementAST.ConjunctiveAssertStatement
 import fuzzd.generator.ast.StatementAST.CounterLimitedWhileLoopAST
 import fuzzd.generator.ast.StatementAST.DataStructureAssignSuchThatStatement
 import fuzzd.generator.ast.StatementAST.DeclarationAST
-import fuzzd.generator.ast.StatementAST.DisjunctiveAssertStatementAST
 import fuzzd.generator.ast.StatementAST.ForLoopAST
 import fuzzd.generator.ast.StatementAST.ForallStatementAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
@@ -102,8 +102,8 @@ import fuzzd.generator.ast.operators.BinaryOperator.NotEqualsOperator
 import fuzzd.generator.ast.operators.BinaryOperator.UnionOperator
 import fuzzd.utils.ADVANCED_ABSOLUTE
 import fuzzd.utils.ADVANCED_RECONDITION_CLASS
-import fuzzd.utils.ADVANCED_SAFE_ARRAY_INDEX
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
+import fuzzd.utils.ADVANCED_SAFE_INDEX
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.foldPair
 
@@ -234,7 +234,7 @@ class AdvancedReconditioner {
         return reconditionMethod(
             MethodAST(
                 reconditionFunctionMethodSignature(functionMethodAST.signature),
-                SequenceAST(listOf(AssignmentAST(returnIdentifier, functionMethodAST.body))),
+                SequenceAST(listOf(AssignmentAST(returnIdentifier, functionMethodAST.getBody()))),
             ),
         )
     }
@@ -303,7 +303,7 @@ class AdvancedReconditioner {
     /* ==================================== STATEMENTS ======================================== */
 
     fun reconditionStatement(statementAST: StatementAST): List<StatementAST> = when (statementAST) {
-        is DisjunctiveAssertStatementAST -> reconditionDisjunctiveAssertStatement(statementAST)
+        is ConjunctiveAssertStatement -> reconditionConjunctiveAssertStatement(statementAST)
         is AssertStatementAST -> reconditionAssertStatement(statementAST)
         is BreakAST -> listOf(statementAST)
         is MultiAssignmentAST -> reconditionMultiAssignment(statementAST)
@@ -321,11 +321,11 @@ class AdvancedReconditioner {
         else -> throw UnsupportedOperationException()
     }
 
-    fun reconditionDisjunctiveAssertStatement(assertStatementAST: DisjunctiveAssertStatementAST): List<StatementAST> {
+    fun reconditionConjunctiveAssertStatement(assertStatementAST: ConjunctiveAssertStatement): List<StatementAST> {
         val (reconditionedBaseExpr, baseExprDependents) = reconditionExpression(assertStatementAST.baseExpr)
         val (reconditionedExprs, exprDependents) = reconditionExpressionList(assertStatementAST.exprs.toList())
 
-        return baseExprDependents + exprDependents + DisjunctiveAssertStatementAST(reconditionedBaseExpr, reconditionedExprs.toMutableSet())
+        return baseExprDependents + exprDependents + ConjunctiveAssertStatement(reconditionedBaseExpr, reconditionedExprs.toMutableSet())
     }
 
     fun reconditionAssertStatement(assertStatementAST: AssertStatementAST): List<StatementAST> {
@@ -486,7 +486,7 @@ class AdvancedReconditioner {
             is MapConstructorAST -> reconditionMapConstructor(expressionAST)
             is MapComprehensionAST -> reconditionMapComprehension(expressionAST)
             is SequenceDisplayAST -> reconditionSequenceDisplay(expressionAST)
-            is SequenceComprehensionAST -> reconditionSeqeunceComprehension(expressionAST)
+            is SequenceComprehensionAST -> reconditionSequenceComprehension(expressionAST)
             is DatatypeInstantiationAST -> reconditionDatatypeInstantiation(expressionAST)
             is DatatypeUpdateAST -> reconditionDatatypeUpdate(expressionAST)
             is MatchExpressionAST -> reconditionMatchExpression(expressionAST)
@@ -503,7 +503,11 @@ class AdvancedReconditioner {
         val (params, paramDeps) = reconditionExpressionList(instantiationAST.params)
 
         return Pair(
-            DatatypeInstantiationAST(instantiationAST.datatype, instantiationAST.constructor, params),
+            DatatypeInstantiationAST(
+                reconditionDatatype(instantiationAST.datatype),
+                reconditionDatatypeConstructor(instantiationAST.constructor),
+                params,
+            ),
             paramDeps,
         )
     }
@@ -626,7 +630,7 @@ class AdvancedReconditioner {
                 val safetyId = safetyIdGenerator.newValue()
                 idsMap[safetyId] = identifierAST
                 val methodCall = NonVoidMethodCallAST(
-                    ADVANCED_SAFE_ARRAY_INDEX.signature,
+                    ADVANCED_SAFE_INDEX.signature,
                     listOf(rexpr, ArrayLengthAST(arr), state, StringLiteralAST(safetyId)),
                 )
 
@@ -699,7 +703,7 @@ class AdvancedReconditioner {
             val safetyId = safetyIdGenerator.newValue()
             idsMap[safetyId] = indexAST
             val methodCall = NonVoidMethodCallAST(
-                ADVANCED_SAFE_ARRAY_INDEX.signature,
+                ADVANCED_SAFE_INDEX.signature,
                 listOf(rexpr, ModulusExpressionAST(seq), state, StringLiteralAST(safetyId)),
             )
 
@@ -730,7 +734,7 @@ class AdvancedReconditioner {
                 val safetyId = safetyIdGenerator.newValue()
                 idsMap[safetyId] = indexAssignAST
                 val methodCall = NonVoidMethodCallAST(
-                    ADVANCED_SAFE_ARRAY_INDEX.signature,
+                    ADVANCED_SAFE_INDEX.signature,
                     listOf(key, ModulusExpressionAST(ident), state, StringLiteralAST(safetyId)),
                 )
                 val decl = DeclarationAST(temp, methodCall)
@@ -946,7 +950,7 @@ class AdvancedReconditioner {
         return Pair(SequenceDisplayAST(exprs), exprDependents)
     }
 
-    fun reconditionSeqeunceComprehension(
+    fun reconditionSequenceComprehension(
         sequenceComprehensionAST: SequenceComprehensionAST,
     ): Pair<ExpressionAST, List<StatementAST>> {
         val temp = IdentifierAST(tempGenerator.newValue(), IntType)
@@ -964,7 +968,6 @@ class AdvancedReconditioner {
             val update = AssignmentAST(tempSeq, BinaryExpressionAST(tempSeq, UnionOperator, SequenceDisplayAST(listOf(expr))))
             val counter = sequenceComprehensionAST.identifier
             val loop = ForLoopAST(counter, IntegerLiteralAST(0), temp, SequenceAST(exprDependents + update))
-
             Pair(tempSeq, listOf(tempDecl) + tempSeqDecl + loop)
         }
     }

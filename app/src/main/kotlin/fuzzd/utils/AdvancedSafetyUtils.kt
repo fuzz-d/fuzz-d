@@ -153,8 +153,8 @@ val ADVANCED_ABSOLUTE = MethodAST(
     ),
 )
 
-val ADVANCED_SAFE_ARRAY_INDEX = MethodAST(
-    "advancedSafeArrayIndex",
+val ADVANCED_SAFE_INDEX = MethodAST(
+    "advancedSafeIndex",
     params = listOf(INT_PARAM_1, INT_PARAM_2, ADVANCED_STATE, ID),
     returns = listOf(INT_RETURNS),
     annotations = mutableListOf(ModifiesAnnotation(ADVANCED_STATE)),
@@ -163,11 +163,7 @@ val ADVANCED_SAFE_ARRAY_INDEX = MethodAST(
             MultiDeclarationAST(
                 listOf(IdentifierAST("b1", BoolType), IdentifierAST("b2", BoolType)),
                 listOf(
-                    BinaryExpressionAST(
-                        INT_PARAM_1,
-                        LessThanOperator,
-                        IntegerLiteralAST(0),
-                    ),
+                    BinaryExpressionAST(INT_PARAM_1, LessThanOperator, IntegerLiteralAST(0)),
                     BinaryExpressionAST(INT_PARAM_1, GreaterThanEqualOperator, INT_PARAM_2),
                 ),
             ),
@@ -181,11 +177,7 @@ val ADVANCED_SAFE_ARRAY_INDEX = MethodAST(
                             TernaryExpressionAST(
                                 IdentifierAST("b1", BoolType),
                                 IntegerLiteralAST(0),
-                                BinaryExpressionAST(
-                                    INT_PARAM_1,
-                                    ModuloOperator,
-                                    INT_PARAM_2,
-                                ),
+                                BinaryExpressionAST(INT_PARAM_1, ModuloOperator, INT_PARAM_2),
                             ),
                         ),
                     ),
@@ -197,7 +189,3 @@ val ADVANCED_SAFE_ARRAY_INDEX = MethodAST(
         ),
     ),
 )
-
-fun main() {
-    println(ADVANCED_SAFE_ARRAY_INDEX)
-}
