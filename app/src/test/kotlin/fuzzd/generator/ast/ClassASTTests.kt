@@ -145,7 +145,7 @@ class ClassASTTests {
 
         private val TRAITS = setOf(TRAIT_1, TRAIT_2)
 
-        private fun createMethodSignature(name: String) = MethodSignatureAST(name, listOf(), listOf())
-        private fun createFunctionMethodSignature(name: String) = FunctionMethodSignatureAST(name, IntType, listOf())
+        private fun createMethodSignature(name: String) = MethodSignatureAST(name, listOf(), listOf(), mutableListOf())
+        private fun createFunctionMethodSignature(name: String) = FunctionMethodSignatureAST(name, IntType, mutableListOf(), listOf())
     }
 }

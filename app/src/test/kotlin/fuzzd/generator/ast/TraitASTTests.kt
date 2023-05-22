@@ -91,16 +91,16 @@ class TraitASTTests {
         private const val TRAIT_NAME = "TestTrait"
 
         // default function method instances
-        private val FUNCTION_METHOD_1 = FunctionMethodSignatureAST("fm1", IntType, listOf(IdentifierAST("p1", IntType)))
+        private val FUNCTION_METHOD_1 = FunctionMethodSignatureAST("fm1", IntType, listOf(IdentifierAST("p1", IntType)), mutableListOf())
         private val FUNCTION_METHOD_2 =
-            FunctionMethodSignatureAST("fm2", BoolType, listOf(IdentifierAST("p1", BoolType)))
+            FunctionMethodSignatureAST("fm2", BoolType, listOf(IdentifierAST("p1", BoolType)), mutableListOf())
         val FUNCTION_METHODS = setOf(FUNCTION_METHOD_1, FUNCTION_METHOD_2)
 
         // default method instances
         private val METHOD_1 =
-            MethodSignatureAST("m1", listOf(IdentifierAST("p1", IntType)), listOf(IdentifierAST("r1", IntType)))
+            MethodSignatureAST("m1", listOf(IdentifierAST("p1", IntType)), listOf(IdentifierAST("r1", IntType)), mutableListOf())
         private val METHOD_2 =
-            MethodSignatureAST("m2", listOf(IdentifierAST("p1", BoolType)), listOf(IdentifierAST("r1", BoolType)))
+            MethodSignatureAST("m2", listOf(IdentifierAST("p1", BoolType)), listOf(IdentifierAST("r1", BoolType)), mutableListOf())
         private val METHODS = setOf(METHOD_1, METHOD_2)
 
         // default field instances

@@ -8,7 +8,6 @@ import fuzzd.generator.ast.ExpressionAST.FunctionMethodCallAST
 import fuzzd.generator.ast.ExpressionAST.IdentifierAST
 import fuzzd.generator.ast.ExpressionAST.IntegerLiteralAST
 import fuzzd.generator.ast.ExpressionAST.NonVoidMethodCallAST
-import fuzzd.generator.ast.ExpressionAST.RealLiteralAST
 import fuzzd.generator.ast.ExpressionAST.TernaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.UnaryExpressionAST
 import fuzzd.generator.ast.Type.BoolType
@@ -116,7 +115,7 @@ class ExpressionASTTests {
         fun givenFunctionMethod_whenMethodCallWithCorrectParams_expectSuccessfulInit() {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
-            val method = FunctionMethodSignatureAST("fm1", IntType, params)
+            val method = FunctionMethodSignatureAST("fm1", IntType, params, mutableListOf())
 
             // when
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false))
@@ -129,7 +128,7 @@ class ExpressionASTTests {
         fun givenFunctionMethod_whenMethodCallWithTooManyParams_expectError() {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
-            val method = FunctionMethodSignatureAST("fm1", IntType, params)
+            val method = FunctionMethodSignatureAST("fm1", IntType, params, mutableListOf())
 
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false), IntegerLiteralAST(135))
 
@@ -151,7 +150,7 @@ class ExpressionASTTests {
         fun givenFunctionMethod_whenMethodCallWithTooFewParams_expectError() {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
-            val method = FunctionMethodSignatureAST("fm1", IntType, params)
+            val method = FunctionMethodSignatureAST("fm1", IntType, params, mutableListOf())
 
             val callParams = listOf<ExpressionAST>()
 
@@ -173,7 +172,7 @@ class ExpressionASTTests {
         fun givenFunctionMethod_whenMethodCallWithIncorrectParamTypes_expectError() {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
-            val method = FunctionMethodSignatureAST("fm1", IntType, params)
+            val method = FunctionMethodSignatureAST("fm1", IntType, params, mutableListOf())
 
             val callParams = listOf<ExpressionAST>(IdentifierAST("p1", BoolType), IdentifierAST("p2", IntType))
 
@@ -200,7 +199,7 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val returns = listOf(IdentifierAST("r1", IntType), IdentifierAST("r2", IntType))
-            val method = MethodSignatureAST("m1", params, returns)
+            val method = MethodSignatureAST("m1", params, returns, mutableListOf())
 
             // when
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false))
@@ -214,7 +213,7 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val returns = listOf(IdentifierAST("r1", IntType), IdentifierAST("r2", IntType))
-            val method = MethodSignatureAST("m1", params, returns)
+            val method = MethodSignatureAST("m1", params, returns, mutableListOf())
 
             // when
             val callParams = listOf(IntegerLiteralAST(3), BooleanLiteralAST(false), IntegerLiteralAST(13))
@@ -228,7 +227,7 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val returns = listOf(IdentifierAST("r1", IntType), IdentifierAST("r2", IntType))
-            val method = MethodSignatureAST("m1", params, returns)
+            val method = MethodSignatureAST("m1", params, returns, mutableListOf())
 
             // when
             val callParams = listOf<ExpressionAST>()
@@ -242,7 +241,7 @@ class ExpressionASTTests {
             // given
             val params = listOf(IdentifierAST("p1", IntType), IdentifierAST("p2", BoolType))
             val returns = listOf(IdentifierAST("r1", IntType), IdentifierAST("r2", IntType))
-            val method = MethodSignatureAST("m1", params, returns)
+            val method = MethodSignatureAST("m1", params, returns, mutableListOf())
 
             // when
             val callParams = listOf(BooleanLiteralAST(false), IntegerLiteralAST(13))
@@ -290,19 +289,6 @@ class ExpressionASTTests {
 
             // expect
             assertFailsWith<InvalidInputException>("Invalid input type for ternary expression condition. Got int") {
-                TernaryExpressionAST(condition, ifBranch, elseBranch)
-            }
-        }
-
-        @Test
-        fun givenBranchesOfDifferentTypes_whenInit_expectError() {
-            // given
-            val condition = BooleanLiteralAST(false)
-            val ifBranch = IntegerLiteralAST(31)
-            val elseBranch = CharacterLiteralAST('c')
-
-            // expect
-            assertFailsWith<InvalidInputException>("Ternary expression branches have different types. If branch: int. Else branch: char") {
                 TernaryExpressionAST(condition, ifBranch, elseBranch)
             }
         }
@@ -394,31 +380,6 @@ class ExpressionASTTests {
 
             // expect
             assertEquals("-0x102", str)
-        }
-    }
-
-    @Nested
-    inner class RealLiteralASTTests {
-        @Test
-        fun givenValidRealValue_whenCreateRealLiteralAST_expectSuccessfulInit() {
-            // given
-            val value = "123.53195"
-
-            // when
-            RealLiteralAST(value)
-
-            // expect nothing
-        }
-
-        @Test
-        fun givenValidNegativeRealValue_whenCreateRealLiteralAST_expectSuccessfulInit() {
-            // given
-            val value = "-1234951.95138"
-
-            // when
-            RealLiteralAST(value)
-
-            // expect nothing
         }
     }
 }

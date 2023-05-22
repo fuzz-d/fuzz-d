@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Test
 class DependencyTableTests {
 
     private lateinit var dependencyTable: DependencyTable<MethodSignatureAST>
-    private val method1 = MethodSignatureAST("m1", listOf(), listOf())
-    private val method2 = MethodSignatureAST("m2", listOf(), listOf())
-    private val method3 = MethodSignatureAST("m3", listOf(), listOf())
+    private val method1 = MethodSignatureAST("m1", listOf(), listOf(), mutableListOf())
+    private val method2 = MethodSignatureAST("m2", listOf(), listOf(), mutableListOf())
+    private val method3 = MethodSignatureAST("m3", listOf(), listOf(), mutableListOf())
 
     @BeforeEach
     fun setup() {

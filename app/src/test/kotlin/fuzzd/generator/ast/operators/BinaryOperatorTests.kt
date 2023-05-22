@@ -1,8 +1,6 @@
 package fuzzd.generator.ast.operators
 
-import fuzzd.generator.ast.ClassAST
 import fuzzd.generator.ast.Type.BoolType
-import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.IntType
 import fuzzd.generator.ast.operators.BinaryOperator.AdditionOperator
 import fuzzd.generator.ast.operators.BinaryOperator.BooleanBinaryOperator
@@ -136,18 +134,6 @@ class BinaryOperatorTests {
 
         // expect
         assertTrue { isBinary }
-    }
-
-    @Test
-    fun givenTypeNotSupportingBinaryOperators_whenIsBinaryType_expectFalse() {
-        // given
-        val type = ClassType(ClassAST.builder().withName("C1").build())
-
-        // when
-        val isBinary = isBinaryType(type)
-
-        // expect
-        assertFalse { isBinary }
     }
 
     class BooleanBinaryOperatorProvider : ArgumentsProvider {

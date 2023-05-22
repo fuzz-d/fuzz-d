@@ -164,8 +164,6 @@ sealed class ExpressionAST : ASTElement {
         override fun type(): Type = ifBranch.type()
 
         override fun toString(): String = "if ($condition) then $ifBranch else $elseBranch"
-
-
     }
 
     data class UnaryExpressionAST(val expr: ExpressionAST, val operator: UnaryOperator) : ExpressionAST() {
