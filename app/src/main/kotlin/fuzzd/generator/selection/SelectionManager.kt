@@ -278,15 +278,19 @@ class SelectionManager(
             if (isBinaryType(targetType) && context.expressionDepth < MAX_EXPRESSION_DEPTH) probabilityManager.binaryExpression() / context.expressionDepth else 0.0
         val unaryProbability = if (isUnaryType(targetType)) probabilityManager.unaryExpression() / context.expressionDepth else 0.0
         val modulusProbability = if (targetType == IntType) probabilityManager.modulusExpression() else 0.0
-        val multisetConversionProbability = if (targetType is MultisetType) probabilityManager.multisetConversion() else 0.0
-        val functionCallProbability = if (!targetType.hasHeapType() && context.onDemandIdentifiers && context.functionCalls) probabilityManager.functionCall() / context.expressionDepth else 0.0
+        val multisetConversionProbability =
+            if (targetType is MultisetType && targetType.innerType !is ArrayType /* due to resolver errors*/) probabilityManager.multisetConversion() else 0.0
+        val functionCallProbability =
+            if (!targetType.hasHeapType() && context.onDemandIdentifiers && context.functionCalls) probabilityManager.functionCall() / context.expressionDepth else 0.0
         val ternaryProbability = if (context.expressionDepth < MAX_EXPRESSION_DEPTH) probabilityManager.ternary() / context.expressionDepth else 0.0
-        val matchProbability = if (context.expressionDepth < MAX_EXPRESSION_DEPTH && context.globalSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers) && !targetType.hasHeapType()) {
-                probabilityManager.matchExpression()
+        val matchProbability =
+            if (context.expressionDepth == 1 && context.statementDepth == 1 /*< MAX_EXPRESSION_DEPTH*/ && context.globalSymbolTable.hasAvailableDatatypes(context.onDemandIdentifiers) && !targetType.hasHeapType()) {
+                probabilityManager.matchExpression() / context.expressionDepth
             } else {
                 0.0
             }
-        val assignProbability = if (isAssignType(targetType) && (context.onDemandIdentifiers || context.symbolTable.hasType(targetType))) probabilityManager.assignExpression() / context.expressionDepth else 0.0
+        val assignProbability =
+            if (isAssignType(targetType) && (context.onDemandIdentifiers || context.symbolTable.hasType(targetType))) probabilityManager.assignExpression() / context.expressionDepth else 0.0
         val indexProbability =
             if (identifier && (targetType !is DatatypeType)) probabilityManager.indexExpression() / context.expressionDepth else 0.0
 
