@@ -313,7 +313,8 @@ class Generator(
 
     override fun generateClass(context: GenerationContext, mustExtend: List<TraitAST>): ClassAST {
         val classContext =
-            GenerationContext(context.globalSymbolTable, FunctionSymbolTable(context.functionSymbolTable.topLevel())).setGlobalState(context.globalState())
+            GenerationContext(context.globalSymbolTable, FunctionSymbolTable(context.functionSymbolTable.topLevel()), classGenerationDepth = context.classGenerationDepth + 1)
+                .setGlobalState(context.globalState())
 
         // get traits
         val numberOfTraits = selectionManager.selectNumberOfTraits()
@@ -335,7 +336,12 @@ class Generator(
         val functionMethods = requiredFunctionMethods union additionalFunctionMethods
         functionMethods.forEach { function ->
             val (body, _) = generateExpression(
-                GenerationContext(context.globalSymbolTable, classContext.functionSymbolTable, symbolTable = SymbolTable(classContext.symbolTable)).disableOnDemand(),
+                GenerationContext(
+                    context.globalSymbolTable,
+                    classContext.functionSymbolTable,
+                    classGenerationDepth = classContext.classGenerationDepth,
+                    symbolTable = SymbolTable(classContext.symbolTable)
+                ).disableOnDemand(),
                 function.returnType(),
             )
             function.setBody(body)
@@ -353,6 +359,7 @@ class Generator(
                     GenerationContext(
                         context.globalSymbolTable,
                         classContext.functionSymbolTable,
+                        classGenerationDepth = classContext.classGenerationDepth,
                         symbolTable = SymbolTable(classContext.symbolTable),
                         methodContext = method.signature,
                     ).setGlobalState(context.globalState()),

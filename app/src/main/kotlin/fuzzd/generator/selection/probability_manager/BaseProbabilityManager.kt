@@ -2,11 +2,11 @@ package fuzzd.generator.selection.probability_manager
 
 class BaseProbabilityManager : ProbabilityManager {
     // Types
-    override fun classType() = 0.05
-    override fun traitType() = 0.04
-    override fun datatype() = 0.03
+    override fun classType() = 0.06
+    override fun traitType() = 0.03
+    override fun datatype() = 0.05
     override fun arrayType() = 0.1
-    override fun datatstructureType() = 0.15
+    override fun datatstructureType() = 0.24
     override fun literalType() = 0.75
 
     // Datastructure types
@@ -23,12 +23,12 @@ class BaseProbabilityManager : ProbabilityManager {
 
     // statements
     override fun assertStatement(): Double = 0.0
-    override fun ifStatement() = 0.1
+    override fun ifStatement() = 0.13
     override fun matchStatement() = 0.05
     override fun forallStatement(): Double = 0.05
-    override fun forLoopStatement(): Double = 0.07
+    override fun forLoopStatement(): Double = 0.1
     override fun whileStatement() = 0.1
-    override fun methodCall() = 0.05
+    override fun methodCall() = 0.07
     override fun mapAssign() = 0.05
     override fun assignStatement() = 0.5
     override fun multiAssignStatement(): Double = 0.1
@@ -54,7 +54,7 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun identifier() = 0.5
     override fun literal() = 0.2
     override fun constructor() = 0.3
-    override fun comprehension() = 0.1
+    override fun comprehension() = 0.06
 
     override fun comprehensionConditionIntRange(): Double = 0.6
 
@@ -72,11 +72,11 @@ class BaseProbabilityManager : ProbabilityManager {
     override fun arrayInitComprehension(): Double = 0.3
 
     // other data
-    override fun methodStatements(): Int = 5
-    override fun ifBranchStatements(): Int = 4
+    override fun methodStatements(): Int = 6
+    override fun ifBranchStatements(): Int = 5
     override fun forLoopBodyStatements(): Int = 4
     override fun whileBodyStatements(): Int = 4
-    override fun mainFunctionStatements(): Int = 12
+    override fun mainFunctionStatements(): Int = 16
     override fun matchStatements(): Int = 4
     override fun comprehensionIdentifiers(): Int = 3
 

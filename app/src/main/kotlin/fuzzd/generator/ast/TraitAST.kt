@@ -33,7 +33,7 @@ class TraitAST(
         sb.appendLine(" {")
 
         fields.forEach { field ->
-            sb.appendLine(indent("${if(field.mutable) "var" else "const"} ${field.name} : ${field.type()}"))
+            sb.appendLine(indent("${if (field.mutable) "var" else "const"} ${field.name} : ${field.type()}"))
         }
 
         functionMethods.forEach { fm -> sb.appendLine(indent(fm)) }
@@ -43,6 +43,18 @@ class TraitAST(
         sb.appendLine("}")
 
         return sb.toString()
+    }
+
+    override fun equals(other: Any?): Boolean = other is TraitAST && other.name == name && other.extends == extends && other.functionMethods == functionMethods &&
+            other.methods == methods && other.fields == fields
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + extends.hashCode()
+        result = 31 * result + functionMethods.hashCode()
+        result = 31 * result + methods.hashCode()
+        result = 31 * result + fields.hashCode()
+        return result
     }
 
     companion object {

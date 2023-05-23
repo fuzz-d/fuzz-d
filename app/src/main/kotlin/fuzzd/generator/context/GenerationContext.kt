@@ -13,6 +13,7 @@ data class GenerationContext(
     val functionSymbolTable: FunctionSymbolTable,
     val statementDepth: Int = 1,
     val expressionDepth: Int = 1,
+    val classGenerationDepth: Int = 1,
     val symbolTable: SymbolTable = SymbolTable(),
     val identifierNameGenerator: IdentifierNameGenerator = IdentifierNameGenerator(),
     val loopCounterGenerator: LoopCounterGenerator = LoopCounterGenerator(),
@@ -36,6 +37,7 @@ data class GenerationContext(
             functionSymbolTable,
             statementDepth,
             expressionDepth + 1,
+            classGenerationDepth,
             symbolTable,
             identifierNameGenerator,
             loopCounterGenerator,
@@ -51,6 +53,7 @@ data class GenerationContext(
             functionSymbolTable,
             statementDepth,
             expressionDepth + 1,
+            classGenerationDepth,
             SymbolTable(symbolTable),
             identifierNameGenerator,
             loopCounterGenerator,
@@ -66,6 +69,7 @@ data class GenerationContext(
             functionSymbolTable,
             statementDepth + 1,
             expressionDepth,
+            classGenerationDepth,
             SymbolTable(symbolTable),
             identifierNameGenerator,
             loopCounterGenerator,
@@ -75,12 +79,29 @@ data class GenerationContext(
             effectfulStatements,
         ).setGlobalState(globalState)
 
+    fun increaseClassGenerationDepth(): GenerationContext =
+        GenerationContext(
+            globalSymbolTable,
+            functionSymbolTable,
+            statementDepth,
+            expressionDepth,
+            classGenerationDepth + 1,
+            symbolTable,
+            identifierNameGenerator,
+            loopCounterGenerator,
+            methodContext,
+            onDemandIdentifiers,
+            functionCalls,
+            effectfulStatements
+        ).setGlobalState(globalState)
+
     fun disableOnDemand(): GenerationContext =
         GenerationContext(
             globalSymbolTable,
             functionSymbolTable,
             statementDepth,
             expressionDepth,
+            classGenerationDepth,
             symbolTable,
             identifierNameGenerator,
             loopCounterGenerator,
@@ -96,6 +117,7 @@ data class GenerationContext(
             functionSymbolTable,
             statementDepth,
             expressionDepth,
+            classGenerationDepth,
             symbolTable,
             identifierNameGenerator,
             loopCounterGenerator,
@@ -111,6 +133,7 @@ data class GenerationContext(
             functionSymbolTable,
             statementDepth,
             expressionDepth,
+            classGenerationDepth,
             symbolTable,
             identifierNameGenerator,
             loopCounterGenerator,
@@ -126,6 +149,7 @@ data class GenerationContext(
             functionSymbolTable,
             statementDepth,
             expressionDepth,
+            classGenerationDepth,
             symbolTable,
             identifierNameGenerator,
             loopCounterGenerator,
