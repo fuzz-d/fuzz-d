@@ -80,8 +80,8 @@ class SelectionManager(
             this::selectClassType to classTypeProb,
             this::selectTraitType to traitTypeProb,
             this::selectDatatypeType to datatypeProb,
-            this::selectArrayType to if (context.onDemandIdentifiers) probabilityManager.arrayType() / max(context.expressionDepth, depth) else 0.0,
-            this::selectDataStructureType to probabilityManager.datatstructureType() / max(context.expressionDepth, depth),
+            this::selectArrayType to if (depth < MAX_TYPE_DEPTH && context.onDemandIdentifiers) probabilityManager.arrayType() / max(context.expressionDepth, depth) else 0.0,
+            this::selectDataStructureType to if (depth < MAX_TYPE_DEPTH) probabilityManager.datatstructureType() / max(context.expressionDepth, depth) else 0.0,
             this::selectLiteralType to probabilityManager.literalType(),
         )
 
@@ -112,7 +112,7 @@ class SelectionManager(
                     this::selectStringType to probabilityManager.stringType(),
                 ),
             ),
-        ).invoke(context, depth)
+        ).invoke(context, depth + 1)
 
     fun selectDataStructureTypeWithInnerType(innerType: Type, context: GenerationContext): DataStructureType =
         randomWeightedSelection(
@@ -458,6 +458,7 @@ class SelectionManager(
         private const val MAX_FUNCTION_METHODS = 3
         private const val MAX_METHODS = 3
         private const val MAX_TRAIT_INHERITS = 2
+        private const val MAX_TYPE_DEPTH = 3
 
         private val LITERAL_TYPES = listOf(IntType, BoolType, CharType)
         private fun isLiteralType(type: Type) = type in LITERAL_TYPES
