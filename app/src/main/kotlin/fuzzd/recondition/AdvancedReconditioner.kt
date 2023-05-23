@@ -515,8 +515,9 @@ class AdvancedReconditioner {
     fun reconditionDatatypeUpdate(updateAST: DatatypeUpdateAST): Pair<DatatypeUpdateAST, List<StatementAST>> {
         val (instance, instanceDeps) = reconditionExpression(updateAST.datatypeInstance)
         val (updates, updateDeps) = updateAST.updates.map { (ident, expr) ->
+            val (rident, identDeps) = reconditionIdentifier(ident)
             val (rexpr, exprDeps) = reconditionExpression(expr)
-            Pair(Pair(ident, rexpr), exprDeps)
+            Pair(Pair(rident, rexpr), identDeps + exprDeps)
         }.foldPair()
 
         return Pair(DatatypeUpdateAST(instance, updates), instanceDeps + updateDeps)
@@ -797,7 +798,7 @@ class AdvancedReconditioner {
 
     fun reconditionSetDisplay(setDisplayAST: SetDisplayAST): Pair<ExpressionAST, List<StatementAST>> {
         val (exprs, exprDependents) = reconditionExpressionList(setDisplayAST.exprs)
-        return Pair(SetDisplayAST(setDisplayAST.innerType, exprs, setDisplayAST.isMultiset), exprDependents)
+        return Pair(SetDisplayAST(reconditionType(setDisplayAST.innerType), exprs, setDisplayAST.isMultiset), exprDependents)
     }
 
     fun reconditionSetComprehension(setComprehensionAST: SetComprehensionAST): Pair<ExpressionAST, List<StatementAST>> =

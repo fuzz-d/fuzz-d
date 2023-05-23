@@ -16,6 +16,7 @@ import fuzzd.generator.ast.StatementAST.AssignmentAST
 import fuzzd.generator.ast.StatementAST.IfStatementAST
 import fuzzd.generator.ast.StatementAST.MultiDeclarationAST
 import fuzzd.generator.ast.StatementAST.PrintAST
+import fuzzd.generator.ast.StatementAST.VoidMethodCallAST
 import fuzzd.generator.ast.Type.BoolType
 import fuzzd.generator.ast.Type.ClassType
 import fuzzd.generator.ast.Type.IntType
@@ -69,6 +70,16 @@ private val PRINT_UPDATE_STATE = IfStatementAST(
     ),
 )
 
+val REQUIRE_SAFETY_ID = MethodAST(
+    "requireSafetyId",
+    params = listOf(ID, ADVANCED_STATE),
+    returns = listOf(),
+    annotations = mutableListOf(ModifiesAnnotation(ADVANCED_STATE)),
+    body = SequenceAST(listOf(PRINT_UPDATE_STATE))
+)
+
+private val PRINT_CALL = VoidMethodCallAST(REQUIRE_SAFETY_ID.signature, listOf(ID, ADVANCED_STATE))
+
 val ADVANCED_SAFE_DIV_INT = MethodAST(
     "advancedSafeDivInt",
     params = listOf(INT_PARAM_1, INT_PARAM_2, ADVANCED_STATE, ID),
@@ -78,12 +89,7 @@ val ADVANCED_SAFE_DIV_INT = MethodAST(
         listOf(
             IfStatementAST(
                 BinaryExpressionAST(INT_PARAM_2, EqualsOperator, IntegerLiteralAST(0)),
-                SequenceAST(
-                    listOf(
-                        PRINT_UPDATE_STATE,
-                        AssignmentAST(INT_RETURNS, INT_PARAM_1),
-                    ),
-                ),
+                SequenceAST(listOf(PRINT_CALL, AssignmentAST(INT_RETURNS, INT_PARAM_1))),
                 SequenceAST(
                     listOf(
                         AssignmentAST(
@@ -106,12 +112,7 @@ val ADVANCED_SAFE_MODULO_INT = MethodAST(
         listOf(
             IfStatementAST(
                 BinaryExpressionAST(INT_PARAM_2, EqualsOperator, IntegerLiteralAST(0)),
-                SequenceAST(
-                    listOf(
-                        PRINT_UPDATE_STATE,
-                        AssignmentAST(INT_RETURNS, INT_PARAM_1),
-                    ),
-                ),
+                SequenceAST(listOf(PRINT_CALL, AssignmentAST(INT_RETURNS, INT_PARAM_1))),
                 SequenceAST(
                     listOf(
                         AssignmentAST(
@@ -136,7 +137,7 @@ val ADVANCED_ABSOLUTE = MethodAST(
                 BinaryExpressionAST(INT_PARAM_1, LessThanOperator, IntegerLiteralAST(0)),
                 SequenceAST(
                     listOf(
-                        PRINT_UPDATE_STATE,
+                        PRINT_CALL,
                         AssignmentAST(
                             INT_RETURNS,
                             BinaryExpressionAST(IntegerLiteralAST(-1), MultiplicationOperator, INT_PARAM_1),
@@ -171,7 +172,7 @@ val ADVANCED_SAFE_INDEX = MethodAST(
                 BinaryExpressionAST(IdentifierAST("b1", BoolType), DisjunctionOperator, IdentifierAST("b2", BoolType)),
                 SequenceAST(
                     listOf(
-                        PRINT_UPDATE_STATE,
+                        PRINT_CALL,
                         AssignmentAST(
                             INT_RETURNS,
                             TernaryExpressionAST(

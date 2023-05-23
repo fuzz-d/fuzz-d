@@ -122,6 +122,8 @@ import fuzzd.utils.ADVANCED_ABSOLUTE
 import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_INDEX
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
+import fuzzd.utils.REQUIRE_SAFETY_ID
+import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.SAFE_MODULO_INT
@@ -149,6 +151,7 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
         }
 
         listOf(
+            REQUIRE_SAFETY_ID,
             ADVANCED_ABSOLUTE,
             ADVANCED_SAFE_INDEX,
             ADVANCED_SAFE_DIV_INT,

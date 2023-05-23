@@ -18,6 +18,7 @@ import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.DAFNY_ADVANCED
 import fuzzd.utils.DAFNY_MAIN
 import fuzzd.utils.DAFNY_TYPE
+import fuzzd.utils.REQUIRE_SAFETY_ID
 import fuzzd.utils.WRAPPER_FUNCTIONS
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -44,6 +45,7 @@ class ReconditionRunner(private val dir: File, private val logger: Logger) {
 
                 val writer = OutputWriter(dir, "$DAFNY_ADVANCED.$DAFNY_TYPE")
                 writer.write { "$ADVANCED_RECONDITION_CLASS\n" }
+                writer.write { "$REQUIRE_SAFETY_ID\n" }
                 writer.write { "$ADVANCED_ABSOLUTE\n" }
                 writer.write { "$ADVANCED_SAFE_INDEX\n" }
                 writer.write { "$ADVANCED_SAFE_MODULO_INT\n" }
