@@ -42,6 +42,7 @@ class Fuzz : Subcommand("fuzz", "Generate programs to test Dafny") {
             file
         } else {
             val path = "output"
+            File(path).mkdir()
             val dir = UUID.randomUUID().toString()
             File("$path/$dir")
         }
@@ -126,6 +127,7 @@ class VerifierFuzz : Subcommand("verifuzz", "Run fuzzing over the Dafny verifier
             file
         } else {
             val path = "output"
+            File(path).mkdir()
             val dir = UUID.randomUUID().toString()
             File("$path/$dir")
         }
