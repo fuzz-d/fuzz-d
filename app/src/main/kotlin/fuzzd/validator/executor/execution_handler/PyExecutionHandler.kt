@@ -4,5 +4,5 @@ class PyExecutionHandler(fileDir: String, fileName: String) : AbstractExecutionH
     override fun getCompileTarget(): String = "py"
 
     override fun getExecuteCommand(fileDir: String, fileName: String): String =
-        "python3 $fileDir/$fileName-py/$fileName.py"
+        "python3 $fileDir/$fileName-py/__${fileName}__.py"
 }
