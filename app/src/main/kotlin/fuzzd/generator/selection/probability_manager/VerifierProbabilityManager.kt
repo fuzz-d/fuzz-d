@@ -4,7 +4,7 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun classType(): Double = 0.0
     override fun traitType(): Double = 0.0
     override fun datatype(): Double = probabilityManager.datatype()
-    override fun arrayType(): Double = probabilityManager.arrayType()
+    override fun arrayType(): Double = 0.0
     override fun datatstructureType(): Double = probabilityManager.datatstructureType()
     override fun literalType(): Double = probabilityManager.literalType()
 
@@ -38,7 +38,7 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
 
     // Assign types
     override fun assignIdentifier(): Double = probabilityManager.assignIdentifier()
-    override fun assignArrayIndex(): Double = probabilityManager.assignArrayIndex()
+    override fun assignArrayIndex(): Double = 0.0
 
     // Expressions
     override fun binaryExpression(): Double = probabilityManager.binaryExpression()
@@ -57,7 +57,7 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun comprehensionConditionIntRange(): Double = probabilityManager.comprehensionConditionIntRange()
 
     // Index types
-    override fun arrayIndexType(): Double = probabilityManager.arrayIndexType()
+    override fun arrayIndexType(): Double = 0.0
     override fun mapIndexType(): Double = probabilityManager.mapIndexType()
     override fun multisetIndexType(): Double = probabilityManager.multisetIndexType()
     override fun sequenceIndexType(): Double = probabilityManager.sequenceIndexType()
@@ -65,9 +65,9 @@ class VerifierProbabilityManager(val probabilityManager: ProbabilityManager) : P
     override fun datatypeIndexType(): Double = 0.0
 
     // Array Init types
-    override fun arrayInitDefault(): Double = probabilityManager.arrayInitDefault()
+    override fun arrayInitDefault(): Double = 0.0
     override fun arrayInitComprehension(): Double = 0.0
-    override fun arrayInitValues(): Double = probabilityManager.arrayInitValues()
+    override fun arrayInitValues(): Double = 0.0
 
     // Other info
     override fun methodStatements(): Int = 5

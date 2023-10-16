@@ -21,6 +21,7 @@ import fuzzd.generator.ast.operators.BinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.BooleanBinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.ComparisonBinaryOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DataStructureBinaryOperator
+import fuzzd.generator.ast.operators.BinaryOperator.DataStructureMathematicalOperator
 import fuzzd.generator.ast.operators.BinaryOperator.DataStructureMembershipOperator
 import fuzzd.generator.ast.operators.BinaryOperator.UnionOperator
 import fuzzd.generator.ast.operators.UnaryOperator
@@ -66,6 +67,7 @@ import fuzzd.utils.unionAll
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
+import kotlin.reflect.KClass
 
 class SelectionManager(
     private val random: Random,
@@ -161,16 +163,20 @@ class SelectionManager(
         return (1..numberOfReturns).map { selectType(context) }
     }
 
+    private fun binaryOperators(operator: KClass<out BinaryOperator>): List<KClass<out BinaryOperator>> =
+        if (operator.isSealed) operator.sealedSubclasses.map { clazz: KClass<out BinaryOperator> -> binaryOperators(clazz) }.unionAll().toList() else listOf(operator)
+
+    private fun binaryOperators(): List<BinaryOperator> = BinaryOperator::class.sealedSubclasses
+        .map { binaryOperators(it) }.unionAll()
+        .mapNotNull { it.objectInstance }
+
     // selects operator, returning the operator and a selected input type for inner expressions
     fun selectBinaryOperator(context: GenerationContext, targetType: Type): Pair<BinaryOperator, Pair<Type, Type>> = when (targetType) {
         BoolType -> {
-            val subclasses = BinaryOperator::class.sealedSubclasses
-            val subclassInstances = subclasses.map { it.sealedSubclasses }.unionAll()
-                .mapNotNull { it.objectInstance }
-                .filter { it.outputType(targetType, targetType) == BoolType }
-            val selectedIndex = random.nextInt(subclassInstances.size)
+            val subclasses = binaryOperators().filter { it !is DataStructureMathematicalOperator && it.outputType(targetType, targetType) == BoolType }
+            val selectedIndex = random.nextInt(subclasses.size)
 
-            when (val selectedSubclass = subclassInstances[selectedIndex]) {
+            when (val selectedSubclass = subclasses[selectedIndex]) {
                 is BooleanBinaryOperator -> Pair(selectedSubclass, Pair(BoolType, BoolType))
                 is ComparisonBinaryOperator -> Pair(selectedSubclass, Pair(IntType, IntType))
                 is DataStructureMembershipOperator -> {
@@ -186,7 +192,10 @@ class SelectionManager(
                 }
 
                 is DataStructureBinaryOperator -> {
-                    val dataStructureType = selectDataStructureType(context, 1)
+                    var dataStructureType: DataStructureType
+                    do {
+                        dataStructureType = selectDataStructureType(context, 1)
+                    } while (!selectedSubclass.supportsInput(dataStructureType, dataStructureType))
                     Pair(selectedSubclass, Pair(dataStructureType, dataStructureType))
                 }
 
@@ -267,11 +276,11 @@ class SelectionManager(
 
     private fun isBinaryType(targetType: Type): Boolean =
         targetType !is ArrayType && targetType !is ClassType && targetType !is TraitType &&
-                targetType !is TopLevelDatatypeType && targetType != CharType
+            targetType !is TopLevelDatatypeType && targetType != CharType
 
     private fun isAssignType(targetType: Type): Boolean =
         targetType is MapType || targetType is MultisetType || targetType is SequenceType ||
-                (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
+            (targetType is DatatypeType && targetType.constructor.fields.isNotEmpty())
 
     fun selectExpressionType(targetType: Type, context: GenerationContext, identifier: Boolean = true): ExpressionType {
         val binaryProbability =

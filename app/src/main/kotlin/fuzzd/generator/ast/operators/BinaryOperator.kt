@@ -105,10 +105,17 @@ sealed class BinaryOperator(val precedence: Int, private val symbol: String) : A
 
     object ProperSubsetOperator : DataStructureComparisonOperator("<")
     object SubsetOperator : DataStructureComparisonOperator("<=")
-    object SupersetOperator : DataStructureComparisonOperator(">=")
-    object ProperSupersetOperator : DataStructureComparisonOperator(">")
+
+    object SupersetOperator : DataStructureComparisonOperator(">=") {
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MultisetType)
+    }
+
+    object ProperSupersetOperator : DataStructureComparisonOperator(">") {
+        override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MultisetType)
+    }
 
     object DisjointOperator : DataStructureComparisonOperator("!!") {
+        override fun outputType(t1: Type, t2: Type): Type = BoolType
         override fun supportsInput(t1: Type, t2: Type): Boolean = t1 == t2 && (t1 is SetType || t1 is MultisetType)
     }
 

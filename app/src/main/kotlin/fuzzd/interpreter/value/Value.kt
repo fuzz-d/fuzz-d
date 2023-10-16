@@ -3,6 +3,7 @@ package fuzzd.interpreter.value
 import fuzzd.generator.ast.DatatypeAST
 import fuzzd.generator.ast.DatatypeConstructorAST
 import fuzzd.generator.ast.ExpressionAST
+import fuzzd.generator.ast.ExpressionAST.BinaryExpressionAST
 import fuzzd.generator.ast.ExpressionAST.BooleanLiteralAST
 import fuzzd.generator.ast.ExpressionAST.CharacterLiteralAST
 import fuzzd.generator.ast.ExpressionAST.DatatypeInstantiationAST
@@ -257,6 +258,8 @@ sealed class Value {
         fun getIndex(index: Int): CharValue = CharValue(value[index])
         fun assign(index: Int, char: CharValue) =
             StringValue(value.substring(0, index) + char.value + value.substring(index + 1))
+
+        fun toSequence(): SequenceValue = SequenceValue(value.toCharArray().map { CharValue(it) })
 
         override fun toExpressionAST(): ExpressionAST = StringLiteralAST(value)
         override fun equals(other: Any?): Boolean = other is StringValue && value == other.value

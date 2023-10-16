@@ -123,7 +123,6 @@ import fuzzd.utils.ADVANCED_SAFE_DIV_INT
 import fuzzd.utils.ADVANCED_SAFE_INDEX
 import fuzzd.utils.ADVANCED_SAFE_MODULO_INT
 import fuzzd.utils.REQUIRE_SAFETY_ID
-import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.SAFE_DIVISION_INT
 import fuzzd.utils.SAFE_INDEX
 import fuzzd.utils.SAFE_MODULO_INT
@@ -883,6 +882,7 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
         is MultisetValue -> lhs.properSubsetOf(rhs as MultisetValue)
         is SetValue -> lhs.properSubsetOf(rhs as SetValue)
         is SequenceValue -> lhs.properSubsetOf(rhs as SequenceValue)
+        is StringValue -> interpretSubset(lhs.toSequence(), if (rhs is StringValue) rhs.toSequence() else rhs)
         else -> throw UnsupportedOperationException()
     }
 
@@ -890,6 +890,7 @@ class Interpreter(val generateChecksum: Boolean, val verify: Boolean = false) : 
         is MultisetValue -> lhs.subsetOf(rhs as MultisetValue)
         is SetValue -> lhs.subsetOf(rhs as SetValue)
         is SequenceValue -> lhs.subsetOf(rhs as SequenceValue)
+        is StringValue -> interpretSubset(lhs.toSequence(), if (rhs is StringValue) rhs.toSequence() else rhs)
         else -> throw UnsupportedOperationException()
     }
 
