@@ -17,6 +17,7 @@ class Runner():
         pass
 
     def execute(self, output_dir):
+        global FILE_NAME
         dafny_return_code = os.system(f'dafny /noVerify /compile:4 /compileTarget:py /compileVerbose:0 {output_dir}/main.dfy > {output_dir}/main.expect')
         if dafny_return_code == 0:
             os.system(f'echo "// RUN: %dafny /noVerify /compile:4 /compileVerbose:0 /compileTarget:py \\"%s\\" > \\"%t\\"" > "{output_dir}/{FILE_NAME}.dfy"')
