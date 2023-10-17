@@ -25,8 +25,7 @@ class XDSmithRunner(Runner):
 
 class DafnyFuzzRunner(Runner):
     def __init__(self):
-        super.__init__()
-        os.system(f'javac -cp src/main/java/ -d ./out/ src/main/java/Main/BaseProgram.java')
+        os.system(f'timeout 120 javac -cp src/main/java/ -d ./out/ src/main/java/Main/BaseProgram.java')
 
     def run(self, seed, output_dir):
         return_code = os.system(f'java -cp out/ Main.BaseProgram {seed}')
