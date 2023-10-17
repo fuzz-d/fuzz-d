@@ -69,25 +69,20 @@ def run_coverage(program, coverage_report_json, coverage_report_cobertura):
 
 # usage: coverage_runner.py RUN_NAME OUTPUT_DIR 
 if __name__ == '__main__':
-    for i in range(1, 3):
-        run_name = sys.argv[1]
-        runner = FuzzdRunner() if run_name == "fuzzd" else (XDSmithRunner() if run_name == "xdsmith" else DafnyFuzzRunner())
-        output_dir = pathlib.Path(sys.argv[2]) / "results" / f"{run_name}{i}"
-        coverage_dir = output_dir / "coverage"
+    run_name = sys.argv[1]
+    runner = FuzzdRunner() if run_name == "fuzzd" else (XDSmithRunner() if run_name == "xdsmith" else DafnyFuzzRunner())
+    output_dir = pathlib.Path(sys.argv[2])
 
-        output_dir.mkdir(parents=True, exist_ok=True)
-        coverage_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-        output_log = output_dir / "run.log" 
-        coverage_report_json = coverage_dir / "coverage.json"
-        coverage_report_cobertura = coverage_dir / "coverage.cobertura.xml"
+    output_log = output_dir / "run.log" 
 
-        output_log.write_text(f'Git commit: ')
-        os.system(f'/bin/bash -c "git rev-parse HEAD >> {output_log}"')
+    output_log.write_text(f'Git commit: ')
+    os.system(f'/bin/bash -c "git rev-parse HEAD >> {output_log}"')
 
-        start_time = time.time()
-        timeout_secs = 1
-        while (time.time() < start_time + timeout_secs):
-            return_code, generated_file = generate_program(output_log, runner)
+    start_time = time.time()
+    timeout_secs = 1
+    while (time.time() < start_time + timeout_secs):
+        return_code, generated_file = generate_program(output_log, runner)
 
 
