@@ -16,12 +16,23 @@ class Runner():
 
 class FuzzdRunner(Runner):
     def run(self, seed, output_dir):
-        return_code = os.system(f'timeout 30 java -jar app/build/libs/app.jar fuzz -n -s {seed} -o {output_dir}')
+        return_code = os.system(f'timeout 120 java -jar app/build/libs/app.jar fuzz -n -s {seed} -o {output_dir}')
         return return_code
 
 class XDSmithRunner(Runner):
     def run(self, seed, output_dir):
-        return os.system(f'racket xdsmith/fuzzer.rkt --dafny-syntax true --seed {seed} > {output_dir}/main.dfy')
+        return os.system(f'timeout 120 racket xdsmith/fuzzer.rkt --dafny-syntax true --seed {seed} > {output_dir}/main.dfy')
+
+class DafnyFuzzRunner(Runner):
+    def __init__(self):
+        super.__init__()
+        os.system(f'javac -cp src/main/java/ -d ./out/ src/main/java/Main/BaseProgram.java')
+
+    def run(self, seed, output_dir):
+        return_code = os.system(f'java -cp out/ Main.BaseProgram {seed}')
+        if return_code == 0:
+            os.system(f'cp tests/test.dfy {output_dir}/main.dfy')
+        return return_code
 
 def generate_random_seed():
     return random.randint(-1 * 2 ** 63, 2 ** 63 - 1)
@@ -45,7 +56,7 @@ def run_coverage(program, coverage_report_json, coverage_report_cobertura):
 if __name__ == '__main__':
     for i in range(1, 3):
         run_name = sys.argv[1]
-        runner = FuzzdRunner() if run_name == "fuzzd" else XDSmithRunner()
+        runner = FuzzdRunner() if run_name == "fuzzd" else (XDSmithRunner() if run_name == "xdsmith" else DafnyFuzzRunner())
         output_dir = pathlib.Path(sys.argv[2]) / "results" / f"{run_name}{i}"
         coverage_dir = output_dir / "coverage"
 
@@ -60,8 +71,8 @@ if __name__ == '__main__':
         os.system(f'/bin/bash -c "git rev-parse HEAD >> {output_log}"')
 
         start_time = time.time()
-        timeout_secs = 60 * 60 * 12
-        checkpoints = [2, 4, 6, 8, 10, 12]
+        timeout_secs = 60 * 60 * 8
+        checkpoints = [2, 4, 6, 8]
         checkpoints_saved = [False] * len(checkpoints)
         while (time.time() < start_time + timeout_secs):
             for (i, checkpoint) in enumerate(checkpoints):
