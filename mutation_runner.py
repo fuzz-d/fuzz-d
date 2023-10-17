@@ -52,7 +52,6 @@ def generate_random_seed():
 def generate_program(output_log, runner: Runner):
     seed = generate_random_seed()
 
-    output_dir = pathlib.Path(ROOT) / "coverage_experiment" / f'seed{seed}'
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / "main.dfy"
 
