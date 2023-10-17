@@ -10,14 +10,26 @@ ROOT = os.path.dirname(os.path.realpath(__file__))
 
 from distutils.dir_util import copy_tree
 
+FILE_NAME = 1
+
 class Runner():
     def run(self, seed, output_dir):
         pass
 
+    def execute(self, output_dir):
+        dafny_return_code = os.system(f'dafny /noVerify /compile:4 /compileTarget:py /compileVerbose:0 {output_dir}/main.dfy > {output_dir}/main.expect')
+        if dafny_return_code == 0:
+            os.system(f'echo "// RUN: %dafny /noVerify /compile:4 /compileVerbose:0 /compileTarget:py \\"%s\\" > \\"%t\\"" > "{output_dir}/{FILE_NAME}.dfy"')
+            os.system(f'echo "// RUN: %diff \\"%s.expect\\" \\"%t\\"" >> "{output_dir}/{FILE_NAME}.dfy"')
+            os.system(f'cat {output_dir}/main.dfy >> {output_dir}/{FILE_NAME}.dfy')
+            os.system(f'mv {output_dir}/main.expect {output_dir}/{FILE_NAME}.expect')
+            os.system(f'rm {output_dir}/main.dfy')
+            FILE_NAME += 1
+        return dafny_return_code
+
 class FuzzdRunner(Runner):
     def run(self, seed, output_dir):
-        return_code = os.system(f'timeout 120 java -jar app/build/libs/app.jar fuzz -n -s {seed} -o {output_dir}')
-        return return_code
+        return os.system(f'timeout 120 java -jar app/build/libs/app.jar fuzz -n -s {seed} -o {output_dir}')
 
 class XDSmithRunner(Runner):
     def run(self, seed, output_dir):
@@ -44,9 +56,12 @@ def generate_program(output_log, runner: Runner):
     output_file = output_dir / "main.dfy"
 
     return_code = runner.run(seed, output_dir)
+    execute_return_code = return_code
     if return_code == 0:
         os.system(f'/bin/bash -c "echo {seed} >> {output_log}"')
-    return return_code, output_file
+        execute_return_code = runner.execute(output_dir)
+
+    return execute_return_code, output_file
     
 def run_coverage(program, coverage_report_json, coverage_report_cobertura):
     os.system(f'./coverlet.sh {program} {coverage_report_json} {coverage_report_cobertura}')
@@ -70,17 +85,8 @@ if __name__ == '__main__':
         os.system(f'/bin/bash -c "git rev-parse HEAD >> {output_log}"')
 
         start_time = time.time()
-        timeout_secs = 60 * 60 * 8
-        checkpoints = [2, 4, 6, 8]
-        checkpoints_saved = [False] * len(checkpoints)
+        timeout_secs = 1
         while (time.time() < start_time + timeout_secs):
-            for (i, checkpoint) in enumerate(checkpoints):
-                if (not checkpoints_saved[i] and time.time() >= start_time + checkpoint * 60 * 60):
-                    coverage_checkpoint_dir = output_dir / f'coverage_{checkpoint}'
-                    copy_tree(str(coverage_dir), str(coverage_checkpoint_dir))
-                    checkpoints_saved[i] = True
-
             return_code, generated_file = generate_program(output_log, runner)
-            if return_code == 0:
-                run_coverage(generated_file, coverage_report_json, coverage_report_cobertura)
+
 
