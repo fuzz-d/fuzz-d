@@ -18,14 +18,15 @@ class Runner():
 
     def execute(self, output_dir):
         global FILE_NAME
-        dafny_return_code = os.system(f'dafny /noVerify /compile:4 /compileTarget:py /compileVerbose:0 {output_dir}/main.dfy > {output_dir}/main.expect')
+        os.system(f'echo "// RUN: %dafny /noVerify /compile:4 /compileVerbose:0 /compileTarget:py \\"%s\\" > \\"%t\\"" > "{output_dir}/{FILE_NAME}.dfy"')
+        os.system(f'echo "// RUN: %diff \\"%s.expect\\" \\"%t\\"" >> "{output_dir}/{FILE_NAME}.dfy"')
+        os.system(f'cat {output_dir}/main.dfy >> {output_dir}/{FILE_NAME}.dfy')
+        dafny_return_code = os.system(f'dafny /noVerify /compile:4 /compileTarget:py /compileVerbose:0 {output_dir}/{FILE_NAME}.dfy > {output_dir}/{FILE_NAME}.expect')        
+        os.system(f'rm {output_dir}/main.dfy')
         if dafny_return_code == 0:
-            os.system(f'echo "// RUN: %dafny /noVerify /compile:4 /compileVerbose:0 /compileTarget:py \\"%s\\" > \\"%t\\"" > "{output_dir}/{FILE_NAME}.dfy"')
-            os.system(f'echo "// RUN: %diff \\"%s.expect\\" \\"%t\\"" >> "{output_dir}/{FILE_NAME}.dfy"')
-            os.system(f'cat {output_dir}/main.dfy >> {output_dir}/{FILE_NAME}.dfy')
-            os.system(f'mv {output_dir}/main.expect {output_dir}/{FILE_NAME}.expect')
-            os.system(f'rm {output_dir}/main.dfy')
             FILE_NAME += 1
+        else:
+            os.system(f'rm {output_dir}/{FILE_NAME}.*')
         return dafny_return_code
 
 class FuzzdRunner(Runner):
