@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# (adjust StrykerTests.csproj include)
+# OUTPUT DIRECTORY EXPECTED TO BE DAFNY/Test/<tool>
 
 import time
 import os
@@ -81,7 +83,7 @@ if __name__ == '__main__':
     os.system(f'/bin/bash -c "git rev-parse HEAD >> {output_log}"')
 
     start_time = time.time()
-    timeout_secs = 1
+    timeout_secs = 300
     while (time.time() < start_time + timeout_secs):
         return_code, generated_file = generate_program(output_log, runner)
 
