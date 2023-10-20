@@ -48,8 +48,8 @@ def generate_program(output_log, runner: Runner):
         os.system(f'/bin/bash -c "echo {seed} >> {output_log}"')
     return return_code, output_file
     
-def run_coverage(program, coverage_report_json, coverage_report_cobertura):
-    os.system(f'./coverlet.sh {program} {coverage_report_json} {coverage_report_cobertura}')
+def run_coverage(program, coverage_report):
+    os.system(f'./coverlet.sh {program} {coverage_report}')
 
 # usage: coverage_runner.py RUN_NAME OUTPUT_DIR 
 if __name__ == '__main__':
@@ -63,8 +63,7 @@ if __name__ == '__main__':
         coverage_dir.mkdir(parents=True, exist_ok=True)
 
         output_log = output_dir / "run.log" 
-        coverage_report_json = coverage_dir / "coverage.json"
-        coverage_report_cobertura = coverage_dir / "coverage.cobertura.xml"
+        coverage_report = coverage_dir / "coverage"
 
         output_log.write_text(f'Git commit: ')
         os.system(f'/bin/bash -c "git rev-parse HEAD >> {output_log}"')
@@ -82,5 +81,5 @@ if __name__ == '__main__':
 
             return_code, generated_file = generate_program(output_log, runner)
             if return_code == 0:
-                run_coverage(generated_file, coverage_report_json, coverage_report_cobertura)
+                run_coverage(generated_file, coverage_report)
 
