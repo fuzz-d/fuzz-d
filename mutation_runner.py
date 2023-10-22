@@ -41,10 +41,10 @@ class XDSmithRunner(Runner):
 
 class DafnyFuzzRunner(Runner):
     def __init__(self):
-        os.system(f'timeout 120 javac -cp src/main/java/ -d ./out/ src/main/java/Main/BaseProgram.java')
+        os.system(f'javac -cp src/main/java/ -d ./out/ src/main/java/Main/BaseProgram.java')
 
     def run(self, seed, output_dir):
-        return_code = os.system(f'java -cp out/ Main.BaseProgram {seed}')
+        return_code = os.system(f'timeout 120 java -cp out/ Main.BaseProgram {seed}')
         if return_code == 0:
             os.system(f'mv tests/test.dfy {output_dir}/main.dfy')
         return return_code
