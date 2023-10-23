@@ -32,7 +32,7 @@ class Runner():
         dafny_return_code &= os.system(f'dafny /noVerify /compile:4 /compileTarget:go /compileVerbose:0 {output_dir}/{FILE_NAME}.dfy >> {output_dir}/{FILE_NAME}.dfy.expect')        
         dafny_return_code &= os.system(f'dafny /noVerify /compile:4 /compileTarget:cs /compileVerbose:0 {output_dir}/{FILE_NAME}.dfy >> {output_dir}/{FILE_NAME}.dfy.expect')        
         os.system(f'rm {output_dir}/main.dfy')
-        
+
         if dafny_return_code == 0:
             FILE_NAME += 1
         else:
@@ -45,7 +45,7 @@ class FuzzdRunner(Runner):
 
 class XDSmithRunner(Runner):
     def run(self, seed, output_dir):
-        return os.system(f'timeout 120 racket xdsmith/fuzzer.rkt --dafny-syntax true --seed {seed} > {output_dir}/main.dfy')
+        return os.system(f'timeout 120 racket xdsmith/fuzzer.rkt --with-print-constrained true --dafny-syntax true --seed {seed} > {output_dir}/main.dfy')
 
 class DafnyFuzzRunner(Runner):
     def __init__(self):
