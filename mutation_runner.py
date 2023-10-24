@@ -21,9 +21,9 @@ class Runner():
     def execute(self, output_dir):
         global FILE_NAME
         os.system(f'echo "// RUN: %dafny /noVerify /compile:4 /compileVerbose:0 /compileTarget:py \\"%s\\" > \\"%t\\"" > "{output_dir}/{FILE_NAME}.dfy"')
-        os.system(f'echo "// RUN: %dafny /noVerify /compile:4 /compileVerbose:0 /compileTarget:js \\"%s\\" > \\"%t\\"" >> "{output_dir}/{FILE_NAME}.dfy"')
-        os.system(f'echo "// RUN: %dafny /noVerify /compile:4 /compileVerbose:0 /compileTarget:go \\"%s\\" > \\"%t\\"" >> "{output_dir}/{FILE_NAME}.dfy"')
-        os.system(f'echo "// RUN: %dafny /noVerify /compile:4 /compileVerbose:0 /compileTarget:cs \\"%s\\" > \\"%t\\"" >> "{output_dir}/{FILE_NAME}.dfy"')
+        os.system(f'echo "// RUN: %dafny /noVerify /compile:4 /compileVerbose:0 /compileTarget:js \\"%s\\" >> \\"%t\\"" >> "{output_dir}/{FILE_NAME}.dfy"')
+        os.system(f'echo "// RUN: %dafny /noVerify /compile:4 /compileVerbose:0 /compileTarget:go \\"%s\\" >> \\"%t\\"" >> "{output_dir}/{FILE_NAME}.dfy"')
+        os.system(f'echo "// RUN: %dafny /noVerify /compile:4 /compileVerbose:0 /compileTarget:cs \\"%s\\" >> \\"%t\\"" >> "{output_dir}/{FILE_NAME}.dfy"')
         os.system(f'echo "// RUN: %diff \\"%s.expect\\" \\"%t\\"" >> "{output_dir}/{FILE_NAME}.dfy"')
         os.system(f'cat {output_dir}/main.dfy >> {output_dir}/{FILE_NAME}.dfy')
         
